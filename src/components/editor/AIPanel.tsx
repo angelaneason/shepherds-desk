@@ -1,0 +1,164 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Sparkles, X, Send, Copy, RefreshCw, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+
+interface AIPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  sermonContent: string;
+  selectedText: string;
+  onInsertText: (text: string) => void;
+}
+
+export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsertText }: AIPanelProps) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState('');
+  const [error, setError] = useState('');
+  const [lastAction, setLastAction] = useState<string | null>(null);
+  const [customPrompt, setCustomPrompt] = useState('');
+
+  const handleAction = async (action: string, customText?: string) => {
+    setLoading(true);
+    setError('');
+    setResult('');
+    setLastAction(action);
+
+    try {
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          context: sermonContent,
+          selection: selectedText || customText || '',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Something went wrong');
+      }
+
+      setResult(data.result);
+    } catch (err: any) {
+      setError(err.message || "I had trouble with that. Let's try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatResult = (text: string) => {
+    const formatted = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^\s*(\d+)\.\s/gm, '<br/><strong>$1.</strong> ')
+      .replace(/^\s*[-•]\s/gm, '<br/>• ')
+      .replace(/\n\n/g, '<br/><br/>')
+      .replace(/\n/g, '<br/>');
+    
+    return <div dangerouslySetInnerHTML={{ __html: formatted }} />;
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-y-0 right-0 w-full sm:w-[400px] bg-[#F8F5EE] border-l border-[#D0A348]/30 shadow-2xl flex flex-col z-50 transform transition-transform duration-300 translate-x-0">
+      <div className="p-4 border-b border-[#D0A348]/20 bg-[#082C50] text-white flex justify-between items-start">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-[#D0A348]" />
+            AI Assistant
+          </h2>
+          <p className="text-sm mt-1 text-gray-200">Your calling. Your voice. God's Message.</p>
+          <p className="text-xs mt-1 text-gray-300 italic">AI simply helps you organize and develop what God has placed on your heart.</p>
+        </div>
+        <button onClick={onClose} className="text-gray-300 hover:text-white">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        {!result && !loading && (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600 font-medium mb-3">How can I help you today?</p>
+            <div className="grid grid-cols-1 gap-2">
+              <Button variant="outline" className="justify-start text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5" onClick={() => handleAction('brainstorm_titles')}>✨ Brainstorm Titles</Button>
+              <Button variant="outline" className="justify-start text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5" onClick={() => handleAction('generate_outline')}>📝 Generate Outline</Button>
+              <Button variant="outline" className="justify-start text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5" onClick={() => handleAction('find_illustrations')}>💡 Find Illustrations</Button>
+              <Button variant="outline" className="justify-start text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5" onClick={() => handleAction('suggest_transitions')}>🔗 Suggest Transitions</Button>
+              
+              {selectedText && (
+                <>
+                  <Button variant="outline" className="justify-start text-[#082C50] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('polish_text')}>✏️ Polish Selected Text</Button>
+                  <Button variant="outline" className="justify-start text-[#082C50] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('expand_point')}>📖 Expand Point</Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-12 text-[#082C50]">
+            <Loader2 className="h-8 w-8 animate-spin mb-4" />
+            <p className="text-sm">Thinking...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md text-sm">
+            {error}
+            <Button variant="link" className="px-0 ml-2 text-red-800" onClick={() => lastAction && handleAction(lastAction)}>Try again</Button>
+          </div>
+        )}
+
+        {result && !loading && (
+          <div className="bg-white rounded-md border border-[#D0A348]/30 p-4 shadow-sm flex flex-col">
+            <div className="prose prose-sm max-w-none text-gray-800">
+              {formatResult(result)}
+            </div>
+            
+            <div className="mt-6 flex justify-end gap-2 border-t pt-4">
+              <Button variant="outline" size="sm" onClick={() => lastAction && handleAction(lastAction)}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Retry
+              </Button>
+              <Button size="sm" className="bg-[#082C50] hover:bg-[#082C50]/90 text-white" onClick={() => onInsertText(result)}>
+                <Copy className="h-4 w-4 mr-2" /> Copy to Editor
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 border-t border-[#D0A348]/20 bg-white">
+        <div className="flex gap-2">
+          <Textarea 
+            placeholder="Ask anything..." 
+            className="min-h-[60px] resize-none focus-visible:ring-[#D0A348]"
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (customPrompt.trim()) handleAction('custom', customPrompt);
+              }
+            }}
+          />
+          <Button 
+            size="icon" 
+            className="bg-[#D0A348] hover:bg-[#D0A348]/90 text-white shrink-0 self-end"
+            onClick={() => { if (customPrompt.trim()) handleAction('custom', customPrompt); }}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
