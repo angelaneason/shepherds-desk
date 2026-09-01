@@ -36,11 +36,17 @@ export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
   
   // Public paths that don't require authentication
-  const isPublicPath = url.pathname === '/login' || url.pathname.startsWith('/auth')
+  const isPublicPath = url.pathname === '/login' || url.pathname.startsWith('/auth') || url.pathname === '/welcome'
   const isStaticPath = url.pathname.startsWith('/_next') || url.pathname.includes('.')
 
   if (isStaticPath) {
     return supabaseResponse
+  }
+
+  // If user is not signed in and visits root, redirect to welcome page
+  if (!user && url.pathname === '/') {
+    url.pathname = '/welcome'
+    return NextResponse.redirect(url)
   }
 
   // If user is not signed in and the current path is not a public path, redirect to login
@@ -50,7 +56,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // If user is signed in and trying to access login page, redirect to home
-  if (user && isPublicPath) {
+  if (user && isPublicPath && url.pathname === '/login') {
     url.pathname = '/'
     return NextResponse.redirect(url)
   }
