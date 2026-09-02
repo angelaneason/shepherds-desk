@@ -80,6 +80,7 @@ export default function ResourcesPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [activeSection, setActiveSection] = useState<'counseling' | 'community'>('counseling');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
@@ -128,6 +129,11 @@ export default function ResourcesPage() {
 
   const filteredResources = useMemo(() => {
     return resources.filter(res => {
+      // Section filter
+      const isCommunity = COMMUNITY_CATEGORIES.includes(res.category);
+      if (activeSection === 'counseling' && isCommunity) return false;
+      if (activeSection === 'community' && !isCommunity) return false;
+
       const matchesCategory = selectedCategory === 'all' || res.category === selectedCategory;
       if (!matchesCategory) return false;
       
@@ -142,7 +148,7 @@ export default function ResourcesPage() {
       const matchWebsite = (res.website || '').toLowerCase().includes(q);
       return matchTitle || matchContent || matchScriptures || matchTags || matchPhone || matchAddress || matchWebsite;
     });
-  }, [resources, searchQuery, selectedCategory]);
+  }, [resources, searchQuery, selectedCategory, activeSection]);
 
   const toggleExpand = (id: string) => {
     setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
@@ -263,30 +269,76 @@ export default function ResourcesPage() {
     setContent(aiResponse);
   };
 
+  const COUNSELING_CATS = CATEGORIES.filter(c => c.id === 'all' || (!COMMUNITY_CATEGORIES.includes(c.id) && c.id !== 'other'));
+  const COMMUNITY_CATS = CATEGORIES.filter(c => c.id === 'all' || COMMUNITY_CATEGORIES.includes(c.id));
+  const activeCats = activeSection === 'counseling' ? [...COUNSELING_CATS, { id: 'other', label: 'Other' }] : COMMUNITY_CATS;
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
+      {/* Section Tabs */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-8 max-w-md">
+        <button
+          onClick={() => { setActiveSection('counseling'); setSelectedCategory('all'); }}
+          className={cn(
+            "flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all",
+            activeSection === 'counseling'
+              ? "bg-[#022d5c] text-white shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+          )}
+        >
+          📖 Counseling
+        </button>
+        <button
+          onClick={() => { setActiveSection('community'); setSelectedCategory('all'); }}
+          className={cn(
+            "flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all",
+            activeSection === 'community'
+              ? "bg-[#022d5c] text-white shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+          )}
+        >
+          🤝 Community Resources
+        </button>
+      </div>
+
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-4xl font-playfair text-[#022d5c] font-bold">Counseling Resources</h1>
-          <p className="text-gray-600 mt-2">A personal library of pastoral counseling resources, scripture references, and guidance.</p>
+          <h1 className="text-4xl font-playfair text-[#022d5c] font-bold">
+            {activeSection === 'counseling' ? 'Counseling' : 'Community Resources'}
+          </h1>
+          <p className="text-gray-600 mt-2">
+            {activeSection === 'counseling' 
+              ? 'Pastoral counseling resources, scripture references, and guidance.'
+              : 'Local resources for food, housing, shelter, crisis support, and more.'}
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setIsAiModalOpen(true)} className="bg-[#D0A348] hover:bg-[#b88c3a] text-white">
-            <Sparkles className="w-4 h-4 mr-2" />
-            AI Quick Counsel
-          </Button>
-          <Button onClick={() => handleOpenModal()} className="bg-[#022d5c] hover:bg-[#011c3a] text-white">
+          {activeSection === 'counseling' && (
+            <Button onClick={() => setIsAiModalOpen(true)} className="bg-[#D0A348] hover:bg-[#b88c3a] text-white">
+              <Sparkles className="w-4 h-4 mr-2" />
+              AI Quick Counsel
+            </Button>
+          )}
+          <Button onClick={() => {
+            handleOpenModal();
+            if (activeSection === 'community') setCategory('food_pantry');
+            else setCategory('grief');
+          }} className="bg-[#022d5c] hover:bg-[#011c3a] text-white">
             <Plus className="w-4 h-4 mr-2" />
-            Add Resource
+            {activeSection === 'counseling' ? 'Add Resource' : 'Add Local Resource'}
           </Button>
         </div>
       </div>
 
+      {/* Search & Filters */}
       <div className="mb-8 space-y-4">
         <div className="relative max-w-xl">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input 
-            placeholder="Search by title, content, scripture, or tags..." 
+            placeholder={activeSection === 'counseling' 
+              ? "Search by title, content, scripture, or tags..." 
+              : "Search by name, address, phone, or website..."}
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -294,7 +346,7 @@ export default function ResourcesPage() {
         </div>
 
         <div className="flex overflow-x-auto pb-2 gap-2 hide-scrollbar">
-          {CATEGORIES.map(cat => (
+          {activeCats.map(cat => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
