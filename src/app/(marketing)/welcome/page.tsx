@@ -23,13 +23,13 @@ export default function WelcomePage() {
         <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
         
         <div className="container mx-auto px-6 relative z-10 flex flex-col items-center text-center">
-          <div className="mb-8">
+          <div className="mb-8 bg-white/95 rounded-2xl p-4 shadow-lg">
             <Image 
               src="/logo.png" 
               alt="Shepherd's Desk Logo" 
-              width={200} 
-              height={64} 
-              className="h-16 w-auto object-contain"
+              width={400} 
+              height={120} 
+              className="h-28 md:h-36 w-auto object-contain"
             />
           </div>
           
