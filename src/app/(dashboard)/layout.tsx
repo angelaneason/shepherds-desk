@@ -27,24 +27,34 @@ export default function DashboardLayout({
         const email = user.email || ''
         setUserInitial(email.charAt(0).toUpperCase())
         
-        // Query profile - use explicit any to avoid Supabase type issues
-        const result: any = await supabase
-          .from('profiles')
-          .select('role, full_name')
-          .eq('id', user.id)
-          .single()
-        
-        const profile = result?.data
-        
-        if (profile?.full_name && profile.full_name !== 'Pastor') {
-          setUserInitial(profile.full_name.charAt(0).toUpperCase())
+        // Try profile query
+        try {
+          const result: any = await supabase
+            .from('profiles')
+            .select('role, full_name')
+            .eq('id', user.id)
+            .single()
+          
+          const profile = result?.data
+          
+          if (profile?.full_name && profile.full_name !== 'Pastor') {
+            setUserInitial(profile.full_name.charAt(0).toUpperCase())
+          }
+          
+          if (profile?.role === 'admin') {
+            setIsAdmin(true)
+          }
+        } catch {
+          // Profile query failed - fall back to email check
+          console.log('Profile query failed, using email fallback')
         }
         
-        if (profile?.role === 'admin') {
+        // Email-based admin fallback
+        if (email === 'angelaneason@gmail.com') {
           setIsAdmin(true)
         }
       } catch (err) {
-        console.error('Admin check error:', err)
+        console.error('Auth error:', err)
       }
     }
     checkAdmin()
