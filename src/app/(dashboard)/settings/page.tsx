@@ -197,7 +197,7 @@ export default function SettingsPage() {
       const { data, error } = await supabase.from('calendar_events').insert({
         profile_id: profileId,
         title: 'Study Time',
-        event_type: 'study',
+        event_type: 'sermon_study',
         start_time: `${dateStr}T${newBlockStart}:00`,
         end_time: `${dateStr}T${newBlockEnd}:00`,
         all_day: false,

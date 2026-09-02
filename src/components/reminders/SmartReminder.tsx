@@ -152,7 +152,7 @@ export function SmartReminder() {
         }
 
         // Determine event type
-        const eventType = parsed.isStudyTime ? 'study' : 
+        const eventType = parsed.isStudyTime ? 'sermon_study' : 
           parsed.category === 'visit' ? 'visit' : 
           parsed.category === 'personal' ? 'personal' : 'meeting'
 

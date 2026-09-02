@@ -100,7 +100,7 @@ export default function NewSermonPage() {
         const studyEvents = studySessions.map(session => ({
           profile_id: user.id,
           title: `Study: ${title || 'Sermon Prep'}`,
-          event_type: "study",
+          event_type: "sermon_study",
           start_time: new Date(`${session.date}T${session.start}:00`).toISOString(),
           end_time: new Date(`${session.date}T${session.end}:00`).toISOString(),
           description: `sermon_study:${data.id}`,
