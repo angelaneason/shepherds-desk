@@ -129,7 +129,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
       <header className="flex items-center justify-between border-b px-6 py-4 bg-white sticky top-0 z-20">
         <div className="flex items-center gap-4">
           <Link href="/sermons">
-            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-[#082C50]">
+            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-[#022d5c]">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -140,7 +140,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
                 variant={status === s ? "default" : "outline"}
                 className={`cursor-pointer ${
                   status === s 
-                    ? "bg-[#082C50] text-[#F8F5EE] hover:bg-[#082C50]/90" 
+                    ? "bg-[#022d5c] text-[#F8F5EE] hover:bg-[#022d5c]/90" 
                     : "text-slate-500 hover:text-slate-800"
                 }`}
                 onClick={() => setStatus(s)}
@@ -175,7 +175,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           </Dialog>
 
           <Link href={`/sermons/${id}/pulpit`}>
-            <Button variant="outline" className="border-[#082C50] text-[#082C50] hover:bg-[#082C50]/10">
+            <Button variant="outline" className="border-[#022d5c] text-[#022d5c] hover:bg-[#022d5c]/10">
               <Presentation className="h-4 w-4 mr-2" />
               Pulpit Mode
             </Button>
@@ -199,7 +199,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Sermon Title"
-              className="text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-300 text-[#082C50]"
+              className="text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-300 text-[#022d5c]"
             />
             <Input
               value={subtitle}

@@ -99,7 +99,7 @@ export default function ReferralsPage() {
         <div className="mx-auto w-16 h-16 bg-[#F8F5EE] rounded-full flex items-center justify-center mb-4">
           <Gift className="w-8 h-8 text-[#D0A348]" />
         </div>
-        <h1 className="text-4xl font-bold text-[#082C50]" style={{ fontFamily: 'var(--font-playfair)' }}>
+        <h1 className="text-4xl font-bold text-[#022d5c]" style={{ fontFamily: 'var(--font-playfair)' }}>
           Share Shepherd's Desk
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
@@ -134,7 +134,7 @@ export default function ReferralsPage() {
                 <Button 
                   onClick={copyToClipboard}
                   variant={copied ? "default" : "outline"}
-                  className={copied ? "bg-green-600 hover:bg-green-700 text-white" : "text-[#082C50] border-[#082C50]"}
+                  className={copied ? "bg-green-600 hover:bg-green-700 text-white" : "text-[#022d5c] border-[#022d5c]"}
                 >
                   {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
                   {copied ? 'Copied!' : 'Copy Link'}
@@ -142,17 +142,17 @@ export default function ReferralsPage() {
               </div>
 
               <div className="pt-4 border-t border-gray-100 flex flex-wrap gap-4 justify-center">
-                <Button variant="outline" className="gap-2 text-[#082C50]" >
+                <Button variant="outline" className="gap-2 text-[#022d5c]" >
                   <a href={`mailto:?subject=Try Shepherd's Desk&body=${encodeURIComponent(shareMessage)}`}>
                     <Mail className="w-4 h-4" /> Email
                   </a>
                 </Button>
-                <Button variant="outline" className="gap-2 text-[#082C50]" >
+                <Button variant="outline" className="gap-2 text-[#022d5c]" >
                   <a href={`sms:?&body=${encodeURIComponent(shareMessage)}`}>
                     <MessageCircle className="w-4 h-4" /> Text
                   </a>
                 </Button>
-                <Button variant="outline" className="gap-2 text-[#082C50]" >
+                <Button variant="outline" className="gap-2 text-[#022d5c]" >
                   <a href={`https://wa.me/?text=${encodeURIComponent(shareMessage)}`} target="_blank" rel="noopener noreferrer">
                     <Share2 className="w-4 h-4" /> WhatsApp
                   </a>

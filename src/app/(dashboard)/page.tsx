@@ -146,7 +146,7 @@ export default function DashboardPage() {
     <div className="space-y-8 pb-10">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-[#082C50] font-playfair">{greeting}, Pastor</h1>
+        <h1 className="text-4xl font-bold text-[#022d5c] font-playfair">{greeting}, Pastor</h1>
         <p className="text-gray-500 mt-2">{formatDate(new Date())}</p>
       </div>
 
@@ -160,7 +160,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">Today</p>
-                <p className="text-2xl font-bold text-[#082C50]">{todayEventsCount}</p>
+                <p className="text-2xl font-bold text-[#022d5c]">{todayEventsCount}</p>
                 <p className="text-sm text-gray-500">scheduled commitments</p>
               </div>
             </div>
@@ -175,7 +175,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">People</p>
-                <p className="text-2xl font-bold text-[#082C50]">{pendingCareCount}</p>
+                <p className="text-2xl font-bold text-[#022d5c]">{pendingCareCount}</p>
                 <p className="text-sm text-gray-500">follow-ups due</p>
               </div>
             </div>
@@ -190,7 +190,7 @@ export default function DashboardPage() {
               </div>
               <div className="overflow-hidden">
                 <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">Next Message</p>
-                <p className="text-lg font-bold text-[#082C50] truncate">{nextSermon?.title || 'None planned'}</p>
+                <p className="text-lg font-bold text-[#022d5c] truncate">{nextSermon?.title || 'None planned'}</p>
                 <p className="text-sm text-gray-500 capitalize">{nextSermon?.status || 'No status'}</p>
               </div>
             </div>
@@ -205,7 +205,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">Study Time</p>
-                <p className="text-2xl font-bold text-[#082C50]">{studyHours}h</p>
+                <p className="text-2xl font-bold text-[#022d5c]">{studyHours}h</p>
                 <p className="text-sm text-gray-500">protected this week</p>
               </div>
             </div>
@@ -219,12 +219,12 @@ export default function DashboardPage() {
         {/* Left: Ministry Calendar */}
         <Card className="lg:col-span-2 shadow-sm rounded-xl border-gray-100">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="text-xl font-bold text-[#082C50]">Ministry Calendar</CardTitle>
+            <CardTitle className="text-xl font-bold text-[#022d5c]">Ministry Calendar</CardTitle>
             <div className="flex items-center gap-4">
               <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-100 rounded">
                 <ChevronLeft className="w-5 h-5 text-gray-500" />
               </button>
-              <span className="font-medium text-[#082C50]">
+              <span className="font-medium text-[#022d5c]">
                 {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </span>
               <button onClick={handleNextMonth} className="p-1 hover:bg-gray-100 rounded">
@@ -252,12 +252,12 @@ export default function DashboardPage() {
                     onClick={() => setSelectedDay(day)}
                     className={cn(
                       "h-16 p-1 border border-gray-100 rounded-md cursor-pointer hover:bg-gray-50 transition-colors relative flex flex-col items-center",
-                      isSelected && "ring-2 ring-[#082C50] ring-offset-1 border-transparent bg-blue-50/30"
+                      isSelected && "ring-2 ring-[#022d5c] ring-offset-1 border-transparent bg-blue-50/30"
                     )}
                   >
                     <span className={cn(
                       "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mt-1",
-                      isSelected ? "bg-[#082C50] text-white" : "text-gray-700"
+                      isSelected ? "bg-[#022d5c] text-white" : "text-gray-700"
                     )}>
                       {day.getDate()}
                     </span>
@@ -292,7 +292,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-3 border-b border-gray-50">
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-5 h-5 text-[#D0A348]" />
-                <CardTitle className="text-lg font-bold text-[#082C50]">Selected Day</CardTitle>
+                <CardTitle className="text-lg font-bold text-[#022d5c]">Selected Day</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="pt-4">
@@ -312,7 +312,7 @@ export default function DashboardPage() {
                       <div key={i} className="flex items-start gap-3">
                         <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", dotColor)} />
                         <div>
-                          <p className="text-sm font-medium text-[#082C50]">{e.title}</p>
+                          <p className="text-sm font-medium text-[#022d5c]">{e.title}</p>
                           <p className="text-xs text-gray-500">{time}</p>
                         </div>
                       </div>
@@ -328,11 +328,11 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 mb-1">
                 <BookOpen className="w-5 h-5 text-[#D0A348]" />
-                <CardTitle className="text-lg font-bold text-[#082C50]">Next Sermon</CardTitle>
+                <CardTitle className="text-lg font-bold text-[#022d5c]">Next Sermon</CardTitle>
               </div>
               {nextSermon ? (
                 <>
-                  <h3 className="text-xl font-bold text-[#082C50] font-playfair">{nextSermon.title}</h3>
+                  <h3 className="text-xl font-bold text-[#022d5c] font-playfair">{nextSermon.title}</h3>
                   <p className="text-sm font-medium text-[#D0A348]">{nextSermon.scripture || 'No scripture set'}</p>
                 </>
               ) : (
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                 <div className="mt-2 mb-5">
                   <div className="flex justify-between text-xs mb-1.5">
                     <span className="text-gray-500 font-medium">Draft Progress</span>
-                    <span className="text-[#082C50] font-bold capitalize">{nextSermon.status}</span>
+                    <span className="text-[#022d5c] font-bold capitalize">{nextSermon.status}</span>
                   </div>
                   <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
                     <div 
@@ -355,7 +355,7 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="flex gap-2">
-                  <Link href={`/sermons/${nextSermon.id}`} className="flex-1 bg-[#082C50] hover:bg-[#061e38] text-white text-xs h-9 rounded-md flex items-center justify-center font-medium">Open Study</Link>
+                  <Link href={`/sermons/${nextSermon.id}`} className="flex-1 bg-[#022d5c] hover:bg-[#061e38] text-white text-xs h-9 rounded-md flex items-center justify-center font-medium">Open Study</Link>
                   <Link href={`/sermons/${nextSermon.id}/pulpit`} className="flex-1 border border-[#D0A348] text-[#D0A348] hover:bg-[#fbf3db] text-xs h-9 rounded-md flex items-center justify-center font-medium">Pulpit Mode</Link>
                 </div>
               </CardContent>
@@ -367,7 +367,7 @@ export default function DashboardPage() {
       {/* Bottom Section: People to Follow Up With */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-[#082C50]">People to follow up with</h2>
+          <h2 className="text-xl font-bold text-[#022d5c]">People to follow up with</h2>
           <Link href="/care" className="text-sm font-medium text-[#D0A348] hover:underline flex items-center gap-1">
             View all <ArrowRight className="w-4 h-4" />
           </Link>
@@ -390,11 +390,11 @@ export default function DashboardPage() {
                 <Card key={task.id} className="min-w-[280px] w-[280px] shrink-0 snap-start shadow-sm border-gray-100">
                   <CardContent className="p-5">
                     <div className="flex items-start gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-[#082C50] text-white flex items-center justify-center font-bold text-lg shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg shrink-0">
                         {initial}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-[#082C50] truncate">{memberName}</h4>
+                        <h4 className="font-bold text-[#022d5c] truncate">{memberName}</h4>
                         <Badge variant="outline" className="mt-1 text-xs border-[#D0A348] text-[#D0A348] bg-[#fbf3db]">
                           {task.task_type || 'Care'}
                         </Badge>

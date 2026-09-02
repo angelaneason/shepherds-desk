@@ -98,7 +98,7 @@ export function PhotoCapture({ isOpen, onClose, onTextCaptured }: PhotoCapturePr
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-[#082C50]">Snap a photo of your notes</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-[#022d5c]">Snap a photo of your notes</DialogTitle>
           <DialogDescription>
             We'll convert your handwriting into digital text
           </DialogDescription>
@@ -127,7 +127,7 @@ export function PhotoCapture({ isOpen, onClose, onTextCaptured }: PhotoCapturePr
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full gap-2 border-[#082C50] text-[#082C50] hover:bg-[#082C50]/10"
+                className="w-full gap-2 border-[#022d5c] text-[#022d5c] hover:bg-[#022d5c]/10"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="w-5 h-5" />
@@ -186,7 +186,7 @@ export function PhotoCapture({ isOpen, onClose, onTextCaptured }: PhotoCapturePr
               {isLoading && (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                   <Loader2 className="w-10 h-10 animate-spin text-[#D0A348]" />
-                  <p className="text-sm font-medium text-[#082C50] flex items-center gap-2">
+                  <p className="text-sm font-medium text-[#022d5c] flex items-center gap-2">
                     <ImageIcon className="w-4 h-4" /> Reading your notes...
                   </p>
                 </div>
@@ -218,7 +218,7 @@ export function PhotoCapture({ isOpen, onClose, onTextCaptured }: PhotoCapturePr
 
                   <div className="flex gap-2">
                     <Button
-                      className="flex-1 bg-[#082C50] hover:bg-[#082C50]/90 text-white gap-2"
+                      className="flex-1 bg-[#022d5c] hover:bg-[#022d5c]/90 text-white gap-2"
                       onClick={handleSave}
                     >
                       <Check className="w-4 h-4" /> Save to Ideas

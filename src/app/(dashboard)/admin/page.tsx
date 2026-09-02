@@ -83,7 +83,7 @@ export default function AdminPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#082C50]">Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[#022d5c]">Admin Dashboard</h1>
           <p className="text-muted-foreground mt-1">Platform overview and user management.</p>
         </div>
       </div>
@@ -132,7 +132,7 @@ export default function AdminPage() {
           <CardTitle>Users</CardTitle>
           <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
             <DialogTrigger>
-              <Button className="bg-[#082C50] text-white hover:bg-[#082C50]/90">
+              <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
                 <UserPlus className="mr-2 h-4 w-4" />
                 Invite New Pastor
               </Button>

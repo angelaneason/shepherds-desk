@@ -4,8 +4,8 @@
   "description": "Sermon preparation and ministry management for pastors",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#082C50",
-  "theme_color": "#082C50",
+  "background_color": "#022d5c",
+  "theme_color": "#022d5c",
   "orientation": "any",
   "icons": [
     {

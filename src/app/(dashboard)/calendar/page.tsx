@@ -28,7 +28,7 @@ import {
 import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, Clock, Trash2 } from 'lucide-react'
 
 const EVENT_TYPES = {
-  sermon_study: { label: 'Sermon Study', color: 'bg-[#082C50] text-white', defaultHex: '#082C50' },
+  sermon_study: { label: 'Sermon Study', color: 'bg-[#022d5c] text-white', defaultHex: '#022d5c' },
   meeting: { label: 'Meeting', color: 'bg-blue-500 text-white', defaultHex: '#3b82f6' },
   visit: { label: 'Visit', color: 'bg-green-500 text-white', defaultHex: '#22c55e' },
   personal: { label: 'Personal', color: 'bg-[#D0A348] text-white', defaultHex: '#D0A348' },
@@ -185,7 +185,7 @@ export default function CalendarPage() {
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Ministry Calendar</h1>
-        <Button onClick={() => openAddModal()} className="bg-[#082C50] hover:bg-[#D0A348] text-white">
+        <Button onClick={() => openAddModal()} className="bg-[#022d5c] hover:bg-[#D0A348] text-white">
           <Plus className="w-4 h-4 mr-2" />
           Add Event
         </Button>
@@ -222,7 +222,7 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7 gap-px bg-gray-200 border-x border-b border-gray-200 flex-1 rounded-b-lg overflow-hidden">
             {loading ? (
               <div className="col-span-7 flex justify-center items-center bg-white h-full min-h-[400px]">
-                <Loader2 className="h-8 w-8 animate-spin text-[#082C50]" />
+                <Loader2 className="h-8 w-8 animate-spin text-[#022d5c]" />
               </div>
             ) : (
               calendarDays.map((day, dayIdx) => {
@@ -235,12 +235,12 @@ export default function CalendarPage() {
                     onClick={() => setSelectedDay(day)}
                     className={`min-h-[100px] bg-white p-2 transition-colors cursor-pointer hover:bg-gray-50 flex flex-col
                       ${!isSameMonth(day, monthStart) ? 'text-gray-400 bg-gray-50/50' : 'text-gray-900'}
-                      ${isSelected ? 'ring-2 ring-inset ring-[#082C50] bg-blue-50/30' : ''}
+                      ${isSelected ? 'ring-2 ring-inset ring-[#022d5c] bg-blue-50/30' : ''}
                     `}
                   >
                     <div className="flex justify-between items-start">
                       <span className={`text-sm font-medium h-7 w-7 flex items-center justify-center rounded-full
-                        ${isToday(day) ? 'bg-[#082C50] text-white' : ''}
+                        ${isToday(day) ? 'bg-[#022d5c] text-white' : ''}
                       `}>
                         {format(day, 'd')}
                       </span>
@@ -396,7 +396,7 @@ export default function CalendarPage() {
                 id="allday" 
                 checked={allDay} 
                 onChange={e => setAllDay(e.target.checked)}
-                className="rounded border-gray-300 text-[#082C50] focus:ring-[#082C50]"
+                className="rounded border-gray-300 text-[#022d5c] focus:ring-[#022d5c]"
               />
               <Label htmlFor="allday" className="cursor-pointer">All Day Event</Label>
             </div>
@@ -441,7 +441,7 @@ export default function CalendarPage() {
               <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={!title.trim() || saving} className="bg-[#082C50] hover:bg-[#D0A348] text-white">
+              <Button type="submit" disabled={!title.trim() || saving} className="bg-[#022d5c] hover:bg-[#D0A348] text-white">
                 {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Save Event'}
               </Button>
             </div>

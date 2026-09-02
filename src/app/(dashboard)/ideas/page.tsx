@@ -18,7 +18,7 @@ const QUICK_TYPES = [
   { label: 'Scripture', emoji: '📖', color: 'bg-blue-500 text-white', prefix: '[Scripture]' },
   { label: 'Quote', emoji: '💬', color: 'bg-purple-500 text-white', prefix: '[Quote]' },
   { label: 'Reminder', emoji: '📝', color: 'bg-green-500 text-white', prefix: '[Reminder]' },
-  { label: 'Prayer', emoji: '🙏', color: 'bg-[#082C50] text-white', prefix: '[Prayer]' },
+  { label: 'Prayer', emoji: '🙏', color: 'bg-[#022d5c] text-white', prefix: '[Prayer]' },
 ]
 
 export default function IdeasPage() {
@@ -255,7 +255,7 @@ export default function IdeasPage() {
       <div className="space-y-4">
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-[#082C50]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#022d5c]" />
           </div>
         ) : filteredIdeas.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-dashed border-gray-300">
@@ -299,7 +299,7 @@ export default function IdeasPage() {
                       size="icon" 
                       onClick={() => handlePromote(idea)}
                       title="Promote to Sermon"
-                      className="text-[#082C50] hover:text-[#082C50] hover:bg-[#082C50]/10"
+                      className="text-[#022d5c] hover:text-[#022d5c] hover:bg-[#022d5c]/10"
                     >
                       <ArrowUpRight className="h-4 w-4" />
                     </Button>

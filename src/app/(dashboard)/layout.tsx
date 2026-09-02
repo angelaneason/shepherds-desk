@@ -74,7 +74,7 @@ export default function DashboardLayout({
         onTextCaptured={handlePhotoCaptured}
       />
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-[#082C50] text-white">
+      <aside className="hidden md:flex flex-col w-64 bg-[#022d5c] text-white">
         <div className="p-6">
           <h1 className="text-xl font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-playfair)' }}>
             <span>🐑</span> Shepherd's Desk
@@ -137,7 +137,7 @@ export default function DashboardLayout({
               <Camera className="w-4 h-4" />
               <span className="hidden sm:inline">Quick Capture</span>
             </Button>
-            <div className="w-8 h-8 rounded-full bg-[#082C50] text-white flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-full bg-[#022d5c] text-white flex items-center justify-center font-bold">
               P
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function DashboardLayout({
               <Link 
                 key={item.name} 
                 href={item.href}
-                className="flex flex-col items-center justify-center w-full h-full text-gray-500 hover:text-[#082C50] transition-colors"
+                className="flex flex-col items-center justify-center w-full h-full text-gray-500 hover:text-[#022d5c] transition-colors"
               >
                 <Icon className="w-5 h-5 mb-1" />
                 <span className="text-[10px]">{item.name}</span>

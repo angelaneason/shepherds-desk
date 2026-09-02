@@ -71,7 +71,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="focus-visible:ring-[#082C50]"
+            className="focus-visible:ring-[#022d5c]"
           />
         </div>
 
@@ -86,7 +86,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="focus-visible:ring-[#082C50] pr-10"
+              className="focus-visible:ring-[#022d5c] pr-10"
             />
             <button
               type="button"
@@ -102,7 +102,7 @@ export default function LoginPage() {
         
         <Button 
           type="submit" 
-          className="w-full bg-[#082C50] hover:bg-[#D0A348] text-white transition-colors"
+          className="w-full bg-[#022d5c] hover:bg-[#D0A348] text-white transition-colors"
           disabled={loading}
         >
           {loading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
@@ -114,7 +114,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={() => { setIsSignUp(!isSignUp); setError(null) }}
-          className="text-[#082C50] font-medium hover:text-[#D0A348] underline transition-colors"
+          className="text-[#022d5c] font-medium hover:text-[#D0A348] underline transition-colors"
         >
           {isSignUp ? 'Sign In' : 'Create Account'}
         </button>

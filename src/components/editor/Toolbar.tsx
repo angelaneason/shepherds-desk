@@ -56,7 +56,7 @@ const ToolbarButton = ({
           size="sm"
           className={cn(
             "h-8 w-8 p-0 text-slate-600 hover:text-slate-900",
-            isActive && "bg-[#082C50] text-[#F8F5EE] hover:bg-[#082C50] hover:text-[#F8F5EE]"
+            isActive && "bg-[#022d5c] text-[#F8F5EE] hover:bg-[#022d5c] hover:text-[#F8F5EE]"
           )}
           onClick={onClick}
           disabled={disabled}

@@ -85,7 +85,7 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
               <Button 
                 variant="outline" 
                 size="sm"
-                className="gap-2 text-[#082C50] hover:text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5"
+                className="gap-2 text-[#022d5c] hover:text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5"
                 onClick={() => { setIsBibleOpen(!isBibleOpen); setIsAIPanelOpen(false); setIsStudyPanelOpen(false); }}
               >
                 <BookOpen className="h-4 w-4" />
@@ -95,7 +95,7 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
               <Button 
                 variant="outline"
                 size="sm"
-                className="gap-2 text-[#082C50] hover:text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5"
+                className="gap-2 text-[#022d5c] hover:text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5"
                 onClick={() => { setIsStudyPanelOpen(!isStudyPanelOpen); setIsAIPanelOpen(false); setIsBibleOpen(false); }}
               >
                 <BookMarked className="h-4 w-4" />
@@ -105,7 +105,7 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
               <Button 
                 variant="outline"
                 size="sm" 
-                className="gap-2 bg-[#F8F5EE] text-[#082C50] border-[#D0A348]/50 hover:bg-[#D0A348]/20"
+                className="gap-2 bg-[#F8F5EE] text-[#022d5c] border-[#D0A348]/50 hover:bg-[#D0A348]/20"
                 onClick={() => { setIsAIPanelOpen(!isAIPanelOpen); setIsBibleOpen(false); setIsStudyPanelOpen(false); }}
               >
                 <Sparkles className="h-4 w-4 text-[#D0A348]" />
@@ -149,7 +149,7 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
 
       {isBibleOpen && (
         <div className="fixed inset-y-0 right-0 w-full sm:w-[400px] bg-white border-l border-[#D0A348]/30 shadow-2xl flex flex-col z-50">
-          <div className="p-4 border-b border-[#D0A348]/20 bg-[#082C50] text-white flex justify-between items-center">
+          <div className="p-4 border-b border-[#D0A348]/20 bg-[#022d5c] text-white flex justify-between items-center">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-[#D0A348]" />
               Bible Lookup

@@ -70,7 +70,7 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
 
   return (
     <div className="fixed inset-y-0 right-0 w-full sm:w-[400px] bg-[#F8F5EE] border-l border-[#D0A348]/30 shadow-2xl flex flex-col z-50 transform transition-transform duration-300 translate-x-0">
-      <div className="p-4 border-b border-[#D0A348]/20 bg-[#082C50] text-white flex justify-between items-start">
+      <div className="p-4 border-b border-[#D0A348]/20 bg-[#022d5c] text-white flex justify-between items-start">
         <div>
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-[#D0A348]" />
@@ -89,15 +89,15 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
           <div className="space-y-2">
             <p className="text-sm text-gray-600 font-medium mb-3">How can I help you today?</p>
             <div className="grid grid-cols-1 gap-2">
-              <Button variant="outline" className="justify-start text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5" onClick={() => handleAction('brainstorm_titles')}>✨ Brainstorm Titles</Button>
-              <Button variant="outline" className="justify-start text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5" onClick={() => handleAction('generate_outline')}>📝 Generate Outline</Button>
-              <Button variant="outline" className="justify-start text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5" onClick={() => handleAction('find_illustrations')}>💡 Find Illustrations</Button>
-              <Button variant="outline" className="justify-start text-[#082C50] border-[#082C50]/20 hover:bg-[#082C50]/5" onClick={() => handleAction('suggest_transitions')}>🔗 Suggest Transitions</Button>
+              <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('brainstorm_titles')}>✨ Brainstorm Titles</Button>
+              <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('generate_outline')}>📝 Generate Outline</Button>
+              <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('find_illustrations')}>💡 Find Illustrations</Button>
+              <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('suggest_transitions')}>🔗 Suggest Transitions</Button>
               
               {selectedText && (
                 <>
-                  <Button variant="outline" className="justify-start text-[#082C50] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('polish_text')}>✏️ Polish Selected Text</Button>
-                  <Button variant="outline" className="justify-start text-[#082C50] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('expand_point')}>📖 Expand Point</Button>
+                  <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('polish_text')}>✏️ Polish Selected Text</Button>
+                  <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('expand_point')}>📖 Expand Point</Button>
                 </>
               )}
             </div>
@@ -105,7 +105,7 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
         )}
 
         {loading && (
-          <div className="flex flex-col items-center justify-center py-12 text-[#082C50]">
+          <div className="flex flex-col items-center justify-center py-12 text-[#022d5c]">
             <Loader2 className="h-8 w-8 animate-spin mb-4" />
             <p className="text-sm">Thinking...</p>
           </div>
@@ -128,7 +128,7 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
               <Button variant="outline" size="sm" onClick={() => lastAction && handleAction(lastAction)}>
                 <RefreshCw className="h-4 w-4 mr-2" /> Retry
               </Button>
-              <Button size="sm" className="bg-[#082C50] hover:bg-[#082C50]/90 text-white" onClick={() => onInsertText(result)}>
+              <Button size="sm" className="bg-[#022d5c] hover:bg-[#022d5c]/90 text-white" onClick={() => onInsertText(result)}>
                 <Copy className="h-4 w-4 mr-2" /> Copy to Editor
               </Button>
             </div>

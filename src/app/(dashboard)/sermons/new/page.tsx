@@ -61,7 +61,7 @@ export default function NewSermonPage() {
       <header className="flex items-center justify-between border-b px-6 py-4 bg-white sticky top-0 z-20">
         <div className="flex items-center gap-4">
           <Link href="/sermons">
-            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-[#082C50]">
+            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-[#022d5c]">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -72,7 +72,7 @@ export default function NewSermonPage() {
                 variant={status === s ? "default" : "outline"}
                 className={`cursor-pointer ${
                   status === s 
-                    ? "bg-[#082C50] text-[#F8F5EE] hover:bg-[#082C50]/90" 
+                    ? "bg-[#022d5c] text-[#F8F5EE] hover:bg-[#022d5c]/90" 
                     : "text-slate-500 hover:text-slate-800"
                 }`}
                 onClick={() => setStatus(s)}
@@ -99,7 +99,7 @@ export default function NewSermonPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Sermon Title"
-              className="text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-300 text-[#082C50]"
+              className="text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-300 text-[#022d5c]"
             />
             <Input
               value={subtitle}

@@ -75,11 +75,11 @@ export default function SermonsPage() {
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#082C50]">Sermons</h1>
+          <h1 className="text-3xl font-bold text-[#022d5c]">Sermons</h1>
           <p className="text-slate-500 mt-1">Manage and write your messages.</p>
         </div>
         <Link href="/sermons/new">
-          <Button className="bg-[#082C50] text-[#F8F5EE] hover:bg-[#082C50]/90">
+          <Button className="bg-[#022d5c] text-[#F8F5EE] hover:bg-[#022d5c]/90">
             <Plus className="h-4 w-4 mr-2" />
             New Sermon
           </Button>
@@ -99,7 +99,7 @@ export default function SermonsPage() {
       {filteredSermons.length === 0 ? (
         <div className="text-center py-16 bg-[#F8F5EE] rounded-lg border border-slate-200">
           <div className="max-w-md mx-auto">
-            <h3 className="text-xl font-semibold text-[#082C50] mb-2">No sermons found</h3>
+            <h3 className="text-xl font-semibold text-[#022d5c] mb-2">No sermons found</h3>
             <p className="text-slate-500 mb-6">
               {searchQuery ? "Try adjusting your search terms." : "Start writing your first message!"}
             </p>
@@ -124,7 +124,7 @@ export default function SermonsPage() {
                       {sermon.status.charAt(0).toUpperCase() + sermon.status.slice(1)}
                     </Badge>
                   </div>
-                  <h3 className="text-xl font-semibold text-[#082C50] line-clamp-2">
+                  <h3 className="text-xl font-semibold text-[#022d5c] line-clamp-2">
                     {sermon.title || "Untitled Sermon"}
                   </h3>
                   {sermon.subtitle && (
@@ -147,7 +147,7 @@ export default function SermonsPage() {
                     Updated {format(new Date(sermon.updated_at), "MMM d, yyyy")}
                   </div>
                   <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Edit className="h-4 w-4 text-[#082C50]" />
+                    <Edit className="h-4 w-4 text-[#022d5c]" />
                   </Button>
                 </CardFooter>
               </Card>

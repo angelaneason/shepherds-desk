@@ -21,7 +21,7 @@ export default function SettingsPage() {
   const [profileId, setProfileId] = useState<string | null>(null)
 
   // Branding State
-  const [primaryColor, setPrimaryColor] = useState("#082C50")
+  const [primaryColor, setPrimaryColor] = useState("#022d5c")
   const [secondaryColor, setSecondaryColor] = useState("#D0A348")
   const [accentColor, setAccentColor] = useState("#F8F5EE")
 
@@ -57,7 +57,7 @@ export default function SettingsPage() {
 
             if (church) {
               setChurchName(church.name || '')
-              setPrimaryColor(church.primary_color || '#082C50')
+              setPrimaryColor(church.primary_color || '#022d5c')
               setSecondaryColor(church.secondary_color || '#D0A348')
               setAccentColor(church.accent_color || '#F8F5EE')
             }
@@ -146,7 +146,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#082C50]">Settings</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-[#022d5c]">Settings</h1>
         <p className="text-muted-foreground mt-1">Manage your account and church preferences.</p>
       </div>
 
@@ -188,7 +188,7 @@ export default function SettingsPage() {
                 onChange={e => setChurchName(e.target.value)}
               />
             </div>
-            <Button type="submit" className="bg-[#082C50] text-white hover:bg-[#082C50]/90">
+            <Button type="submit" className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
               Save Profile
             </Button>
           </form>
@@ -272,7 +272,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <Button type="submit" className="bg-[#082C50] text-white hover:bg-[#082C50]/90">
+            <Button type="submit" className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
               Save Branding
             </Button>
           </form>

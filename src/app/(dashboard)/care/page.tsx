@@ -201,13 +201,13 @@ export default function CarePage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-[#082C50]">Pastoral Care</h1>
+        <h1 className="text-2xl font-bold text-[#022d5c]">Pastoral Care</h1>
       </div>
 
       <Tabs defaultValue="follow-ups" className="w-full">
         <TabsList className="mb-4 bg-gray-100/80 p-1">
-          <TabsTrigger value="follow-ups" className="data-[state=active]:bg-white data-[state=active]:text-[#082C50]">Follow-Ups</TabsTrigger>
-          <TabsTrigger value="members" className="data-[state=active]:bg-white data-[state=active]:text-[#082C50]">Members</TabsTrigger>
+          <TabsTrigger value="follow-ups" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">Follow-Ups</TabsTrigger>
+          <TabsTrigger value="members" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">Members</TabsTrigger>
         </TabsList>
         
         <TabsContent value="follow-ups" className="space-y-6">
@@ -218,7 +218,7 @@ export default function CarePage() {
                 <div className="p-3 bg-white rounded-full"><Clock className="w-5 h-5 text-[#D0A348]" /></div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Pending Tasks</p>
-                  <p className="text-2xl font-bold text-[#082C50]">{pendingTasks}</p>
+                  <p className="text-2xl font-bold text-[#022d5c]">{pendingTasks}</p>
                 </div>
               </CardContent>
             </Card>
@@ -272,7 +272,7 @@ export default function CarePage() {
             
             <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
               <DialogTrigger>
-                <Button className="bg-[#082C50] text-white hover:bg-[#082C50]/90">
+                <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Follow-Up
                 </Button>
@@ -358,7 +358,7 @@ export default function CarePage() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddTaskOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddTask} className="bg-[#082C50] text-white">Save Task</Button>
+                  <Button onClick={handleAddTask} className="bg-[#022d5c] text-white">Save Task</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -462,7 +462,7 @@ export default function CarePage() {
             
             <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
               <DialogTrigger>
-                <Button className="bg-[#082C50] text-white hover:bg-[#082C50]/90">
+                <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Member
                 </Button>
@@ -534,7 +534,7 @@ export default function CarePage() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddMemberOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddMember} disabled={!newMember.full_name} className="bg-[#082C50] text-white">Save Member</Button>
+                  <Button onClick={handleAddMember} disabled={!newMember.full_name} className="bg-[#022d5c] text-white">Save Member</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -583,13 +583,13 @@ export default function CarePage() {
                         {member.phone && (
                           <div className="flex items-center gap-2">
                             <Phone className="w-4 h-4 text-gray-400" />
-                            <a href={`tel:${member.phone}`} className="hover:text-[#082C50] hover:underline" onClick={(e) => e.stopPropagation()}>{member.phone}</a>
+                            <a href={`tel:${member.phone}`} className="hover:text-[#022d5c] hover:underline" onClick={(e) => e.stopPropagation()}>{member.phone}</a>
                           </div>
                         )}
                         {member.email && (
                           <div className="flex items-center gap-2">
                             <Mail className="w-4 h-4 text-gray-400" />
-                            <a href={`mailto:${member.email}`} className="hover:text-[#082C50] hover:underline" onClick={(e) => e.stopPropagation()}>{member.email}</a>
+                            <a href={`mailto:${member.email}`} className="hover:text-[#022d5c] hover:underline" onClick={(e) => e.stopPropagation()}>{member.email}</a>
                           </div>
                         )}
                       </div>

@@ -106,17 +106,17 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
   const displayTime = timerMode === 'countdown' ? timeLeft : elapsed;
 
   if (loading) {
-    return <div className="min-h-screen bg-[#082C50] flex items-center justify-center text-white text-2xl">Loading...</div>;
+    return <div className="min-h-screen bg-[#022d5c] flex items-center justify-center text-white text-2xl">Loading...</div>;
   }
 
   if (!sermon) {
-    return <div className="min-h-screen bg-[#082C50] flex items-center justify-center text-white">Sermon not found.</div>;
+    return <div className="min-h-screen bg-[#022d5c] flex items-center justify-center text-white">Sermon not found.</div>;
   }
 
   return (
-    <div className="min-h-screen bg-[#082C50] text-white flex flex-col font-serif selection:bg-[#D0A348] selection:text-white">
+    <div className="min-h-screen bg-[#022d5c] text-white flex flex-col font-serif selection:bg-[#D0A348] selection:text-white">
       {/* Top Bar - Fades in on hover */}
-      <div className="fixed top-0 left-0 right-0 p-4 flex justify-between items-center opacity-0 hover:opacity-100 transition-opacity duration-300 z-50 bg-gradient-to-b from-[#082C50] to-transparent">
+      <div className="fixed top-0 left-0 right-0 p-4 flex justify-between items-center opacity-0 hover:opacity-100 transition-opacity duration-300 z-50 bg-gradient-to-b from-[#022d5c] to-transparent">
         <Link href={`/sermons/${id}`}>
           <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
             <X className="h-6 w-6" />

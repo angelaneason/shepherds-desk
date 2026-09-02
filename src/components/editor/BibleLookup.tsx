@@ -71,7 +71,7 @@ export function BibleLookup({ onInsert }: BibleLookupProps) {
           <option value="darby">Darby</option>
           <option value="ylt">YLT</option>
         </select>
-        <Button type="submit" size="icon" className="bg-[#082C50] hover:bg-[#082C50]/90 text-white shrink-0" disabled={loading}>
+        <Button type="submit" size="icon" className="bg-[#022d5c] hover:bg-[#022d5c]/90 text-white shrink-0" disabled={loading}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
         </Button>
       </form>
