@@ -39,18 +39,22 @@ Return ONLY valid JSON with these fields:
 }
 
 IMPORTANT about time:
+- Standard office/ministry hours: if user mentions hours between 1 and 6 without saying AM or PM (e.g. "from 2 to 4", "from 2:00 to 4:00", "at 3"), assume PM afternoon ("14:00", "16:00", "15:00") unless "morning" or "AM" is specified.
+- If hours are 7 to 11 without AM/PM (e.g. "at 9", "from 8 to 10"), assume AM morning ("09:00", "08:00").
 - If the user says "at 8 AM", return time: "08:00"
 - If the user says "at 2 PM", return time: "14:00"  
+- If the user says "from 2:00 to 4:00", return time: "14:00" and endTime: "16:00"
 - If the user says "from 6 to 8 AM", return time: "06:00" and endTime: "08:00"
 - If the user says "for 2 hours starting at 9", return time: "09:00" and endTime: "11:00"
 - If the user says "in the morning", return time: "09:00"
+- If the user says "in the afternoon", return time: "14:00"
 - If the user says "in the evening", return time: "18:00"
 - If NO time is mentioned at all, return null
-- The time should be in the user's LOCAL time, not UTC
+- The time should be in the user's LOCAL time (HH:MM 24h format), not UTC
 
 IMPORTANT about study time:
-- "block study time", "schedule study time", "sermon prep", "study for my sermon", "devotion time", "reading time", "preparation time" = isStudyTime: true, category: "study"
-- Study time requests should ALWAYS have createCareTask: false
+- "set a study schedule", "block study time", "schedule study time", "sermon prep", "study for my sermon", "devotion time", "reading time", "preparation time" = isStudyTime: true, category: "study"
+- Study time requests should ALWAYS have createCareTask: false, createCalendarEvent: true
 
 Be smart about date parsing. Examples:
 - "Thursday" = next Thursday

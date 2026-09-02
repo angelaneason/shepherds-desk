@@ -61,46 +61,52 @@ export default function SettingsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setEmail(user.email || '')
+        setProfileId(user.id)
         
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, full_name, church_id, weekly_study_goal_hours, study_reminders_enabled, trial_ends_at')
-          .eq('id', user.id)
-          .single() as any
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, full_name, church_id, weekly_study_goal_hours, study_reminders_enabled, trial_ends_at')
+            .eq('id', user.id)
+            .single() as any
 
-        if (profile) {
-          setProfileId(profile.id)
-          setFullName(profile.full_name || '')
-          setChurchId(profile.church_id)
-          if (profile.trial_ends_at) {
-            const endsAt = new Date(profile.trial_ends_at)
-            const now = new Date()
-            const diffTime = endsAt.getTime() - now.getTime()
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-            setTrialDaysRemaining(diffDays > 0 ? diffDays : 0)
-          }
-          if (profile.weekly_study_goal_hours !== undefined && profile.weekly_study_goal_hours !== null) {
-            setStudyGoalHours(profile.weekly_study_goal_hours)
-          }
-          if (profile.study_reminders_enabled !== undefined && profile.study_reminders_enabled !== null) {
-            setStudyReminders(profile.study_reminders_enabled)
-          }
+          if (profile) {
+            setFullName(profile.full_name || '')
+            setChurchId(profile.church_id)
+            if (profile.trial_ends_at) {
+              const endsAt = new Date(profile.trial_ends_at)
+              const now = new Date()
+              const diffTime = endsAt.getTime() - now.getTime()
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+              setTrialDaysRemaining(diffDays > 0 ? diffDays : 0)
+            }
+            if (profile.weekly_study_goal_hours !== undefined && profile.weekly_study_goal_hours !== null) {
+              setStudyGoalHours(profile.weekly_study_goal_hours)
+            }
+            if (profile.study_reminders_enabled !== undefined && profile.study_reminders_enabled !== null) {
+              setStudyReminders(profile.study_reminders_enabled)
+            }
 
-          if (profile.church_id) {
-            const { data: church } = await supabase
-              .from('churches')
-              .select('name, primary_color, secondary_color, accent_color')
-              .eq('id', profile.church_id)
-              .single() as any
+            if (profile.church_id) {
+              const { data: church } = await supabase
+                .from('churches')
+                .select('name, primary_color, secondary_color, accent_color')
+                .eq('id', profile.church_id)
+                .single() as any
 
-            if (church) {
-              setChurchName(church.name || '')
-              setPrimaryColor(church.primary_color || '#022d5c')
-              setSecondaryColor(church.secondary_color || '#D0A348')
-              setAccentColor(church.accent_color || '#F8F5EE')
+              if (church) {
+                setChurchName(church.name || '')
+                setPrimaryColor(church.primary_color || '#022d5c')
+                setSecondaryColor(church.secondary_color || '#D0A348')
+                setAccentColor(church.accent_color || '#F8F5EE')
+              }
             }
           }
+        } catch (err) {
+          console.error('Error fetching profile details:', err)
+        }
 
+        try {
           const { data: blocks } = await supabase
             .from('calendar_events')
             .select('*')
@@ -110,6 +116,8 @@ export default function SettingsPage() {
           if (blocks) {
             setStudyBlocks(blocks)
           }
+        } catch (err) {
+          console.error('Error fetching study blocks:', err)
         }
       }
       setIsLoading(false)
@@ -140,30 +148,30 @@ export default function SettingsPage() {
         .update({ name: churchName })
         .eq('id', churchId)
 
-      alert('Profile saved successfully!')
+      alert('Profile updated successfully!')
     } catch (error) {
       console.error(error)
-      alert('Error saving profile.')
+      alert('Error updating profile.')
     }
   }
 
-  const handleSaveStudyPreferences = async (e: React.FormEvent) => {
+  const handleSaveStudyGoals = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!profileId) return
 
     try {
       await supabase
         .from('profiles')
-        .update({
+        .update({ 
           weekly_study_goal_hours: studyGoalHours,
           study_reminders_enabled: studyReminders
-        })
+        } as any)
         .eq('id', profileId)
 
-      alert('Study preferences saved successfully!')
+      alert('Study goals saved successfully!')
     } catch (error) {
       console.error(error)
-      alert('Error saving study preferences.')
+      alert('Error saving study goals.')
     }
   }
 
@@ -189,28 +197,42 @@ export default function SettingsPage() {
   }
 
   const handleAddStudyBlock = async () => {
-    if (!profileId) return
+    let uid = profileId
+    if (!uid) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        uid = user.id
+        setProfileId(user.id)
+      }
+    }
+    if (!uid) {
+      alert('Please wait for your session to load, or refresh the page.')
+      return
+    }
+
     const nextDate = getNextDayDate(newBlockDay)
     const dateStr = nextDate.toISOString().split('T')[0]
+    const startDate = new Date(`${dateStr}T${newBlockStart}:00`)
+    const endDate = new Date(`${dateStr}T${newBlockEnd}:00`)
 
     try {
       const { data, error } = await supabase.from('calendar_events').insert({
-        profile_id: profileId,
+        profile_id: uid,
         title: 'Study Time',
         event_type: 'sermon_study',
-        start_time: `${dateStr}T${newBlockStart}:00`,
-        end_time: `${dateStr}T${newBlockEnd}:00`,
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
         all_day: false,
         description: 'recurring_study',
       }).select() as any
 
       if (error) throw error
-      if (data) {
-        setStudyBlocks([...studyBlocks, data[0]])
+      if (data && data.length > 0) {
+        setStudyBlocks(prev => [...prev, data[0]])
       }
-    } catch (error) {
-      console.error(error)
-      alert('Error adding study block')
+    } catch (error: any) {
+      console.error('Error adding study block:', error)
+      alert(`Error adding study block: ${error?.message || 'Please try again'}`)
     }
   }
 

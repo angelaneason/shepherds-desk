@@ -137,33 +137,34 @@ export function SmartReminder() {
       if (!user) return
 
       if (parsed.createCalendarEvent) {
-        const startTime = parsed.time
-          ? `${parsed.date}T${parsed.time}:00`
-          : `${parsed.date}T09:00:00`
+        const startDate = parsed.time
+          ? new Date(`${parsed.date}T${parsed.time}:00`)
+          : new Date(`${parsed.date}T09:00:00`)
+        const startTime = startDate.toISOString()
 
-        // Use parsed endTime, or calculate 1 hour after start
         let endTimeStr: string
         if (parsed.endTime) {
-          endTimeStr = `${parsed.date}T${parsed.endTime}:00`
+          endTimeStr = new Date(`${parsed.date}T${parsed.endTime}:00`).toISOString()
         } else {
-          const startDate = new Date(startTime)
           const endDate = new Date(startDate.getTime() + 60 * 60 * 1000)
           endTimeStr = endDate.toISOString()
         }
 
         // Determine event type
-        const eventType = parsed.isStudyTime ? 'sermon_study' : 
+        const eventType = parsed.isStudyTime || parsed.category === 'study' ? 'sermon_study' : 
           parsed.category === 'visit' ? 'visit' : 
           parsed.category === 'personal' ? 'personal' : 'meeting'
 
+        const isStudy = parsed.isStudyTime || parsed.category === 'study'
+
         await (supabase.from('calendar_events').insert({
           profile_id: user.id,
-          title: parsed.isStudyTime ? `📚 ${parsed.task}` : parsed.task,
+          title: isStudy ? `📚 ${parsed.task}` : parsed.task,
           event_type: eventType,
           start_time: startTime,
           end_time: endTimeStr,
           all_day: !parsed.time,
-          description: parsed.isStudyTime ? 'study_time' : (parsed.person ? `Related to: ${parsed.person}` : null),
+          description: isStudy ? 'study_time' : (parsed.person ? `Related to: ${parsed.person}` : null),
         }) as any)
       }
 
