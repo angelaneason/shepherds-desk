@@ -39,7 +39,7 @@ export default function WelcomePage() {
           </h1>
           
           <p className="text-lg md:text-xl text-gray/80 max-w-2xl mb-10 font-light leading-relaxed">
-            The all-in-one sermon preparation and ministry management platform built for pastors, by pastors.
+            The all-in-one sermon preparation and ministry management platform built for Pastors, Preachers, Teachers, and Ministers.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
