@@ -8,27 +8,33 @@ const supabase = createClient(
 );
 
 const getSystemPrompt = (action: string, pastorContext: string): string => {
-  const base = `You are a warm, pastoral AI assistant called "Shepherd's Desk AI" helping a pastor prepare a sermon. Your goal is to help them organize and develop what God has placed on their heart. Respect their theological voice. Be encouraging, concise, and deeply practical. Do not add unnecessary disclaimers.
+  const base = `You are a warm, knowledgeable pastoral assistant called "Shepherd's Desk AI" helping a pastor prepare their message. Your goal is to help them organize and develop what God has placed on their heart. Respect their theological voice. Be encouraging, concise, vivid, and deeply practical. 
 
-IMPORTANT: You have access to this pastor's personal sermon library and notes. When relevant, reference their previous sermons, themes, and ideas to make suggestions more personal and connected to their ministry journey.
+CRITICAL INSTRUCTIONS:
+- NEVER include apologies, meta-commentary, or bracketed explanations (e.g., do NOT say "(I wasn't able to pull up your sermon archive...)" or "(I see we don't have your specific scripture...)").
+- Directly deliver high-quality, inspiring, and theologically sound content.
+- When scripture is given (e.g. John 3:16), tailor all titles, outlines, illustrations, and commentary specifically to that text.
+- If the pastor's library contains related sermons, you may reference them naturally.
 
 ${pastorContext}`;
 
   switch (action) {
     case 'brainstorm_titles':
-      return `${base}\n\nGenerate exactly 5 creative, compelling sermon title ideas. Number them 1-5. Keep them modern but theologically respectful. Each title should be on its own line with a brief one-sentence explanation. If the pastor has preached on similar topics before, acknowledge that and suggest fresh angles.`;
+      return `${base}\n\nGenerate exactly 5 creative, compelling sermon title ideas for the provided passage/topic. Number them 1-5. Keep them modern but theologically rich. Each title should be on its own line with a brief one-sentence explanation.`;
     case 'generate_outline':
-      return `${base}\n\nGenerate a structured 3-point sermon outline. Include: Introduction, three main points (each with a sub-explanation and suggested scripture), Application, and Closing. Use clear formatting with headers and bullet points. If the pastor has related sermons, reference connections.`;
+      return `${base}\n\nGenerate a structured 3-point sermon outline for the provided scripture/topic. Include: Introduction hook, three memorable main points (each with an explanation and supporting scripture), Practical Life Application, and a powerful Closing.`;
     case 'find_illustrations':
-      return `${base}\n\nProvide 3 modern, relatable illustrations or stories for the sermon point. Each should be vivid, contemporary, and easy for a congregation to connect with. Number them and give each a short title.`;
+      return `${base}\n\nProvide 3 modern, vivid, and relatable illustrations or real-world stories specifically illustrating the given scripture or sermon point. Number them 1-3 with a title, core theme, and engaging narrative.`;
     case 'polish_text':
       return `${base}\n\nImprove the grammar, flow, and clarity of the provided text while strictly keeping the pastor's unique voice and pastoral tone. Return only the polished text without any explanation.`;
     case 'suggest_transitions':
-      return `${base}\n\nSuggest 3 smooth, thoughtful transitions between sermon sections. Each should feel natural and help the congregation follow the flow of the message. Number them.`;
+      return `${base}\n\nSuggest 3 smooth, thoughtful verbal transitions between sermon sections. Each should feel natural and help the congregation follow the flow of the message. Number them.`;
     case 'expand_point':
       return `${base}\n\nExpand the brief sermon point into a fuller, richer paragraph. Add pastoral depth, a practical application, and maintain the pastor's voice. Return only the expanded text.`;
     case 'search_sermons':
-      return `${base}\n\nThe pastor is searching their sermon library. Find and summarize relevant sermons from their history that match the query. Include the sermon title, scripture, key themes, and how it might relate to their current work. If nothing matches well, suggest related themes from their library.`;
+      return `${base}\n\nThe pastor is searching their personal sermon library. Find and summarize relevant sermons and notes from their history that match the query.`;
+    case 'custom':
+      return `${base}\n\nRespond directly, pastorally, and thoroughly to the pastor's specific prompt or question. Provide biblical depth, practical sermon examples, cross-references, or study insights as requested.`;
     default:
       return base;
   }
@@ -108,9 +114,16 @@ export async function POST(request: Request) {
     const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const systemPrompt = getSystemPrompt(action, pastorContext);
-    const userContent = selection 
-      ? `Focus on this text: "${selection}"\n\nFull sermon context: ${context || 'Not provided'}`
-      : `Topic/Scripture: ${context || 'Not provided'}`;
+    let userContent = '';
+    if (action === 'custom') {
+      userContent = `Pastor's Request: "${selection || context || 'Sermon preparation help'}"\n\nSermon Draft: ${context || 'None'}`;
+    } else if (selection) {
+      userContent = `Scripture / Focus Topic: "${selection}"\n\nSermon Draft: ${context || 'None'}`;
+    } else if (context && context.trim()) {
+      userContent = `Sermon Draft / Context: "${context}"`;
+    } else {
+      userContent = `General sermon preparation context.`;
+    }
 
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userContent}` }] }],

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, X, Send, Copy, RefreshCw, Loader2, Search, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { createClient } from '@/lib/supabase/client';
 
@@ -21,6 +22,7 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
   const [error, setError] = useState('');
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
+  const [topicInput, setTopicInput] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -96,21 +98,38 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
         {!result && !loading && (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-600 font-medium mb-3">How can I help you today?</p>
-            <div className="grid grid-cols-1 gap-2">
-              <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('brainstorm_titles')}>✨ Brainstorm Titles</Button>
-              <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('generate_outline')}>📝 Generate Outline</Button>
-              <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('find_illustrations')}>💡 Find Illustrations</Button>
-              <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('suggest_transitions')}>🔗 Suggest Transitions</Button>
-              <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] bg-[#D0A348]/10 hover:bg-[#D0A348]/20 font-medium" onClick={() => handleAction('search_sermons')}>🔍 Search My Sermons & Notes</Button>
-              
-              {selectedText && (
-                <>
-                  <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('polish_text')}>✏️ Polish Selected Text</Button>
-                  <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('expand_point')}>📖 Expand Point</Button>
-                </>
-              )}
+          <div className="space-y-4">
+            <div className="bg-white p-3 rounded-lg border border-[#D0A348]/40 shadow-xs space-y-2">
+              <label className="text-xs font-semibold text-[#022d5c] block">
+                Scripture Passage or Topic
+              </label>
+              <Input 
+                placeholder="e.g. John 3:16, Grace in the storm..."
+                value={topicInput}
+                onChange={(e) => setTopicInput(e.target.value)}
+                className="bg-[#F8F5EE]/50 border-gray-200 text-sm focus-visible:ring-[#D0A348]"
+              />
+              <p className="text-[11px] text-gray-500">
+                Type your passage or topic above, then pick an action below:
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Assistant Actions</p>
+              <div className="grid grid-cols-1 gap-2">
+                <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('brainstorm_titles', topicInput || customPrompt)}>✨ Brainstorm Titles</Button>
+                <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('generate_outline', topicInput || customPrompt)}>📝 Generate Outline</Button>
+                <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('find_illustrations', topicInput || customPrompt)}>💡 Find Illustrations</Button>
+                <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('suggest_transitions', topicInput || customPrompt)}>🔗 Suggest Transitions</Button>
+                <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] bg-[#D0A348]/10 hover:bg-[#D0A348]/20 font-medium" onClick={() => handleAction('search_sermons', topicInput || customPrompt)}>🔍 Search My Sermons & Notes</Button>
+                
+                {selectedText && (
+                  <>
+                    <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('polish_text')}>✏️ Polish Selected Text</Button>
+                    <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] hover:bg-[#D0A348]/10" onClick={() => handleAction('expand_point')}>📖 Expand Point</Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -125,7 +144,7 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md text-sm">
             {error}
-            <Button variant="link" className="px-0 ml-2 text-red-800" onClick={() => lastAction && handleAction(lastAction)}>Try again</Button>
+            <Button variant="link" className="px-0 ml-2 text-red-800" onClick={() => lastAction && handleAction(lastAction, topicInput || customPrompt)}>Try again</Button>
           </div>
         )}
 
@@ -156,7 +175,7 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
                 </Button>
                 
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => lastAction && handleAction(lastAction)}>
+                  <Button variant="outline" size="sm" onClick={() => lastAction && handleAction(lastAction, topicInput || customPrompt)}>
                     <RefreshCw className="h-4 w-4 mr-1.5" /> Retry
                   </Button>
                   <Button size="sm" className="bg-[#022d5c] hover:bg-[#022d5c]/90 text-white" onClick={() => onInsertText(result)}>
@@ -172,21 +191,31 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
       <div className="p-4 border-t border-[#D0A348]/20 bg-white">
         <div className="flex gap-2">
           <Textarea 
-            placeholder="Ask anything..." 
+            placeholder="Ask anything or request specific sermon help..." 
             className="min-h-[60px] resize-none focus-visible:ring-[#D0A348]"
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                if (customPrompt.trim()) handleAction('custom', customPrompt);
+                if (customPrompt.trim()) {
+                  const p = customPrompt.trim();
+                  setCustomPrompt('');
+                  handleAction('custom', p);
+                }
               }
             }}
           />
           <Button 
             size="icon" 
             className="bg-[#D0A348] hover:bg-[#D0A348]/90 text-white shrink-0 self-end"
-            onClick={() => { if (customPrompt.trim()) handleAction('custom', customPrompt); }}
+            onClick={() => {
+              if (customPrompt.trim()) {
+                const p = customPrompt.trim();
+                setCustomPrompt('');
+                handleAction('custom', p);
+              }
+            }}
           >
             <Send className="h-4 w-4" />
           </Button>
