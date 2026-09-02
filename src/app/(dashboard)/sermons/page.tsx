@@ -150,7 +150,7 @@ export default function SermonsPage() {
                     {sermon.preach_date && (
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 mr-2 text-slate-400" />
-                        {format(new Date(sermon.preach_date), "MMM d, yyyy")}
+                        {format(new Date(sermon.preach_date + 'T12:00:00'), "MMM d, yyyy")}
                       </div>
                     )}
                   </div>

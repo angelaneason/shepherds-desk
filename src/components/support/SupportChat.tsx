@@ -68,7 +68,7 @@ export function SupportChat() {
             {view === 'menu' && (
               <div className="p-4">
                 <div className="text-center mb-5">
-                  <img src="/logo-dark.png" alt="The Shepherd's Desk" className="h-20 mx-auto mb-3 object-contain rounded-lg" />
+                  <img src="/logo-dark.png" alt="The Shepherd's Desk" className="h-28 mx-auto mb-3 object-contain rounded-lg" />
                   <p className="text-sm text-gray-500">How can we help you today?</p>
                 </div>
                 <div className="space-y-2">
