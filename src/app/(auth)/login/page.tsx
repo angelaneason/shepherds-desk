@@ -14,8 +14,33 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [isSignUp, setIsSignUp] = useState(false)
+  const [isForgotPassword, setIsForgotPassword] = useState(false)
   const router = useRouter()
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setMessage(null)
+    
+    try {
+      const supabase = createClient()
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://theshepherdsdesk.app/auth/callback',
+      })
+      if (resetError) throw resetError
+      setMessage('Check your email for a reset link')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,38 +100,72 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password" className="text-gray-700">Password</Label>
-          <div className="relative">
-            <Input 
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="focus-visible:ring-[#022d5c] pr-10"
-            />
+        {isForgotPassword ? (
+          <div className="space-y-4">
+            <Button 
+              type="button"
+              onClick={handleResetPassword}
+              className="w-full bg-[#022d5c] hover:bg-[#D0A348] text-white transition-colors"
+              disabled={loading}
+            >
+              {loading ? 'Sending...' : 'Send Reset Link'}
+            </Button>
+            {message && <p className="text-sm text-green-600">{message}</p>}
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={() => { setIsForgotPassword(false); setError(null); setMessage(null); }}
+              className="w-full text-sm text-[#022d5c] hover:text-[#D0A348] underline transition-colors mt-2"
             >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              Back to Sign In
             </button>
           </div>
-        </div>
-        
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        
-        <Button 
-          type="submit" 
-          className="w-full bg-[#022d5c] hover:bg-[#D0A348] text-white transition-colors"
-          disabled={loading}
-        >
-          {loading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
-        </Button>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="password" className="text-gray-700">Password</Label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsForgotPassword(true); setError(null); setMessage(null); }}
+                    className="text-xs text-[#022d5c] hover:text-[#D0A348] underline transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Input 
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required={!isForgotPassword}
+                  minLength={6}
+                  className="focus-visible:ring-[#022d5c] pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            
+            <Button 
+              type="submit" 
+              className="w-full bg-[#022d5c] hover:bg-[#D0A348] text-white transition-colors"
+              disabled={loading}
+            >
+              {loading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
+            </Button>
+          </>
+        )}
       </form>
 
       <p className="text-sm text-gray-500">

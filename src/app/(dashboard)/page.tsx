@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { SmartReminder } from '@/components/reminders/SmartReminder'
+import { WelcomeGuide } from '@/components/onboarding/WelcomeGuide'
 
 // Helper for date formatting
 const formatDate = (date: Date) => {
@@ -40,6 +41,7 @@ const getDaysInMonth = (year: number, month: number) => {
 export default function DashboardPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
+  const [showWelcome, setShowWelcome] = useState(false)
   
   const [currentDate, setCurrentDate] = useState(new Date(2026, 8, 1)) // Sep 1, 2026 based on requirements
   const [selectedDay, setSelectedDay] = useState(new Date(2026, 8, 1))
@@ -55,6 +57,14 @@ export default function DashboardPage() {
 
   const currentHour = new Date().getHours()
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening'
+
+  useEffect(() => {
+    // Check localStorage for welcome guide
+    const dismissed = localStorage.getItem('onboarding_dismissed')
+    if (!dismissed) {
+      setShowWelcome(true)
+    }
+  }, [])
 
   useEffect(() => {
     async function loadData() {
@@ -168,6 +178,11 @@ export default function DashboardPage() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
   }
 
+  const handleDismissWelcome = () => {
+    localStorage.setItem('onboarding_dismissed', 'true')
+    setShowWelcome(false)
+  }
+
   const getSermonProgress = (status: string) => {
     switch (status) {
       case 'draft': return 25
@@ -206,6 +221,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 pb-10">
+      {/* Welcome Guide */}
+      {showWelcome && (
+        <WelcomeGuide onDismiss={handleDismissWelcome} />
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-4xl font-bold text-[#022d5c] font-playfair">{greeting}, Pastor</h1>

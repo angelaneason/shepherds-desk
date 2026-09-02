@@ -31,6 +31,9 @@ export default function SettingsPage() {
   // Study & Self-Care State
   const [studyGoalHours, setStudyGoalHours] = useState(10)
   const [studyReminders, setStudyReminders] = useState(true)
+  
+  // Trial State
+  const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null)
 
   const [isLoading, setIsLoading] = useState(true)
 
@@ -43,7 +46,7 @@ export default function SettingsPage() {
         
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, full_name, church_id, weekly_study_goal_hours, study_reminders_enabled')
+          .select('id, full_name, church_id, weekly_study_goal_hours, study_reminders_enabled, trial_ends_at')
           .eq('id', user.id)
           .single() as any
 
@@ -51,6 +54,13 @@ export default function SettingsPage() {
           setProfileId(profile.id)
           setFullName(profile.full_name || '')
           setChurchId(profile.church_id)
+          if (profile.trial_ends_at) {
+            const endsAt = new Date(profile.trial_ends_at)
+            const now = new Date()
+            const diffTime = endsAt.getTime() - now.getTime()
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            setTrialDaysRemaining(diffDays > 0 ? diffDays : 0)
+          }
           if (profile.weekly_study_goal_hours !== undefined && profile.weekly_study_goal_hours !== null) {
             setStudyGoalHours(profile.weekly_study_goal_hours)
           }
@@ -383,7 +393,12 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Subscription Plan</p>
-              <p className="text-sm text-muted-foreground">{profileId ? 'Pro - $15/month' : 'Free Trial'}</p>
+              <p className="text-sm text-muted-foreground">
+                {profileId 
+                  ? 'Pro - $15/month' 
+                  : `Free Trial${trialDaysRemaining !== null ? ` - ${trialDaysRemaining} days remaining` : ''}`
+                }
+              </p>
             </div>
             {profileId ? (
               <Button variant="outline" onClick={async () => {
