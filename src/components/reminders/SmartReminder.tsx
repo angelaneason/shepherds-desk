@@ -156,9 +156,10 @@ export function SmartReminder() {
       }
 
       if (parsed.createCareTask) {
+        const taskType = parsed.category === 'visit' ? 'visit' : parsed.category === 'call' ? 'call' : parsed.category === 'hospital' ? 'hospital' : 'other'
         await (supabase.from('care_tasks').insert({
           profile_id: user.id,
-          task_type: parsed.category === 'visit' ? 'visit' : parsed.category === 'call' ? 'phone_call' : 'follow_up',
+          task_type: taskType,
           description: parsed.task,
           due_date: parsed.date,
           priority: parsed.priority,
