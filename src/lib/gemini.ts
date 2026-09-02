@@ -8,5 +8,5 @@ export function getGeminiModel() {
 
   const genAI = new GoogleGenerativeAI(apiKey);
   // We use the 2.0 flash model as requested
-  return genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  return genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 }
