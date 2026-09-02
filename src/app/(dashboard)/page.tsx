@@ -502,8 +502,9 @@ export default function DashboardPage() {
           <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
             {careTasks.map((task) => {
               const member = task.members
-              const memberName = member ? `${member.first_name} ${member.last_name}` : 'Unknown'
-              const initial = memberName.charAt(0)
+              const personFromNotes = task.notes?.startsWith('Person:') ? task.notes.replace('Person: ', '') : null
+              const memberName = member ? `${member.first_name} ${member.last_name}` : (personFromNotes || task.description || 'Task')
+              const initial = memberName.charAt(0).toUpperCase()
               
               return (
                 <Card key={task.id} className="min-w-[280px] w-[280px] shrink-0 snap-start shadow-sm border-gray-100">
@@ -524,7 +525,7 @@ export default function DashboardPage() {
                     </p>
                     <div className="text-xs font-medium text-gray-400 flex items-center gap-1.5">
                       <CalendarDays className="w-3.5 h-3.5" />
-                      Due: {task.follow_up_date ? new Date(task.follow_up_date).toLocaleDateString() : 'N/A'}
+                      Due: {(task.due_date || task.follow_up_date) ? new Date(task.due_date || task.follow_up_date).toLocaleDateString() : 'N/A'}
                     </div>
                   </CardContent>
                 </Card>
