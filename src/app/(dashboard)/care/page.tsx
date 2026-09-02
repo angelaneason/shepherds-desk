@@ -492,7 +492,7 @@ export default function CarePage() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <h3 className="font-semibold text-lg flex items-center gap-2">
-                              {task.members?.full_name || 'Unknown Member'}
+                              {task.members?.full_name || (task.notes?.startsWith('Person:') ? task.notes.replace('Person: ', '') : task.description)}
                               <div className={`w-2.5 h-2.5 rounded-full ${getPriorityColor(task.priority)}`} title={`Priority: ${task.priority}`} />
                             </h3>
                             <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">

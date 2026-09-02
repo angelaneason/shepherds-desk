@@ -362,9 +362,8 @@ export function SmartReminder() {
             <div className="space-y-3 mb-4">
               <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
                 <Check className="w-5 h-5 text-[#022d5c] mt-0.5 shrink-0" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-gray-800">{parsed.task}</p>
-                  <span className="text-xs text-gray-500 capitalize">{parsed.category}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
@@ -380,6 +379,30 @@ export function SmartReminder() {
                   <p className="text-sm font-medium text-gray-800">{parsed.person}</p>
                 </div>
               )}
+              {/* Type Picker */}
+              <div className="p-3 bg-gray-50 rounded-xl">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Type</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'call', label: '📞 Call', },
+                    { value: 'visit', label: '🏠 Visit' },
+                    { value: 'hospital', label: '🏥 Hospital' },
+                    { value: 'other', label: '📋 Other' },
+                  ].map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => setParsed({ ...parsed, category: type.value })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        parsed.category === type.value
+                          ? 'bg-[#022d5c] text-white'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
