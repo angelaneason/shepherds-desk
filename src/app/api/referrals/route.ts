@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const { data: { user }, error: userError } = await supabase.auth.getUser()
 
     if (userError || !user) {
+      console.error('Referrals GET auth error:', userError?.message || 'No user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -17,13 +18,13 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching referrals:', error)
+      console.error('Error fetching referrals:', error.message, error.details, error.hint)
       return NextResponse.json({ error: 'Failed to fetch referrals' }, { status: 500 })
     }
 
-    return NextResponse.json(referrals)
-  } catch (error) {
-    console.error('Unexpected error in GET referrals:', error)
+    return NextResponse.json(referrals || [])
+  } catch (error: any) {
+    console.error('Unexpected error in GET referrals:', error?.message || error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
