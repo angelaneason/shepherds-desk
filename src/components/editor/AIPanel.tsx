@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, X, Send, Copy, RefreshCw, Loader2, Search } from 'lucide-react';
+import { Sparkles, X, Send, Copy, RefreshCw, Loader2, Search, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -130,18 +130,40 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
         )}
 
         {result && !loading && (
-          <div className="bg-white rounded-md border border-[#D0A348]/30 p-4 shadow-sm flex flex-col">
-            <div className="prose prose-sm max-w-none text-gray-800">
-              {formatResult(result)}
-            </div>
-            
-            <div className="mt-6 flex justify-end gap-2 border-t pt-4">
-              <Button variant="outline" size="sm" onClick={() => lastAction && handleAction(lastAction)}>
-                <RefreshCw className="h-4 w-4 mr-2" /> Retry
-              </Button>
-              <Button size="sm" className="bg-[#022d5c] hover:bg-[#022d5c]/90 text-white" onClick={() => onInsertText(result)}>
-                <Copy className="h-4 w-4 mr-2" /> Copy to Editor
-              </Button>
+          <div className="flex flex-col gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="self-start text-[#022d5c] hover:bg-[#022d5c]/10 -ml-2 text-xs font-semibold flex items-center gap-1.5"
+              onClick={() => { setResult(''); setError(''); }}
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to Assistant Menu
+            </Button>
+
+            <div className="bg-white rounded-md border border-[#D0A348]/30 p-4 shadow-sm flex flex-col">
+              <div className="prose prose-sm max-w-none text-gray-800">
+                {formatResult(result)}
+              </div>
+              
+              <div className="mt-6 flex items-center justify-between border-t pt-4">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-gray-500 hover:text-[#022d5c]"
+                  onClick={() => { setResult(''); setError(''); }}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1.5" /> Back
+                </Button>
+                
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => lastAction && handleAction(lastAction)}>
+                    <RefreshCw className="h-4 w-4 mr-1.5" /> Retry
+                  </Button>
+                  <Button size="sm" className="bg-[#022d5c] hover:bg-[#022d5c]/90 text-white" onClick={() => onInsertText(result)}>
+                    <Copy className="h-4 w-4 mr-1.5" /> Copy to Editor
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}
