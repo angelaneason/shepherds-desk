@@ -17,6 +17,7 @@ export default function NewSermonPage() {
   const [scripture, setScripture] = useState("");
   const [series, setSeries] = useState("");
   const [preachDate, setPreachDate] = useState("");
+  const [location, setLocation] = useState("");
   const [status, setStatus] = useState<"draft" | "review" | "ready" | "preached">("draft");
   const [content, setContent] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -39,6 +40,7 @@ export default function NewSermonPage() {
           scripture_primary: scripture,
           series_name: series,
           preach_date: preachDate || null,
+          location: location || null,
           status,
           content,
           updated_at: new Date().toISOString()
@@ -47,6 +49,20 @@ export default function NewSermonPage() {
         .single();
 
       if (error) throw error;
+      
+      if (preachDate) {
+        await supabase.from("calendar_events").insert({
+          profile_id: user.id,
+          title: title || "Untitled Sermon",
+          event_type: "service",
+          start_time: new Date(`${preachDate}T09:00:00`).toISOString(),
+          end_time: new Date(`${preachDate}T10:00:00`).toISOString(),
+          location: location || null,
+          sermon_id: data.id,
+          all_day: true,
+          color: "#a855f7"
+        } as any);
+      }
       
       router.push(`/sermons/${data.id}`);
     } catch (error) {
@@ -108,13 +124,22 @@ export default function NewSermonPage() {
               className="text-xl border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-400 text-slate-600"
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
               <div>
                 <label className="text-xs font-medium text-slate-500 uppercase">Preach Date</label>
                 <Input 
                   type="date" 
                   value={preachDate}
                   onChange={(e) => setPreachDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-500 uppercase">Location</label>
+                <Input 
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Main Sanctuary"
                   className="mt-1"
                 />
               </div>

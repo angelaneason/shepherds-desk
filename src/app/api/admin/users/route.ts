@@ -88,7 +88,8 @@ export async function GET() {
         sermon_count: sermonCounts[u.id] || 0,
         idea_count: ideaCounts[u.id] || 0,
         care_task_count: careTaskCounts[u.id] || 0,
-        status: p?.role ? 'active' : 'inactive'
+        status: u.banned_until ? 'suspended' : (p?.role ? 'active' : 'inactive'),
+        stripe_customer_id: p?.stripe_customer_id || null
       }
     })
 
@@ -97,5 +98,67 @@ export async function GET() {
   } catch (error) {
     console.error('Error in GET /api/admin/users:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const supabaseServer = await createClient()
+    const { data: { user }, error: userError } = await supabaseServer.auth.getUser()
+    
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabaseServer
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single() as any
+
+    if (!profile || profile.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const serviceClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const body = await req.json()
+    const { action, userId, email } = body
+
+    if (action === 'reset_password' && email) {
+      const { data, error } = await serviceClient.auth.admin.generateLink({
+        type: 'recovery',
+        email: email,
+      })
+      if (error) throw error
+      // In a real app, you would send this link via an email service.
+      // Here we simulate it or return the link.
+      return NextResponse.json({ success: true, link: data.properties?.action_link })
+    }
+
+    if (action === 'suspend' && userId) {
+      const { error } = await serviceClient.auth.admin.updateUserById(userId, {
+        ban_duration: '876000h' // ban for 100 years
+      })
+      if (error) throw error
+      return NextResponse.json({ success: true })
+    }
+
+    if (action === 'unsuspend' && userId) {
+      const { error } = await serviceClient.auth.admin.updateUserById(userId, {
+        ban_duration: 'none'
+      })
+      if (error) throw error
+      return NextResponse.json({ success: true })
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+
+  } catch (error: any) {
+    console.error('Error in POST /api/admin/users:', error)
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
   }
 }

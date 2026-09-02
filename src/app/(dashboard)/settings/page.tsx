@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { UploadCloud, Palette, User, Mail, Lock, LogOut } from 'lucide-react'
+import { UploadCloud, Palette, User, Mail, Lock, LogOut, BookOpen } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -28,6 +28,10 @@ export default function SettingsPage() {
   // Password State
   const [newPassword, setNewPassword] = useState('')
 
+  // Study & Self-Care State
+  const [studyGoalHours, setStudyGoalHours] = useState(10)
+  const [studyReminders, setStudyReminders] = useState(true)
+
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -39,21 +43,27 @@ export default function SettingsPage() {
         
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, full_name, church_id')
+          .select('id, full_name, church_id, weekly_study_goal_hours, study_reminders_enabled')
           .eq('id', user.id)
-          .single()
+          .single() as any
 
         if (profile) {
           setProfileId(profile.id)
           setFullName(profile.full_name || '')
           setChurchId(profile.church_id)
+          if (profile.weekly_study_goal_hours !== undefined && profile.weekly_study_goal_hours !== null) {
+            setStudyGoalHours(profile.weekly_study_goal_hours)
+          }
+          if (profile.study_reminders_enabled !== undefined && profile.study_reminders_enabled !== null) {
+            setStudyReminders(profile.study_reminders_enabled)
+          }
 
           if (profile.church_id) {
             const { data: church } = await supabase
               .from('churches')
               .select('name, primary_color, secondary_color, accent_color')
               .eq('id', profile.church_id)
-              .single()
+              .single() as any
 
             if (church) {
               setChurchName(church.name || '')
@@ -96,6 +106,26 @@ export default function SettingsPage() {
     } catch (error) {
       console.error(error)
       alert('Error saving profile.')
+    }
+  }
+
+  const handleSaveStudyPreferences = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!profileId) return
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          weekly_study_goal_hours: studyGoalHours,
+          study_reminders_enabled: studyReminders
+        })
+        .eq('id', profileId)
+
+      alert('Study preferences saved successfully!')
+    } catch (error) {
+      console.error(error)
+      alert('Error saving study preferences.')
     }
   }
 
@@ -274,6 +304,55 @@ export default function SettingsPage() {
 
             <Button type="submit" className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
               Save Branding
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><BookOpen className="w-5 h-5" /> Study & Self-Care</CardTitle>
+          <CardDescription>Manage your weekly study goals and reminders.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSaveStudyPreferences} className="space-y-6">
+            <div className="space-y-4 max-w-md">
+              <div className="space-y-2">
+                <Label htmlFor="studyGoalHours">Weekly Study Goal (Hours)</Label>
+                <div className="flex items-center gap-4">
+                  <Input 
+                    id="studyGoalHours" 
+                    type="range"
+                    min="1"
+                    max="20"
+                    step="1"
+                    value={studyGoalHours}
+                    onChange={e => setStudyGoalHours(parseInt(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="font-bold text-[#022d5c] w-12 text-right">{studyGoalHours} h</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between py-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="studyReminders" className="text-base font-medium text-gray-900">Study Reminders</Label>
+                  <p className="text-sm text-gray-500">Get gentle nudges when you're falling behind your weekly goal.</p>
+                </div>
+                <div className="flex items-center h-5">
+                  <input
+                    id="studyReminders"
+                    type="checkbox"
+                    className="h-5 w-5 rounded border-gray-300 text-[#022d5c] focus:ring-[#022d5c]"
+                    checked={studyReminders}
+                    onChange={e => setStudyReminders(e.target.checked)}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <Button type="submit" className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
+              Save Preferences
             </Button>
           </form>
         </CardContent>

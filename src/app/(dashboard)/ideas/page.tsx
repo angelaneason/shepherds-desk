@@ -11,6 +11,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Idea } from '@/types/database'
 import { formatDistanceToNow } from 'date-fns'
 import { EyeOff, ArrowUpRight, Trash2, Lightbulb, Search, Loader2, Camera } from 'lucide-react'
+import { VoiceDictation } from '@/components/voice/VoiceDictation'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 
 const QUICK_TYPES = [
@@ -29,6 +32,10 @@ export default function IdeasPage() {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [isCaptureOpen, setIsCaptureOpen] = useState(false)
+  const [promoteIdea, setPromoteIdea] = useState<Idea | null>(null)
+  const [promoteTitle, setPromoteTitle] = useState('New Sermon from Idea')
+  const [promoteDate, setPromoteDate] = useState('')
+  const [promoteLocation, setPromoteLocation] = useState('')
   const router = useRouter()
   const supabase = createClient()
 
@@ -130,7 +137,16 @@ export default function IdeasPage() {
     }
   }
 
-  const handlePromote = async (idea: Idea) => {
+  const handlePromote = (idea: Idea) => {
+    setPromoteIdea(idea)
+    setPromoteTitle('New Sermon from Idea')
+    setPromoteDate('')
+    setPromoteLocation('')
+  }
+
+  const executePromote = async () => {
+    if (!promoteIdea) return
+    setSaving(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -140,12 +156,12 @@ export default function IdeasPage() {
         .from('sermons')
         .insert({
           author_id: user.id,
-          title: 'New Sermon from Idea',
-          content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: idea.content }] }] },
+          title: promoteTitle,
+          content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: promoteIdea.content }] }] },
           status: 'draft'
         })
         .select()
-        .single()
+        .single() as any
 
       if (sermonError) throw sermonError
 
@@ -153,11 +169,27 @@ export default function IdeasPage() {
       await supabase
         .from('ideas')
         .update({ promoted_to_sermon: sermon.id, archived: true })
-        .eq('id', idea.id)
+        .eq('id', promoteIdea.id)
+
+      if (promoteDate) {
+        await supabase.from('calendar_events').insert({
+          profile_id: user.id,
+          sermon_id: sermon.id,
+          title: `Preach: ${promoteTitle}`,
+          event_type: 'sermon_preach',
+          start_time: new Date(promoteDate).toISOString(),
+          end_time: new Date(new Date(promoteDate).getTime() + 60*60*1000).toISOString(),
+          location: promoteLocation,
+          all_day: false
+        })
+      }
 
       router.push(`/sermons/${sermon.id}`)
     } catch (error) {
       console.error('Error promoting idea:', error)
+    } finally {
+      setSaving(false)
+      setPromoteIdea(null)
     }
   }
 
@@ -195,12 +227,19 @@ export default function IdeasPage() {
       </div>
 
       <Card className="p-4 shadow-sm border-[#D0A348]/20">
-        <Textarea 
-          placeholder="What's on your heart? Jot it down..." 
-          className="min-h-[120px] text-lg resize-none border-none focus-visible:ring-0 p-2"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
+        <div className="flex gap-4">
+          <Textarea 
+            placeholder="What's on your heart? Jot it down..." 
+            className="min-h-[120px] text-lg resize-none border-none focus-visible:ring-0 p-2 flex-1"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+          />
+          <div className="pt-2">
+            <VoiceDictation 
+              onTranscript={(text) => setContent(prev => prev ? `${prev} ${text}` : text)} 
+            />
+          </div>
+        </div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-4 gap-4">
           <div className="flex flex-wrap gap-2">
             <Button
@@ -328,6 +367,56 @@ export default function IdeasPage() {
           })
         )}
       </div>
+
+      <Dialog open={!!promoteIdea} onOpenChange={(open) => !open && setPromoteIdea(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Promote to Sermon</DialogTitle>
+            <DialogDescription>
+              Create a new sermon from this idea. Optionally schedule it on your calendar.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Sermon Title</Label>
+              <Input 
+                value={promoteTitle}
+                onChange={(e) => setPromoteTitle(e.target.value)}
+                placeholder="New Sermon from Idea"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Preach Date & Time (Optional)</Label>
+              <Input 
+                type="datetime-local"
+                value={promoteDate}
+                onChange={(e) => setPromoteDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Location (Optional)</Label>
+              <Input 
+                value={promoteLocation}
+                onChange={(e) => setPromoteLocation(e.target.value)}
+                placeholder="e.g. Main Sanctuary"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPromoteIdea(null)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={executePromote} disabled={saving} className="bg-[#D0A348] hover:bg-[#D0A348]/90 text-white">
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Create Sermon
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

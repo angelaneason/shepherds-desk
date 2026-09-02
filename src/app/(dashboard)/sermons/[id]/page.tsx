@@ -34,6 +34,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
   const [scripture, setScripture] = useState("");
   const [series, setSeries] = useState("");
   const [preachDate, setPreachDate] = useState("");
+  const [location, setLocation] = useState("");
   const [status, setStatus] = useState<"draft" | "review" | "ready" | "preached">("draft");
   const [content, setContent] = useState<any>(null);
 
@@ -53,6 +54,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
         setScripture(data.scripture_primary || "");
         setSeries(data.series_name || "");
         setPreachDate(data.preach_date || "");
+        setLocation(data.location || "");
         setStatus(data.status || "draft");
         setContent(data.content);
       }
@@ -76,12 +78,14 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
     }, 10000);
 
     return () => clearTimeout(timer);
-  }, [title, subtitle, scripture, series, preachDate, status, content, loading]);
+  }, [title, subtitle, scripture, series, preachDate, location, status, content, loading]);
 
   const handleSave = async (isAutoSave = false) => {
     if (!isAutoSave) setIsSaving(true);
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from("sermons")
         .update({
@@ -90,6 +94,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           scripture_primary: scripture,
           series_name: series,
           preach_date: preachDate || null,
+          location: location || null,
           status,
           content,
           updated_at: new Date().toISOString()
@@ -97,6 +102,36 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
         .eq("id", id);
 
       if (error) throw error;
+      
+      if (preachDate && user) {
+        // check if calendar event exists
+        const { data: calData } = await supabase
+          .from("calendar_events")
+          .select("id")
+          .eq("sermon_id", id)
+          .maybeSingle() as any;
+          
+        if (calData) {
+          await supabase.from("calendar_events").update({
+            title: title || "Untitled Sermon",
+            start_time: new Date(`${preachDate}T09:00:00`).toISOString(),
+            end_time: new Date(`${preachDate}T10:00:00`).toISOString(),
+            location: location || null
+          } as any).eq("id", calData.id);
+        } else {
+          await supabase.from("calendar_events").insert({
+            profile_id: user.id,
+            title: title || "Untitled Sermon",
+            event_type: "service",
+            start_time: new Date(`${preachDate}T09:00:00`).toISOString(),
+            end_time: new Date(`${preachDate}T10:00:00`).toISOString(),
+            location: location || null,
+            sermon_id: id,
+            all_day: true,
+            color: "#a855f7"
+          } as any);
+        }
+      }
     } catch (error) {
       console.error("Error saving sermon:", error);
     } finally {
@@ -208,13 +243,22 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
               className="text-xl border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-400 text-slate-600"
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
               <div>
                 <label className="text-xs font-medium text-slate-500 uppercase">Preach Date</label>
                 <Input 
                   type="date" 
                   value={preachDate}
                   onChange={(e) => setPreachDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-500 uppercase">Location</label>
+                <Input 
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Main Sanctuary"
                   className="mt-1"
                 />
               </div>

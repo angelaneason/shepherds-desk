@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const [todayEventsCount, setTodayEventsCount] = useState(0)
   const [pendingCareCount, setPendingCareCount] = useState(0)
   const [studyHours, setStudyHours] = useState(0)
+  const [studyGoal, setStudyGoal] = useState(10)
   
   const [calendarEvents, setCalendarEvents] = useState<any[]>([])
   const [nextSermon, setNextSermon] = useState<any>(null)
@@ -70,17 +71,55 @@ export default function DashboardPage() {
           .from('calendar_events')
           .select('*')
           .gte('start_time', startOfMonth)
-          .lte('start_time', endOfMonth)
+          .lte('start_time', endOfMonth) as any
 
         if (events) setCalendarEvents(events)
 
         // Count today's events
         const todayStr = selectedDay.toISOString().split('T')[0]
-        const todays = events?.filter(e => e.start_time?.startsWith(todayStr)) || []
+        const todays = events?.filter((e: any) => e.start_time?.startsWith(todayStr)) || []
         setTodayEventsCount(todays.length)
         
-        // Mock study hours (could be calculated from events where type = 'study')
-        setStudyHours(8) // placeholder
+        // Fetch weekly study goal
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('weekly_study_goal_hours')
+          .eq('id', user.id)
+          .single() as any
+        
+        if (profile?.weekly_study_goal_hours) {
+          setStudyGoal(profile.weekly_study_goal_hours)
+        }
+
+        // Calculate study hours for the current week
+        const now = new Date()
+        const currentDay = now.getDay()
+        const startOfWeek = new Date(now)
+        startOfWeek.setDate(now.getDate() - currentDay) // Sunday
+        startOfWeek.setHours(0, 0, 0, 0)
+        
+        const endOfWeek = new Date(startOfWeek)
+        endOfWeek.setDate(startOfWeek.getDate() + 6) // Saturday
+        endOfWeek.setHours(23, 59, 59, 999)
+
+        const { data: weekEvents } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .gte('start_time', startOfWeek.toISOString())
+          .lte('start_time', endOfWeek.toISOString())
+          .in('event_type', ['sermon_study', 'personal']) as any
+
+        if (weekEvents) {
+          let totalHours = 0
+          weekEvents.forEach((e: any) => {
+            if (e.start_time && e.end_time) {
+              const start = new Date(e.start_time).getTime()
+              const end = new Date(e.end_time).getTime()
+              totalHours += (end - start) / (1000 * 60 * 60)
+            }
+          })
+          setStudyHours(Math.round(totalHours * 10) / 10)
+        }
 
         // Fetch Next Sermon
         const { data: sermons } = await supabase
@@ -88,7 +127,7 @@ export default function DashboardPage() {
           .select('*')
           .gte('preach_date', new Date().toISOString())
           .order('preach_date', { ascending: true })
-          .limit(1)
+          .limit(1) as any
         
         if (sermons && sermons.length > 0) {
           setNextSermon(sermons[0])
@@ -98,7 +137,7 @@ export default function DashboardPage() {
         const { data: tasks } = await supabase
           .from('care_tasks')
           .select('*, members(*)')
-          .eq('status', 'pending')
+          .eq('status', 'pending') as any
         
         if (tasks) {
           setCareTasks(tasks)
@@ -137,6 +176,28 @@ export default function DashboardPage() {
       default: return 0
     }
   }
+
+  const studyProgress = Math.min((studyHours / (studyGoal || 10)) * 100, 100)
+  let studyMessage = ''
+  let studyColor = ''
+  let studyBarColor = ''
+
+  if (studyProgress >= 80) {
+    studyMessage = "You're investing in yourself — keep it up!"
+    studyColor = "text-green-600"
+    studyBarColor = "bg-green-500"
+  } else if (studyProgress >= 40) {
+    studyMessage = "Your message deserves more preparation time."
+    studyColor = "text-yellow-600"
+    studyBarColor = "bg-yellow-500"
+  } else {
+    studyMessage = "Remember: you can't pour from an empty cup."
+    studyColor = "text-red-600"
+    studyBarColor = "bg-red-500"
+  }
+
+  const currentDayOfWeek = new Date().getDay()
+  const showMidweekNudge = studyHours === 0 && currentDayOfWeek >= 3 && currentDayOfWeek <= 6 // Wed-Sat
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-[60vh]">Loading dashboard...</div>
@@ -360,6 +421,40 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             )}
+          </Card>
+
+          {/* Study Time Widget */}
+          <Card className="shadow-sm rounded-xl border-gray-100">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="w-5 h-5 text-[#022d5c]" />
+                <CardTitle className="text-lg font-bold text-[#022d5c]">📖 Study Time This Week</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-2xl font-bold text-[#022d5c]">{studyHours}h</span>
+                <span className="text-sm text-gray-500">/ {studyGoal}h goal</span>
+              </div>
+              <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mb-3">
+                <div 
+                  className={cn("h-full transition-all rounded-full", studyBarColor)}
+                  style={{ width: `${studyProgress}%` }}
+                />
+              </div>
+              <p className={cn("text-sm font-medium", studyColor)}>
+                {studyMessage}
+              </p>
+              
+              {showMidweekNudge && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+                  <p className="text-blue-800 font-medium mb-2">Want to schedule some study time?</p>
+                  <Link href="/calendar" className="text-blue-600 hover:text-blue-800 underline font-medium">
+                    Open Calendar
+                  </Link>
+                </div>
+              )}
+            </CardContent>
           </Card>
         </div>
       </div>

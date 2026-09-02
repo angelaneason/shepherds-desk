@@ -1,5 +1,5 @@
 "use client";
-
+import { useState } from "react";
 import { type Editor } from "@tiptap/react";
 import {
   Bold,
@@ -19,6 +19,7 @@ import {
   AlignRight,
   Undo,
   Redo,
+  Mic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -29,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { VoiceDictation } from "@/components/voice/VoiceDictation";
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -72,6 +74,8 @@ const ToolbarButton = ({
 );
 
 export function Toolbar({ editor, isSaving }: ToolbarProps) {
+  const [showDictation, setShowDictation] = useState(false);
+
   if (!editor) {
     return null;
   }
@@ -181,6 +185,26 @@ export function Toolbar({ editor, isSaving }: ToolbarProps) {
           icon={AlignRight}
           tooltip="Align Right"
         />
+
+        <Separator orientation="vertical" className="mx-1 h-6 bg-slate-300" />
+
+        <div className="relative">
+          <ToolbarButton
+            onClick={() => setShowDictation(!showDictation)}
+            isActive={showDictation}
+            icon={Mic}
+            tooltip="Dictate"
+          />
+          {showDictation && (
+            <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 shadow-lg p-3 rounded-lg z-50">
+              <VoiceDictation 
+                onTranscript={(text) => {
+                  editor.commands.insertContent(` ${text} `);
+                }} 
+              />
+            </div>
+          )}
+        </div>
 
         <Separator orientation="vertical" className="mx-1 h-6 bg-slate-300" />
 

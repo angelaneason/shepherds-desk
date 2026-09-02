@@ -13,9 +13,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { 
   Search, Plus, CheckCircle, Trash2, Hospital, Phone, 
   Home, Car, Church, HelpCircle, Mail, Clock, 
-  ChevronDown, ChevronUp, AlertCircle
+  ChevronDown, ChevronUp, AlertCircle, Calendar as CalendarIcon
 } from 'lucide-react'
-import { format, isPast, parseISO } from 'date-fns'
+import { format, isPast, parseISO, addHours } from 'date-fns'
 
 type Member = {
   id: string
@@ -40,8 +40,24 @@ type CareTask = {
   due_date: string | null
   completed_date: string | null
   notes: string | null
+  calendar_event_id: string | null
+  prayer_request_id: string | null
   created_at: string
   members?: Member
+}
+
+type PrayerRequest = {
+  id: string
+  profile_id: string
+  member_id: string | null
+  person_name: string
+  request: string
+  category: 'Health' | 'Family' | 'Financial' | 'Spiritual' | 'Other'
+  priority: 'Urgent' | 'Normal'
+  status: 'active' | 'answered'
+  answered_date: string | null
+  answered_note: string | null
+  created_at: string
 }
 
 export default function CarePage() {
@@ -49,6 +65,7 @@ export default function CarePage() {
   
   const [members, setMembers] = useState<Member[]>([])
   const [tasks, setTasks] = useState<CareTask[]>([])
+  const [prayers, setPrayers] = useState<PrayerRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [userProfileId, setUserProfileId] = useState<string | null>(null)
   
@@ -59,10 +76,15 @@ export default function CarePage() {
   // Members filter
   const [memberSearch, setMemberSearch] = useState('')
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null)
+
+  // Prayer filters
+  const [prayerFilter, setPrayerFilter] = useState<'active' | 'answered' | 'all'>('active')
   
   // Dialogs state
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
+  const [isAddPrayerOpen, setIsAddPrayerOpen] = useState(false)
+  const [isAnswerDialogOpen, setIsAnswerDialogOpen] = useState<{isOpen: boolean, prayerId: string | null}>({isOpen: false, prayerId: null})
   
   // Forms state
   const [newMember, setNewMember] = useState<Partial<Member>>({ status: 'active' })
@@ -71,6 +93,12 @@ export default function CarePage() {
     priority: 'normal',
     task_type: 'call'
   })
+  const [newPrayer, setNewPrayer] = useState<Partial<PrayerRequest>>({
+    category: 'Other',
+    priority: 'Normal',
+    status: 'active'
+  })
+  const [answerNote, setAnswerNote] = useState('')
 
   useEffect(() => {
     fetchData()
@@ -83,13 +111,15 @@ export default function CarePage() {
       setUserProfileId(user.id)
     }
 
-    const [membersRes, tasksRes] = await Promise.all([
+    const [membersRes, tasksRes, prayersRes] = await Promise.all([
       supabase.from('members').select('*').order('full_name'),
-      supabase.from('care_tasks').select('*, members(*)').order('due_date', { ascending: true })
+      supabase.from('care_tasks').select('*, members(*)').order('due_date', { ascending: true }),
+      supabase.from('prayer_requests').select('*').order('created_at', { ascending: false })
     ])
 
-    if (membersRes.data) setMembers(membersRes.data)
-    if (tasksRes.data) setTasks(tasksRes.data)
+    if (membersRes.data) setMembers(membersRes.data as any)
+    if (tasksRes.data) setTasks(tasksRes.data as any)
+    if (prayersRes.data) setPrayers(prayersRes.data as any)
       
     setLoading(false)
   }
@@ -103,7 +133,7 @@ export default function CarePage() {
       .select()
       
     if (data && !error) {
-      setMembers([...members, data[0]].sort((a, b) => a.full_name.localeCompare(b.full_name)))
+      setMembers([...members, data[0] as any].sort((a, b) => a.full_name.localeCompare(b.full_name)))
       setIsAddMemberOpen(false)
       setNewMember({ status: 'active' })
     }
@@ -112,19 +142,63 @@ export default function CarePage() {
   const handleAddTask = async () => {
     if (!newTask.member_id || !userProfileId) return
     
+    let calendarEventId = null;
+
+    if (newTask.due_date) {
+      const member = members.find(m => m.id === newTask.member_id);
+      const title = `Care: ${newTask.task_type} with ${member?.full_name || 'Member'}`;
+      
+      const eventType = (newTask.task_type === 'visit' || newTask.task_type === 'hospital') ? 'visit' : 'meeting';
+      
+      const { data: eventData, error: eventError } = await supabase
+        .from('calendar_events')
+        .insert([{
+          profile_id: userProfileId,
+          title,
+          event_type: eventType,
+          description: newTask.description,
+          start_time: new Date(newTask.due_date).toISOString(),
+          end_time: addHours(new Date(newTask.due_date), 1).toISOString(),
+          all_day: false
+        }])
+        .select()
+        
+      if (eventData && !eventError) {
+        calendarEventId = (eventData as any)[0].id;
+      }
+    }
+
     const { data, error } = await supabase
       .from('care_tasks')
-      .insert([{ ...newTask, profile_id: userProfileId }])
+      .insert([{ ...newTask, profile_id: userProfileId, calendar_event_id: calendarEventId }])
       .select('*, members(*)')
       
     if (data && !error) {
-      setTasks([...tasks, data[0]])
+      if (calendarEventId) {
+         await supabase.from('calendar_events').update({ care_task_id: (data as any)[0].id }).eq('id', calendarEventId)
+      }
+      setTasks([...tasks, (data as any)[0]])
       setIsAddTaskOpen(false)
-      setNewTask({ status: 'pending', priority: 'normal', task_type: 'call' })
+      setNewTask({ status: 'pending', priority: 'normal', task_type: 'call', prayer_request_id: null })
     }
   }
 
-  const markTaskComplete = async (id: string) => {
+  const handleAddPrayer = async () => {
+    if (!newPrayer.person_name || !newPrayer.request || !userProfileId) return
+
+    const { data, error } = await supabase
+      .from('prayer_requests')
+      .insert([{ ...newPrayer, profile_id: userProfileId }])
+      .select()
+
+    if (data && !error) {
+      setPrayers([(data as any)[0], ...prayers])
+      setIsAddPrayerOpen(false)
+      setNewPrayer({ category: 'Other', priority: 'Normal', status: 'active' })
+    }
+  }
+
+  const markTaskComplete = async (id: string, calendar_event_id: string | null) => {
     const now = new Date().toISOString()
     const { error } = await supabase
       .from('care_tasks')
@@ -133,6 +207,30 @@ export default function CarePage() {
       
     if (!error) {
       setTasks(tasks.map(t => t.id === id ? { ...t, status: 'completed', completed_date: now } : t))
+      
+      if (calendar_event_id) {
+        const { data: ev } = await supabase.from('calendar_events').select('title').eq('id', calendar_event_id).single()
+        if (ev && ev.title) {
+          await supabase.from('calendar_events').update({ title: `✅ ${ev.title}` }).eq('id', calendar_event_id)
+        }
+      }
+    }
+  }
+
+  const markPrayerAnswered = async () => {
+    if (!isAnswerDialogOpen.prayerId) return
+    const id = isAnswerDialogOpen.prayerId
+    const now = new Date().toISOString()
+
+    const { error } = await supabase
+      .from('prayer_requests')
+      .update({ status: 'answered', answered_date: now, answered_note: answerNote })
+      .eq('id', id)
+
+    if (!error) {
+      setPrayers(prayers.map(p => p.id === id ? { ...p, status: 'answered', answered_date: now, answered_note: answerNote } : p))
+      setIsAnswerDialogOpen({isOpen: false, prayerId: null})
+      setAnswerNote('')
     }
   }
 
@@ -160,8 +258,10 @@ export default function CarePage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500'
-      case 'normal': return 'bg-[#D0A348]' // Gold
+      case 'urgent': 
+      case 'Urgent': return 'bg-red-500'
+      case 'normal': 
+      case 'Normal': return 'bg-[#D0A348]' // Gold
       case 'low': return 'bg-gray-400'
       default: return 'bg-gray-400'
     }
@@ -189,6 +289,11 @@ export default function CarePage() {
     m.full_name.toLowerCase().includes(memberSearch.toLowerCase())
   )
 
+  const filteredPrayers = prayers.filter(p => {
+    if (prayerFilter === 'all') return true;
+    return p.status === prayerFilter;
+  })
+
   const pendingTasks = tasks.filter(t => t.status !== 'completed').length
   const urgentTasks = tasks.filter(t => t.status !== 'completed' && t.priority === 'urgent').length
   const completedThisWeek = tasks.filter(t => {
@@ -201,13 +306,14 @@ export default function CarePage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-[#022d5c]">Pastoral Care</h1>
+        <h1 className="text-2xl font-bold text-[#022d5c]">Ministry Care</h1>
       </div>
 
       <Tabs defaultValue="follow-ups" className="w-full">
-        <TabsList className="mb-4 bg-gray-100/80 p-1">
+        <TabsList className="mb-4 bg-gray-100/80 p-1 flex-wrap h-auto">
           <TabsTrigger value="follow-ups" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">Follow-Ups</TabsTrigger>
           <TabsTrigger value="members" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">Members</TabsTrigger>
+          <TabsTrigger value="prayers" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">Prayer List</TabsTrigger>
         </TabsList>
         
         <TabsContent value="follow-ups" className="space-y-6">
@@ -425,7 +531,7 @@ export default function CarePage() {
                             variant="outline" 
                             size="sm" 
                             className="text-green-600 border-green-200 hover:bg-green-50"
-                            onClick={() => markTaskComplete(task.id)}
+                            onClick={() => markTaskComplete(task.id, task.calendar_event_id)}
                           >
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Mark Done
@@ -655,6 +761,191 @@ export default function CarePage() {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="prayers" className="space-y-6">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            <div className="flex gap-2">
+              <Button 
+                variant={prayerFilter === 'active' ? 'default' : 'outline'} 
+                className={prayerFilter === 'active' ? 'bg-[#022d5c] text-white' : ''}
+                onClick={() => setPrayerFilter('active')}
+              >
+                Active
+              </Button>
+              <Button 
+                variant={prayerFilter === 'answered' ? 'default' : 'outline'}
+                className={prayerFilter === 'answered' ? 'bg-[#022d5c] text-white' : ''}
+                onClick={() => setPrayerFilter('answered')}
+              >
+                Answered
+              </Button>
+              <Button 
+                variant={prayerFilter === 'all' ? 'default' : 'outline'}
+                className={prayerFilter === 'all' ? 'bg-[#022d5c] text-white' : ''}
+                onClick={() => setPrayerFilter('all')}
+              >
+                All
+              </Button>
+            </div>
+            
+            <Dialog open={isAddPrayerOpen} onOpenChange={setIsAddPrayerOpen}>
+              <DialogTrigger>
+                <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Prayer
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add Prayer Request</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="prayer_person">Person Name *</Label>
+                    <Input
+                      id="prayer_person"
+                      value={newPrayer.person_name || ''}
+                      onChange={(e) => setNewPrayer({...newPrayer, person_name: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="prayer_request">Request *</Label>
+                    <Textarea
+                      id="prayer_request"
+                      value={newPrayer.request || ''}
+                      onChange={(e) => setNewPrayer({...newPrayer, request: e.target.value})}
+                      rows={3}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="prayer_category">Category</Label>
+                      <select
+                        id="prayer_category"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        value={newPrayer.category}
+                        onChange={(e) => setNewPrayer({...newPrayer, category: e.target.value as PrayerRequest['category']})}
+                      >
+                        <option value="Health">Health</option>
+                        <option value="Family">Family</option>
+                        <option value="Financial">Financial</option>
+                        <option value="Spiritual">Spiritual</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="prayer_priority">Priority</Label>
+                      <select
+                        id="prayer_priority"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        value={newPrayer.priority}
+                        onChange={(e) => setNewPrayer({...newPrayer, priority: e.target.value as PrayerRequest['priority']})}
+                      >
+                        <option value="Normal">Normal</option>
+                        <option value="Urgent">Urgent</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddPrayerOpen(false)}>Cancel</Button>
+                  <Button onClick={handleAddPrayer} disabled={!newPrayer.person_name || !newPrayer.request} className="bg-[#022d5c] text-white">Save Prayer</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {!loading && filteredPrayers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-dashed border-gray-300">
+              <p className="text-gray-500 text-center">
+                No prayer requests found.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {filteredPrayers.map((prayer) => (
+                <Card key={prayer.id} className={`overflow-hidden ${prayer.status === 'answered' ? 'opacity-90 bg-[#F8F5EE]/50' : 'bg-white'} border-l-4 ${prayer.priority === 'Urgent' && prayer.status !== 'answered' ? 'border-l-red-500' : 'border-l-[#D0A348]'}`}>
+                  <div className="p-5 flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-semibold text-lg text-gray-900">{prayer.person_name}</h3>
+                      <div className="flex gap-2">
+                        {prayer.status === 'answered' && (
+                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                            🙏 Answered
+                          </Badge>
+                        )}
+                        <Badge variant="outline">{prayer.category}</Badge>
+                      </div>
+                    </div>
+                    
+                    <p className="text-gray-700 whitespace-pre-wrap">{prayer.request}</p>
+                    
+                    {prayer.status === 'answered' && prayer.answered_note && (
+                      <div className="mt-2 p-3 bg-green-50 rounded-md border border-green-100 text-sm">
+                        <span className="font-semibold text-green-800 block mb-1">Praise Report:</span>
+                        <p className="text-green-700">{prayer.answered_note}</p>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center mt-2 pt-3 border-t border-gray-100 text-sm text-gray-500">
+                      <span>Added {format(parseISO(prayer.created_at), 'MMM d, yyyy')}</span>
+                      
+                      {prayer.status === 'active' && (
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8"
+                            onClick={() => {
+                              setNewTask({ ...newTask, description: `Follow up on prayer: ${prayer.request.substring(0, 50)}...`, prayer_request_id: prayer.id })
+                              setIsAddTaskOpen(true)
+                            }}
+                          >
+                            Add Follow-Up
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            className="bg-green-600 hover:bg-green-700 text-white h-8"
+                            onClick={() => setIsAnswerDialogOpen({isOpen: true, prayerId: prayer.id})}
+                          >
+                            Mark Answered
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
+        {/* Answer Prayer Dialog */}
+        <Dialog open={isAnswerDialogOpen.isOpen} onOpenChange={(open) => !open && setIsAnswerDialogOpen({isOpen: false, prayerId: null})}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Mark Prayer as Answered 🙏</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="answer_note">Praise Report / Note (Optional)</Label>
+                <Textarea
+                  id="answer_note"
+                  value={answerNote}
+                  onChange={(e) => setAnswerNote(e.target.value)}
+                  placeholder="How was this prayer answered?..."
+                  rows={4}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAnswerDialogOpen({isOpen: false, prayerId: null})}>Cancel</Button>
+              <Button onClick={markPrayerAnswered} className="bg-green-600 hover:bg-green-700 text-white">Save Praise Report</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </Tabs>
     </div>
   )

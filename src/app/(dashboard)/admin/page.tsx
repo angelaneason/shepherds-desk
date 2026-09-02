@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Users, Lightbulb, BookOpen, UserPlus, Trash2 } from 'lucide-react'
+import { Users, Lightbulb, BookOpen, UserPlus, Trash2, Key, Ban, CheckCircle } from 'lucide-react'
 import { format } from 'date-fns'
 
 type UserData = {
@@ -21,6 +21,7 @@ type UserData = {
   idea_count: number
   care_task_count: number
   status: string
+  stripe_customer_id?: string
 }
 
 export default function AdminPage() {
@@ -61,6 +62,44 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error('Error deleting user:', error)
+      alert('An error occurred')
+    }
+  }
+
+  const handleResetPassword = async (id: string, email: string) => {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset_password', email })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        alert(`Recovery link generated:\n${data.link}`)
+      } else {
+        alert('Failed to reset password')
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error)
+      alert('An error occurred')
+    }
+  }
+
+  const handleSuspend = async (id: string, currentStatus: string) => {
+    const action = currentStatus === 'suspended' ? 'unsuspend' : 'suspend'
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, userId: id })
+      })
+      if (res.ok) {
+        setUsers(users.map(u => u.id === id ? { ...u, status: action === 'suspend' ? 'suspended' : 'active' } : u))
+      } else {
+        alert(`Failed to ${action} user`)
+      }
+    } catch (error) {
+      console.error(`Error ${action} user:`, error)
       alert('An error occurred')
     }
   }
@@ -180,15 +219,16 @@ export default function AdminPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Sign Up</TableHead>
+                    <TableHead>Plan</TableHead>
                     <TableHead className="text-right">Sermons</TableHead>
                     <TableHead className="text-right">Status</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         No users found
                       </TableCell>
                     </TableRow>
@@ -201,15 +241,42 @@ export default function AdminPage() {
                         <TableCell>
                           {user.created_at ? format(new Date(user.created_at), 'MMM d, yyyy') : 'N/A'}
                         </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            user.stripe_customer_id ? 'bg-[#022d5c] text-white' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {user.stripe_customer_id ? 'Pro' : 'Free Trial'}
+                          </span>
+                        </TableCell>
                         <TableCell className="text-right">{user.sermon_count}</TableCell>
                         <TableCell className="text-right capitalize">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            user.status === 'active' ? 'bg-green-100 text-green-800' : 
+                            user.status === 'suspended' ? 'bg-red-100 text-red-800' : 
+                            'bg-gray-100 text-gray-800'
                           }`}>
                             {user.status}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleResetPassword(user.id, user.email)}
+                            title="Generate Password Reset Link"
+                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Key className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleSuspend(user.id, user.status)}
+                            title={user.status === 'suspended' ? "Unsuspend User" : "Suspend User"}
+                            className="text-orange-500 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            {user.status === 'suspended' ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                          </Button>
                           <Button 
                             variant="ghost" 
                             size="icon"
