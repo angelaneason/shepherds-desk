@@ -16,9 +16,7 @@ function getNextDayDate(dayName: string): Date {
   const currentDay = today.getDay()
   let daysUntil = targetDay - currentDay
   if (daysUntil <= 0) daysUntil += 7
-  const next = new Date(today)
-  next.setDate(today.getDate() + daysUntil)
-  return next
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntil, 12, 0, 0)
 }
 
 export default function SettingsPage() {
@@ -211,7 +209,10 @@ export default function SettingsPage() {
     }
 
     const nextDate = getNextDayDate(newBlockDay)
-    const dateStr = nextDate.toISOString().split('T')[0]
+    const year = nextDate.getFullYear()
+    const month = String(nextDate.getMonth() + 1).padStart(2, '0')
+    const day = String(nextDate.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
     const startDate = new Date(`${dateStr}T${newBlockStart}:00`)
     const endDate = new Date(`${dateStr}T${newBlockEnd}:00`)
 
