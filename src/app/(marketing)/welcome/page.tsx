@@ -18,9 +18,9 @@ export default function WelcomePage() {
     <div className="flex flex-col min-h-screen bg-ivory text-charcoal selection:bg-gold/20 selection:text-navy">
       
       {/* Hero Section */}
-      <section className="relative bg-navy text-white overflow-hidden py-20 lg:py-32">
-        {/* Subtle background decoration */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
+      <section className="relative text-white overflow-hidden py-20 lg:py-32" style={{ backgroundColor: '#0F2B4C' }}>
+        {/* Subtle background decoration - only behind text, not logo */}
+        <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
         
         <div className="container mx-auto px-6 relative z-10 flex flex-col items-center text-center">
           <div className="mb-8">
@@ -29,7 +29,7 @@ export default function WelcomePage() {
               alt="The Shepherd's Desk" 
               width={500} 
               height={150} 
-              className="h-32 md:h-44 w-auto object-contain"
+              className="h-40 md:h-56 w-auto object-contain rounded-lg"
               priority
             />
           </div>
