@@ -19,29 +19,36 @@ export default function DashboardLayout({
   
   useEffect(() => {
     const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        
         // Set user initial from email
         const email = user.email || ''
         setUserInitial(email.charAt(0).toUpperCase())
         
-        const { data: profile } = await supabase
+        // Query profile - use explicit any to avoid Supabase type issues
+        const result: any = await supabase
           .from('profiles')
           .select('role, full_name')
           .eq('id', user.id)
-          .single() as any
+          .single()
         
-        if (profile?.full_name) {
+        const profile = result?.data
+        
+        if (profile?.full_name && profile.full_name !== 'Pastor') {
           setUserInitial(profile.full_name.charAt(0).toUpperCase())
         }
         
-        if (profile && profile.role === 'admin') {
+        if (profile?.role === 'admin') {
           setIsAdmin(true)
         }
+      } catch (err) {
+        console.error('Admin check error:', err)
       }
     }
     checkAdmin()
-  }, [supabase])
+  }, [])
 
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
