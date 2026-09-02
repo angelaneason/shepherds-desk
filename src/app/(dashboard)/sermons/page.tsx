@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Calendar, Clock, Edit } from "lucide-react";
+import { Plus, Search, Calendar, Clock, Edit, ScanLine } from "lucide-react";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { ScanSermon } from "@/components/capture/ScanSermon";
 
 // Assuming Database type structure
 type Sermon = {
@@ -24,6 +25,7 @@ export default function SermonsPage() {
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -78,13 +80,25 @@ export default function SermonsPage() {
           <h1 className="text-3xl font-bold text-[#022d5c]">Sermons</h1>
           <p className="text-slate-500 mt-1">Manage and write your messages.</p>
         </div>
-        <Link href="/sermons/new">
-          <Button className="bg-[#022d5c] text-[#F8F5EE] hover:bg-[#022d5c]/90">
-            <Plus className="h-4 w-4 mr-2" />
-            New Sermon
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setIsScanModalOpen(true)}
+            variant="outline"
+            className="border-[#022d5c] text-[#022d5c] hover:bg-[#022d5c]/10"
+          >
+            <ScanLine className="h-4 w-4 mr-2" />
+            Scan Sermon
           </Button>
-        </Link>
+          <Link href="/sermons/new">
+            <Button className="bg-[#022d5c] text-[#F8F5EE] hover:bg-[#022d5c]/90">
+              <Plus className="h-4 w-4 mr-2" />
+              New Sermon
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      <ScanSermon isOpen={isScanModalOpen} onClose={() => setIsScanModalOpen(false)} />
 
       <div className="mb-6 relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />

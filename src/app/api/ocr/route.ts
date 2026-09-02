@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
-    const prompt = "You are an expert OCR system for a pastoral note-taking app called Shepherd's Desk. Extract all text from this image accurately. Preserve paragraph structure and line breaks. If the handwriting is unclear, make your best interpretation. Return ONLY the extracted text with no additional commentary or explanation."
+    const prompt = "You are an expert OCR system for a pastoral note-taking app called Shepherd's Desk. Extract all text from this image accurately. This is likely a handwritten sermon. Preserve paragraph breaks, maintain sermon structure (introduction, points, conclusion). Handle handwriting variations and preserve scripture references carefully. Clean up but don't rewrite - keep the pastor's original words. Return ONLY the extracted text with no additional commentary or explanation."
 
     const imageParts = [
       {
