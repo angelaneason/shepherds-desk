@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, BookOpen, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 import { SupportChat } from '@/components/support/SupportChat'
 import { createClient } from '@/lib/supabase/client'
@@ -69,6 +69,7 @@ export default function DashboardLayout({
     { name: 'Ideas', href: '/ideas', icon: Lightbulb },
     { name: 'Calendar', href: '/calendar', icon: CalendarDays },
     { name: 'Ministry Care', href: '/care', icon: Heart },
+    { name: 'Study', href: '/study', icon: Clock },
     { name: 'Refer a Pastor', href: '/referrals', icon: Gift },
     { name: 'Settings', href: '/settings', icon: Settings },
   ]

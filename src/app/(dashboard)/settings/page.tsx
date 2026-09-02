@@ -7,17 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { UploadCloud, Palette, User, Mail, Lock, LogOut, BookOpen, Trash2, Plus } from 'lucide-react'
-
-function getNextDayDate(dayName: string): Date {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const today = new Date()
-  const targetDay = days.indexOf(dayName)
-  const currentDay = today.getDay()
-  let daysUntil = targetDay - currentDay
-  if (daysUntil <= 0) daysUntil += 7
-  return new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntil, 12, 0, 0)
-}
+import { UploadCloud, Palette, User, Mail, Lock, LogOut } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -38,15 +28,6 @@ export default function SettingsPage() {
   // Password State
   const [newPassword, setNewPassword] = useState('')
 
-  // Study & Self-Care State
-  const [studyGoalHours, setStudyGoalHours] = useState(10)
-  const [studyReminders, setStudyReminders] = useState(true)
-  
-  // Study Blocks State
-  const [studyBlocks, setStudyBlocks] = useState<any[]>([])
-  const [newBlockDay, setNewBlockDay] = useState('Monday')
-  const [newBlockStart, setNewBlockStart] = useState('09:00')
-  const [newBlockEnd, setNewBlockEnd] = useState('11:00')
 
   // Trial State
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null)
@@ -64,7 +45,7 @@ export default function SettingsPage() {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, full_name, church_id, weekly_study_goal_hours, study_reminders_enabled, trial_ends_at')
+            .select('id, full_name, church_id, trial_ends_at')
             .eq('id', user.id)
             .single() as any
 
@@ -77,12 +58,6 @@ export default function SettingsPage() {
               const diffTime = endsAt.getTime() - now.getTime()
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
               setTrialDaysRemaining(diffDays > 0 ? diffDays : 0)
-            }
-            if (profile.weekly_study_goal_hours !== undefined && profile.weekly_study_goal_hours !== null) {
-              setStudyGoalHours(profile.weekly_study_goal_hours)
-            }
-            if (profile.study_reminders_enabled !== undefined && profile.study_reminders_enabled !== null) {
-              setStudyReminders(profile.study_reminders_enabled)
             }
 
             if (profile.church_id) {
@@ -102,20 +77,6 @@ export default function SettingsPage() {
           }
         } catch (err) {
           console.error('Error fetching profile details:', err)
-        }
-
-        try {
-          const { data: blocks } = await supabase
-            .from('calendar_events')
-            .select('*')
-            .eq('profile_id', user.id)
-            .eq('description', 'recurring_study') as any
-          
-          if (blocks) {
-            setStudyBlocks(blocks)
-          }
-        } catch (err) {
-          console.error('Error fetching study blocks:', err)
         }
       }
       setIsLoading(false)
@@ -153,26 +114,6 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSaveStudyGoals = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!profileId) return
-
-    try {
-      await supabase
-        .from('profiles')
-        .update({ 
-          weekly_study_goal_hours: studyGoalHours,
-          study_reminders_enabled: studyReminders
-        } as any)
-        .eq('id', profileId)
-
-      alert('Study goals saved successfully!')
-    } catch (error) {
-      console.error(error)
-      alert('Error saving study goals.')
-    }
-  }
-
   const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!churchId) return
@@ -191,60 +132,6 @@ export default function SettingsPage() {
     } catch (error) {
       console.error(error)
       alert('Error saving branding.')
-    }
-  }
-
-  const handleAddStudyBlock = async () => {
-    let uid = profileId
-    if (!uid) {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        uid = user.id
-        setProfileId(user.id)
-      }
-    }
-    if (!uid) {
-      alert('Please wait for your session to load, or refresh the page.')
-      return
-    }
-
-    const nextDate = getNextDayDate(newBlockDay)
-    const year = nextDate.getFullYear()
-    const month = String(nextDate.getMonth() + 1).padStart(2, '0')
-    const day = String(nextDate.getDate()).padStart(2, '0')
-    const dateStr = `${year}-${month}-${day}`
-    const startDate = new Date(`${dateStr}T${newBlockStart}:00`)
-    const endDate = new Date(`${dateStr}T${newBlockEnd}:00`)
-
-    try {
-      const { data, error } = await supabase.from('calendar_events').insert({
-        profile_id: uid,
-        title: 'Study Time',
-        event_type: 'sermon_study',
-        start_time: startDate.toISOString(),
-        end_time: endDate.toISOString(),
-        all_day: false,
-        recurrence_rule: 'FREQ=WEEKLY',
-        description: 'recurring_study',
-      }).select() as any
-
-      if (error) throw error
-      if (data && data.length > 0) {
-        setStudyBlocks(prev => [...prev, data[0]])
-      }
-    } catch (error: any) {
-      console.error('Error adding study block:', error)
-      alert(`Error adding study block: ${error?.message || 'Please try again'}`)
-    }
-  }
-
-  const handleDeleteStudyBlock = async (id: string) => {
-    try {
-      await supabase.from('calendar_events').delete().eq('id', id)
-      setStudyBlocks(studyBlocks.filter(b => b.id !== id))
-    } catch (error) {
-      console.error(error)
-      alert('Error deleting study block')
     }
   }
 
@@ -404,119 +291,6 @@ export default function SettingsPage() {
               Save Branding
             </Button>
           </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><BookOpen className="w-5 h-5" /> Study & Self-Care</CardTitle>
-          <CardDescription>Manage your weekly study goals and reminders.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-8">
-            <form onSubmit={handleSaveStudyGoals} className="space-y-6">
-              <div className="space-y-4 max-w-md">
-                <div className="space-y-2">
-                  <Label htmlFor="studyGoalHours">Weekly Study Goal (Hours)</Label>
-                  <div className="flex items-center gap-4">
-                    <Input 
-                      id="studyGoalHours" 
-                      type="range"
-                      min="1"
-                      max="20"
-                      step="1"
-                      value={studyGoalHours}
-                      onChange={e => setStudyGoalHours(parseInt(e.target.value))}
-                      className="flex-1"
-                    />
-                    <span className="font-bold text-[#022d5c] w-12 text-right">{studyGoalHours} h</span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between py-2">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="studyReminders" className="text-base font-medium text-gray-900">Study Reminders</Label>
-                    <p className="text-sm text-gray-500">Get gentle nudges when you're falling behind your weekly goal.</p>
-                  </div>
-                  <div className="flex items-center h-5">
-                    <input
-                      id="studyReminders"
-                      type="checkbox"
-                      className="h-5 w-5 rounded border-gray-300 text-[#022d5c] focus:ring-[#022d5c]"
-                      checked={studyReminders}
-                      onChange={e => setStudyReminders(e.target.checked)}
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <Button type="submit" className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
-                Save Preferences
-              </Button>
-            </form>
-
-            <div className="border-t pt-8">
-              <h3 className="text-lg font-semibold text-[#022d5c] mb-4">Weekly Study Schedule</h3>
-              <div className="space-y-4">
-                {studyBlocks.map(block => {
-                  const startDate = new Date(block.start_time)
-                  const endDate = new Date(block.end_time)
-                  const dayName = startDate.toLocaleDateString('en-US', { weekday: 'long' })
-                  const startTimeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  const endTimeStr = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  
-                  return (
-                    <div key={block.id} className="flex items-center justify-between bg-gray-50 p-4 rounded-md border">
-                      <div>
-                        <p className="font-medium">{dayName}</p>
-                        <p className="text-sm text-gray-500">{startTimeStr} - {endTimeStr}</p>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteStudyBlock(block.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )
-                })}
-
-                <div className="bg-gray-50 p-4 rounded-md border space-y-4">
-                  <p className="font-medium text-sm">Add Study Block</p>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div className="space-y-2">
-                      <Label>Day</Label>
-                      <select 
-                        value={newBlockDay}
-                        onChange={(e) => setNewBlockDay(e.target.value)}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Start Time</Label>
-                      <Input 
-                        type="time" 
-                        value={newBlockStart}
-                        onChange={(e) => setNewBlockStart(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>End Time</Label>
-                      <Input 
-                        type="time" 
-                        value={newBlockEnd}
-                        onChange={(e) => setNewBlockEnd(e.target.value)}
-                      />
-                    </div>
-                    <Button type="button" onClick={handleAddStudyBlock} className="bg-[#D0A348] text-white hover:bg-[#D0A348]/90">
-                      <Plus className="w-4 h-4 mr-2" /> Add
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </CardContent>
       </Card>
 

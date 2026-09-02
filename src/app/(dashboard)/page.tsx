@@ -288,7 +288,7 @@ export default function DashboardPage() {
           </Card>
         </Link>
 
-        <Link href="/settings">
+        <Link href="/study">
           <Card className="shadow-sm rounded-xl border-gray-100 hover:shadow-md hover:border-green-200 transition-all cursor-pointer">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
@@ -466,7 +466,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 mb-1">
                 <Clock className="w-5 h-5 text-[#022d5c]" />
-                <Link href="/settings" className="hover:underline">
+                <Link href="/study" className="hover:underline">
                   <CardTitle className="text-lg font-bold text-[#022d5c]">📖 Study Time This Week</CardTitle>
                 </Link>
               </div>
