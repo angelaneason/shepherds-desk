@@ -47,12 +47,12 @@ export async function POST(request: NextRequest) {
     // Handle RTF files - extract text by stripping RTF formatting
     if (fileType === 'application/rtf' || fileName.endsWith('.rtf')) {
       const rtfContent = buffer.toString('utf-8')
-      // Basic RTF text extraction - strip control words
+      // Basic RTF text extraction - strip control words and formatting
       const text = rtfContent
+        .replace(/\{\\[^{}]*\}/g, '')
         .replace(/\\[a-z]+\d*\s?/gi, '')
         .replace(/[{}]/g, '')
         .replace(/\\\\/g, '\\')
-        .replace(/\\'/[0-9a-f]{2}/gi, '')
         .trim()
       return NextResponse.json({ text, confidence: 'medium' as const })
     }
