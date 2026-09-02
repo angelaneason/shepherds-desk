@@ -263,7 +263,7 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
                     </Button>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,.pdf,.docx,.doc,.txt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain,application/rtf"
                       multiple
                       ref={fileInputRef}
                       className="hidden"
@@ -308,12 +308,26 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
                             <X className="w-3 h-3" />
                           </button>
                         </div>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img 
-                          src={page.previewUrl} 
-                          alt={`Page ${index + 1}`}
-                          className="w-full aspect-[3/4] object-cover"
-                        />
+                        {page.file.type.startsWith('image/') ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img 
+                              src={page.previewUrl} 
+                              alt={`Page ${index + 1}`}
+                              className="w-full aspect-[3/4] object-cover"
+                            />
+                          </>
+                        ) : (
+                          <div className="w-full aspect-[3/4] flex flex-col items-center justify-center bg-gray-50 p-3">
+                            <span className="text-3xl mb-2">
+                              {page.file.name.endsWith('.pdf') ? '📄' : 
+                               page.file.name.endsWith('.docx') || page.file.name.endsWith('.doc') ? '📝' : 
+                               page.file.name.endsWith('.txt') ? '📃' : '📋'}
+                            </span>
+                            <p className="text-xs text-gray-600 font-medium text-center truncate w-full">{page.file.name}</p>
+                            <p className="text-[10px] text-gray-400 mt-1">{(page.file.size / 1024).toFixed(0)} KB</p>
+                          </div>
+                        )}
                       </div>
                     ))}
                     
