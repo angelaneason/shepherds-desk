@@ -8,6 +8,7 @@ import { CalendarDays, Users, BookOpen, Clock, ChevronLeft, ChevronRight, ArrowR
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { SmartReminder } from '@/components/reminders/SmartReminder'
 
 // Helper for date formatting
 const formatDate = (date: Date) => {
@@ -210,6 +211,9 @@ export default function DashboardPage() {
         <h1 className="text-4xl font-bold text-[#022d5c] font-playfair">{greeting}, Pastor</h1>
         <p className="text-gray-500 mt-2">{formatDate(new Date())}</p>
       </div>
+
+      {/* Smart Reminder */}
+      <SmartReminder />
 
       {/* Top Section: Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
