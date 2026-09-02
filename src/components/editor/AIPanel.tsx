@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Sparkles, X, Send, Copy, RefreshCw, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, X, Send, Copy, RefreshCw, Loader2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { createClient } from '@/lib/supabase/client';
 
 interface AIPanelProps {
   isOpen: boolean;
@@ -20,6 +21,14 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
   const [error, setError] = useState('');
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id);
+    });
+  }, []);
 
   const handleAction = async (action: string, customText?: string) => {
     setLoading(true);
@@ -37,6 +46,7 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
           action,
           context: sermonContent,
           selection: selectedText || customText || '',
+          userId,
         }),
       });
 
@@ -93,6 +103,7 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
               <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('generate_outline')}>📝 Generate Outline</Button>
               <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('find_illustrations')}>💡 Find Illustrations</Button>
               <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('suggest_transitions')}>🔗 Suggest Transitions</Button>
+              <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] bg-[#D0A348]/10 hover:bg-[#D0A348]/20 font-medium" onClick={() => handleAction('search_sermons')}>🔍 Search My Sermons & Notes</Button>
               
               {selectedText && (
                 <>
