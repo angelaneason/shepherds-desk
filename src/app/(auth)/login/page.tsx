@@ -77,9 +77,9 @@ export default function LoginPage() {
     <div className="space-y-8 text-center">
       <div className="space-y-2 flex flex-col items-center">
         <img 
-          src="/logo.png" 
-          alt="Shepherd's Desk" 
-          className="h-44 w-auto"
+          src="/logo-clean.png" 
+          alt="The Shepherd's Desk" 
+          className="h-28 w-auto object-contain"
         />
         <p className="text-sm text-gray-500 italic">
           From Monday&apos;s ministry to Sunday&apos;s message.
