@@ -48,7 +48,7 @@ export default function DashboardLayout({
     { name: 'Sermons', href: '/sermons', icon: BookOpen },
     { name: 'Ideas', href: '/ideas', icon: Lightbulb },
     { name: 'Calendar', href: '/calendar', icon: CalendarDays },
-    { name: 'Pastoral Care', href: '/care', icon: Heart },
+    { name: 'Ministry Care', href: '/care', icon: Heart },
     { name: 'Refer a Pastor', href: '/referrals', icon: Gift },
     { name: 'Settings', href: '/settings', icon: Settings },
   ]
