@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { BookOpen, Trash2, Plus, Clock, Calendar, Target, TrendingUp } from 'lucide-react'
+import { BookOpen, Trash2, Plus, Clock, Calendar, Target, TrendingUp, CalendarPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -32,6 +32,13 @@ export default function StudyPage() {
   const [newBlockEnd, setNewBlockEnd] = useState('11:00')
   const [studyHoursThisWeek, setStudyHoursThisWeek] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+
+  // One-time study sessions
+  const [singleSessions, setSingleSessions] = useState<any[]>([])
+  const todayStr = new Date().toISOString().split('T')[0]
+  const [singleDate, setSingleDate] = useState(todayStr)
+  const [singleStart, setSingleStart] = useState('09:00')
+  const [singleEnd, setSingleEnd] = useState('11:00')
 
   useEffect(() => {
     async function loadData() {
@@ -59,7 +66,7 @@ export default function StudyPage() {
         console.error('Error fetching profile:', err)
       }
 
-      // Fetch study blocks
+      // Fetch study blocks (recurring)
       try {
         const { data: blocks } = await supabase
           .from('calendar_events')
@@ -72,6 +79,26 @@ export default function StudyPage() {
         }
       } catch (err) {
         console.error('Error fetching study blocks:', err)
+      }
+
+      // Fetch one-time study sessions (non-recurring, from today onwards)
+      try {
+        const todayStart = new Date()
+        todayStart.setHours(0, 0, 0, 0)
+        const { data: singles } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .eq('profile_id', user.id)
+          .eq('event_type', 'sermon_study')
+          .eq('description', 'single_study')
+          .gte('start_time', todayStart.toISOString())
+          .order('start_time', { ascending: true }) as any
+        
+        if (singles) {
+          setSingleSessions(singles)
+        }
+      } catch (err) {
+        console.error('Error fetching single sessions:', err)
       }
 
       // Calculate this week's study hours
@@ -183,6 +210,59 @@ export default function StudyPage() {
     } catch (error) {
       console.error(error)
       alert('Error deleting study block')
+    }
+  }
+
+  const handleAddSingleSession = async () => {
+    let uid = profileId
+    if (!uid) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        uid = user.id
+        setProfileId(user.id)
+      }
+    }
+    if (!uid) {
+      alert('Please wait for your session to load, or refresh the page.')
+      return
+    }
+
+    const startDate = new Date(`${singleDate}T${singleStart}:00`)
+    const endDate = new Date(`${singleDate}T${singleEnd}:00`)
+
+    if (endDate <= startDate) {
+      alert('End time must be after start time.')
+      return
+    }
+
+    try {
+      const { data, error } = await supabase.from('calendar_events').insert({
+        profile_id: uid,
+        title: 'Study Time',
+        event_type: 'sermon_study',
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        all_day: false,
+        description: 'single_study',
+      }).select() as any
+
+      if (error) throw error
+      if (data && data.length > 0) {
+        setSingleSessions(prev => [...prev, data[0]].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()))
+      }
+    } catch (error: any) {
+      console.error('Error adding single session:', error)
+      alert(`Error adding session: ${error?.message || 'Please try again'}`)
+    }
+  }
+
+  const handleDeleteSingleSession = async (id: string) => {
+    try {
+      await supabase.from('calendar_events').delete().eq('id', id)
+      setSingleSessions(singleSessions.filter(s => s.id !== id))
+    } catch (error) {
+      console.error(error)
+      alert('Error deleting session')
     }
   }
 
@@ -355,6 +435,98 @@ export default function StudyPage() {
                   />
                 </div>
                 <Button type="button" onClick={handleAddStudyBlock} className="bg-[#D0A348] text-white hover:bg-[#D0A348]/90">
+                  <Plus className="w-4 h-4 mr-2" /> Add
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* One-Time Study Session */}
+      <Card className="shadow-sm rounded-xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-[#022d5c]">
+            <CalendarPlus className="w-5 h-5" /> One-Time Study Session
+          </CardTitle>
+          <CardDescription>
+            Schedule a single study block for a specific date. These don't repeat — perfect for extra prep before a big sermon.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {singleSessions.length === 0 && (
+              <div className="text-center py-6 text-gray-500">
+                <CalendarPlus className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                <p className="font-medium">No upcoming one-time sessions</p>
+                <p className="text-sm">Add a single study session below.</p>
+              </div>
+            )}
+
+            {singleSessions.map(session => {
+              const startDate = new Date(session.start_time)
+              const endDate = new Date(session.end_time)
+              const dateStr = startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+              const startTimeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              const endTimeStr = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              const durationHours = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60) * 10) / 10
+              const isToday = startDate.toDateString() === new Date().toDateString()
+              
+              return (
+                <div key={session.id} className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200 hover:border-[#D0A348]/30 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xs",
+                      isToday ? "bg-[#D0A348]/15 text-[#D0A348]" : "bg-gray-100 text-gray-600"
+                    )}>
+                      {startDate.getDate()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#022d5c]">
+                        {dateStr}
+                        {isToday && <span className="ml-2 text-xs font-medium text-[#D0A348]">Today</span>}
+                      </p>
+                      <p className="text-sm text-gray-500">{startTimeStr} – {endTimeStr} <span className="text-gray-400">({durationHours}h)</span></p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => handleDeleteSingleSession(session.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              )
+            })}
+
+            <div className="bg-gray-50 p-5 rounded-lg border border-dashed border-gray-300 space-y-4">
+              <p className="font-semibold text-[#022d5c] text-sm flex items-center gap-2">
+                <Plus className="w-4 h-4" /> Add Single Session
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input 
+                    type="date" 
+                    value={singleDate}
+                    min={todayStr}
+                    onChange={(e) => setSingleDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Start Time</Label>
+                  <Input 
+                    type="time" 
+                    value={singleStart}
+                    onChange={(e) => setSingleStart(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Time</Label>
+                  <Input 
+                    type="time" 
+                    value={singleEnd}
+                    onChange={(e) => setSingleEnd(e.target.value)}
+                  />
+                </div>
+                <Button type="button" onClick={handleAddSingleSession} className="bg-[#D0A348] text-white hover:bg-[#D0A348]/90">
                   <Plus className="w-4 h-4 mr-2" /> Add
                 </Button>
               </div>
