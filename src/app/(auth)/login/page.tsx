@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,14 @@ import { Label } from '@/components/ui/label'
 import { Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-8 text-gray-500">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
+  )
+}
+
+function LoginContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -18,6 +26,13 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [isForgotPassword, setIsForgotPassword] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const refCode = searchParams.get('ref')
+
+  // If arriving via referral link, default to sign up mode
+  useEffect(() => {
+    if (refCode) setIsSignUp(true)
+  }, [refCode])
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -51,11 +66,28 @@ export default function LoginPage() {
       const supabase = createClient()
 
       if (isSignUp) {
-        const { error: authError } = await supabase.auth.signUp({
+        const { data: signUpData, error: authError } = await supabase.auth.signUp({
           email,
           password,
         })
         if (authError) throw authError
+
+        // Track the referral signup
+        if (refCode && signUpData.user) {
+          try {
+            await fetch('/api/referrals', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                referralCode: refCode,
+                email: email,
+                userId: signUpData.user.id
+              })
+            })
+          } catch (refErr) {
+            console.error('Referral tracking error:', refErr)
+          }
+        }
       } else {
         const { error: authError } = await supabase.auth.signInWithPassword({
           email,
@@ -75,6 +107,12 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-8 text-center">
+      {refCode && (
+        <div className="bg-[#D0A348]/10 border border-[#D0A348]/30 rounded-lg p-4 text-sm text-[#022d5c]">
+          🎁 <strong>You've been invited!</strong> Create your free account to get started.
+        </div>
+      )}
+
       <div className="space-y-2 flex flex-col items-center">
         <img 
           src="/logo-clean.png" 

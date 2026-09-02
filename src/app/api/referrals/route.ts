@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
-// Service role client bypasses RLS for operations where cookie-based auth
-// can cause permission issues in serverless environments
 function getServiceClient() {
   return createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,6 +48,20 @@ export async function POST(request: Request) {
 
     const admin = getServiceClient()
 
+    // Check if this pastor already has a referral code — reuse it
+    const { data: existing } = await admin
+      .from('referrals')
+      .select('*')
+      .eq('referrer_id', user.id)
+      .is('referred_email', null)
+      .eq('status', 'pending')
+      .limit(1)
+      .single() as any
+
+    if (existing) {
+      return NextResponse.json(existing)
+    }
+
     // Get user profile for name
     const { data: profile } = await admin
       .from('profiles')
@@ -61,7 +73,6 @@ export async function POST(request: Request) {
     const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase()
     const referralCode = `${nameStr}${randomStr}`
 
-    // Insert referral using service role to bypass RLS
     const { data: referral, error } = await admin
       .from('referrals')
       .insert({
@@ -80,6 +91,49 @@ export async function POST(request: Request) {
     return NextResponse.json(referral)
   } catch (error: any) {
     console.error('Unexpected error in POST referrals:', error?.message || error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+// PATCH - called after signup to link a new user to a referral code
+export async function PATCH(request: Request) {
+  try {
+    const { referralCode, email, userId } = await request.json()
+    if (!referralCode || !email) {
+      return NextResponse.json({ error: 'Missing referralCode or email' }, { status: 400 })
+    }
+
+    const admin = getServiceClient()
+
+    // Find the referral by code
+    const { data: referral, error: findError } = await admin
+      .from('referrals')
+      .select('*')
+      .eq('referral_code', referralCode)
+      .single() as any
+
+    if (findError || !referral) {
+      return NextResponse.json({ error: 'Referral code not found' }, { status: 404 })
+    }
+
+    // Update with the new user's info
+    const { error: updateError } = await admin
+      .from('referrals')
+      .update({
+        referred_email: email,
+        referred_id: userId || null,
+        status: 'signed_up'
+      } as any)
+      .eq('id', referral.id)
+
+    if (updateError) {
+      console.error('Error updating referral:', updateError.message)
+      return NextResponse.json({ error: 'Failed to update referral' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Unexpected error in PATCH referrals:', error?.message || error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
