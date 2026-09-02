@@ -18,7 +18,7 @@ export default function WelcomePage() {
     <div className="flex flex-col min-h-screen bg-ivory text-charcoal selection:bg-gold/20 selection:text-navy">
       
       {/* Hero Section */}
-      <section className="relative text-white overflow-hidden py-20 lg:py-32" style={{ backgroundColor: '#0F2B4C' }}>
+      <section className="relative text-white overflow-hidden py-20 lg:py-32" style={{ backgroundColor: '#022d5c' }}>
         {/* Subtle background decoration - only behind text, not logo */}
         <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
         

@@ -1,0 +1,27 @@
+{
+  "name": "The Shepherd's Desk",
+  "short_name": "Shepherd's Desk",
+  "description": "Sermon preparation and ministry management for pastors",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#082C50",
+  "theme_color": "#082C50",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "education", "lifestyle"],
+  "lang": "en",
+  "dir": "ltr"
+}
