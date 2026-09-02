@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { UploadCloud, Palette, User, Mail, Lock, LogOut } from 'lucide-react'
+import { UploadCloud, Palette, User, Mail, Lock, LogOut, Bell } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -28,6 +28,9 @@ export default function SettingsPage() {
   // Password State
   const [newPassword, setNewPassword] = useState('')
 
+  // Notification Preferences
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [notificationPollMinutes, setNotificationPollMinutes] = useState(5)
 
   // Trial State
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null)
@@ -45,7 +48,7 @@ export default function SettingsPage() {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, full_name, church_id, trial_ends_at')
+            .select('id, full_name, church_id, trial_ends_at, notification_poll_minutes, notifications_enabled')
             .eq('id', user.id)
             .single() as any
 
@@ -58,6 +61,12 @@ export default function SettingsPage() {
               const diffTime = endsAt.getTime() - now.getTime()
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
               setTrialDaysRemaining(diffDays > 0 ? diffDays : 0)
+            }
+            if (profile.notifications_enabled !== undefined && profile.notifications_enabled !== null) {
+              setNotificationsEnabled(profile.notifications_enabled)
+            }
+            if (profile.notification_poll_minutes !== undefined && profile.notification_poll_minutes !== null) {
+              setNotificationPollMinutes(profile.notification_poll_minutes)
             }
 
             if (profile.church_id) {
@@ -355,6 +364,64 @@ export default function SettingsPage() {
               Sign Out
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification Preferences */}
+      <Card className="shadow-sm rounded-xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="w-5 h-5 text-[#022d5c]" /> Notification Preferences
+          </CardTitle>
+          <CardDescription>Control how and when you receive in-app notifications.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between py-2">
+            <div className="space-y-0.5">
+              <Label className="text-base font-medium text-gray-900">Enable Notifications</Label>
+              <p className="text-sm text-gray-500">Receive study reminders, sermon deadlines, and care follow-up nudges.</p>
+            </div>
+            <input
+              type="checkbox"
+              className="h-5 w-5 rounded border-gray-300 text-[#022d5c] focus:ring-[#022d5c]"
+              checked={notificationsEnabled}
+              onChange={async (e) => {
+                const val = e.target.checked
+                setNotificationsEnabled(val)
+                if (profileId) {
+                  await supabase.from('profiles').update({ notifications_enabled: val } as any).eq('id', profileId)
+                }
+              }}
+            />
+          </div>
+
+          {notificationsEnabled && (
+            <div className="space-y-2">
+              <Label>Check for New Notifications Every</Label>
+              <div className="flex items-center gap-3">
+                <select
+                  value={notificationPollMinutes}
+                  onChange={async (e) => {
+                    const val = parseInt(e.target.value)
+                    setNotificationPollMinutes(val)
+                    if (profileId) {
+                      await supabase.from('profiles').update({ notification_poll_minutes: val } as any).eq('id', profileId)
+                    }
+                  }}
+                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value={1}>1 minute</option>
+                  <option value={5}>5 minutes</option>
+                  <option value={10}>10 minutes</option>
+                  <option value={15}>15 minutes</option>
+                  <option value={30}>30 minutes</option>
+                  <option value={60}>1 hour</option>
+                </select>
+                <span className="text-sm text-gray-500">polling interval</span>
+              </div>
+              <p className="text-xs text-gray-400">Lower intervals check more frequently but use more resources.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

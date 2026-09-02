@@ -121,6 +121,23 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
                 <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('generate_outline', topicInput || customPrompt)}>📝 Generate Outline</Button>
                 <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('find_illustrations', topicInput || customPrompt)}>💡 Find Illustrations</Button>
                 <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={() => handleAction('suggest_transitions', topicInput || customPrompt)}>🔗 Suggest Transitions</Button>
+                <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={async () => {
+                  const scripture = topicInput || customPrompt;
+                  if (!scripture) { setError('Enter a scripture passage above first.'); return; }
+                  setLoading(true); setError(''); setResult(''); setLastAction('cross_reference');
+                  try {
+                    const res = await fetch('/api/ai/cross-reference', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ scripture, context: sermonContent?.substring(0, 500) })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Failed');
+                    const refs = Array.isArray(data) ? data : data.references || [];
+                    const formatted = refs.map((r: any) => `📖 ${r.reference} (${r.type})\n${r.explanation}`).join('\n\n');
+                    setResult(formatted || 'No cross-references found.');
+                  } catch (err: any) { setError(err.message); }
+                  setLoading(false);
+                }}>📖 Cross-References</Button>
                 <Button variant="outline" className="justify-start text-[#022d5c] border-[#D0A348] bg-[#D0A348]/10 hover:bg-[#D0A348]/20 font-medium" onClick={() => handleAction('search_sermons', topicInput || customPrompt)}>🔍 Search My Sermons & Notes</Button>
                 
                 {selectedText && (

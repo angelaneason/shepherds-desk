@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Presentation, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Presentation, Trash2, BookOpen, Loader2, Copy, X, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,13 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
   const [location, setLocation] = useState("");
   const [status, setStatus] = useState<"draft" | "review" | "ready" | "preached">("draft");
   const [content, setContent] = useState<any>(null);
+
+  // Devotional Generator
+  const [devDrawerOpen, setDevDrawerOpen] = useState(false);
+  const [devDays, setDevDays] = useState(5);
+  const [devLoading, setDevLoading] = useState(false);
+  const [devResult, setDevResult] = useState<any[]>([]);
+  const [devSaving, setDevSaving] = useState(false);
 
   const fetchSermon = useCallback(async () => {
     try {
@@ -209,6 +216,15 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
             </DialogContent>
           </Dialog>
 
+          <Button 
+            variant="outline"
+            onClick={() => setDevDrawerOpen(true)}
+            className="hidden md:flex border-[#022d5c]/20 text-[#022d5c] hover:bg-[#022d5c]/5 gap-2"
+          >
+            <BookOpen className="h-4 w-4" />
+            Devotional
+          </Button>
+
           <Link href={`/sermons/${id}/pulpit`}>
             <Button variant="outline" className="border-[#022d5c] text-[#022d5c] hover:bg-[#022d5c]/10">
               <Presentation className="h-4 w-4 mr-2" />
@@ -290,6 +306,171 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           />
         </div>
       </div>
+
+      {/* Devotional Generator Drawer */}
+      {devDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setDevDrawerOpen(false)} />
+          <div className="relative w-full sm:w-[480px] bg-[#F8F5EE] shadow-2xl overflow-y-auto">
+            <div className="sticky top-0 bg-[#F8F5EE] border-b border-gray-200 p-4 flex items-center justify-between z-10">
+              <h3 className="text-lg font-bold text-[#022d5c] font-playfair">📅 Devotional Generator</h3>
+              <button onClick={() => setDevDrawerOpen(false)} className="p-1 rounded hover:bg-gray-200">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {devResult.length === 0 && !devLoading && (
+                <>
+                  <p className="text-sm text-gray-600">
+                    Generate a multi-day devotional plan from this sermon. 
+                    Perfect for sharing with your congregation or small groups.
+                  </p>
+                  <div className="space-y-3">
+                    <label className="text-sm font-semibold text-[#022d5c]">Duration</label>
+                    <div className="flex gap-2">
+                      {[5, 7].map(d => (
+                        <button
+                          key={d}
+                          onClick={() => setDevDays(d)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            devDays === d 
+                              ? 'bg-[#022d5c] text-white' 
+                              : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]/30'
+                          }`}
+                        >
+                          {d}-Day Plan
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      setDevLoading(true);
+                      try {
+                        // Extract text content from Tiptap JSON
+                        function extractText(node: any): string {
+                          if (!node) return '';
+                          let t = '';
+                          if (node.text) t += node.text;
+                          if (node.content) node.content.forEach((c: any) => { t += ' ' + extractText(c); });
+                          return t;
+                        }
+                        const plainText = extractText(content);
+                        
+                        const res = await fetch('/api/ai/devotional', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            sermonTitle: title,
+                            sermonContent: plainText.substring(0, 3000),
+                            scripture: scripture,
+                            days: devDays
+                          })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Failed to generate');
+                        setDevResult(Array.isArray(data) ? data : data.devotional || []);
+                      } catch (err: any) {
+                        alert('Error generating devotional: ' + err.message);
+                      }
+                      setDevLoading(false);
+                    }}
+                    className="w-full bg-[#D0A348] text-white hover:bg-[#D0A348]/90 gap-2"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    Generate {devDays}-Day Devotional
+                  </Button>
+                </>
+              )}
+
+              {devLoading && (
+                <div className="flex flex-col items-center justify-center py-16 text-[#022d5c]">
+                  <Loader2 className="h-8 w-8 animate-spin mb-4" />
+                  <p className="text-sm font-medium">Crafting your devotional...</p>
+                  <p className="text-xs text-gray-500 mt-1">This may take a moment</p>
+                </div>
+              )}
+
+              {devResult.length > 0 && (
+                <>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const text = devResult.map(d => 
+                          `Day ${d.day}: ${d.title}\nScripture: ${d.scripture}\n\n${d.text}\n\nReflection: ${d.question}\n\nPrayer: ${d.prayer}`
+                        ).join('\n\n---\n\n');
+                        navigator.clipboard.writeText(text);
+                        alert('Copied to clipboard!');
+                      }}
+                      className="gap-1"
+                    >
+                      <Copy className="w-3 h-3" /> Copy All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={devSaving}
+                      onClick={async () => {
+                        setDevSaving(true);
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) throw new Error('Not logged in');
+                          await supabase.from('saved_devotionals').insert({
+                            profile_id: user.id,
+                            sermon_id: id,
+                            title: `${title} — ${devDays}-Day Devotional`,
+                            days: devDays,
+                            content: devResult
+                          } as any);
+                          alert('Devotional saved to your library!');
+                        } catch (err: any) {
+                          alert('Error saving: ' + err.message);
+                        }
+                        setDevSaving(false);
+                      }}
+                      className="gap-1"
+                    >
+                      <Download className="w-3 h-3" /> {devSaving ? 'Saving...' : 'Save to Library'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDevResult([])}
+                      className="ml-auto text-gray-500"
+                    >
+                      Start Over
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {devResult.map((day: any, i: number) => (
+                      <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-[#022d5c] text-white text-xs font-bold px-2 py-1 rounded">Day {day.day || i + 1}</span>
+                          <h4 className="font-semibold text-[#022d5c]">{day.title}</h4>
+                        </div>
+                        <p className="text-xs text-[#D0A348] font-semibold">{day.scripture}</p>
+                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{day.text}</p>
+                        <div className="bg-[#F8F5EE] p-3 rounded-md">
+                          <p className="text-xs font-semibold text-[#022d5c] mb-1">Reflection Question</p>
+                          <p className="text-sm text-gray-600 italic">{day.question}</p>
+                        </div>
+                        <div className="border-t pt-2">
+                          <p className="text-xs font-semibold text-[#022d5c] mb-1">🙏 Prayer</p>
+                          <p className="text-sm text-gray-600">{day.prayer}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

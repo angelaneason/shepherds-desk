@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, BookOpen, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 import { SupportChat } from '@/components/support/SupportChat'
+import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 
@@ -70,6 +71,8 @@ export default function DashboardLayout({
     { name: 'Calendar', href: '/calendar', icon: CalendarDays },
     { name: 'Ministry Care', href: '/care', icon: Heart },
     { name: 'Study', href: '/study', icon: Clock },
+    { name: 'Announcements', href: '/announcements', icon: Megaphone },
+    { name: 'Resources', href: '/resources', icon: Library },
     { name: 'Refer a Pastor', href: '/referrals', icon: Gift },
     { name: 'Settings', href: '/settings', icon: Settings },
   ]
@@ -227,6 +230,7 @@ export default function DashboardLayout({
           </div>
           
           <div className="flex items-center gap-3">
+            <NotificationCenter />
             <Button
               onClick={() => setIsCaptureOpen(true)}
               className="hidden md:flex bg-[#D0A348] hover:bg-[#D0A348]/90 text-white gap-2"
