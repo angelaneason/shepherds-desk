@@ -237,65 +237,73 @@ export default function DashboardPage() {
 
       {/* Top Section: Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="shadow-sm rounded-xl border-gray-100">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
-                <CalendarDays className="w-6 h-6" />
+        <Link href="/calendar">
+          <Card className="shadow-sm rounded-xl border-gray-100 hover:shadow-md hover:border-[#022d5c]/20 transition-all cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+                  <CalendarDays className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">Today</p>
+                  <p className="text-2xl font-bold text-[#022d5c]">{todayEventsCount}</p>
+                  <p className="text-sm text-gray-500">scheduled commitments</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">Today</p>
-                <p className="text-2xl font-bold text-[#022d5c]">{todayEventsCount}</p>
-                <p className="text-sm text-gray-500">scheduled commitments</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="shadow-sm rounded-xl border-gray-100">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#fbf3db] text-[#D0A348] rounded-lg">
-                <Users className="w-6 h-6" />
+        <Link href="/care">
+          <Card className="shadow-sm rounded-xl border-gray-100 hover:shadow-md hover:border-[#D0A348]/30 transition-all cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[#fbf3db] text-[#D0A348] rounded-lg">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">People</p>
+                  <p className="text-2xl font-bold text-[#022d5c]">{pendingCareCount}</p>
+                  <p className="text-sm text-gray-500">follow-ups due</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">People</p>
-                <p className="text-2xl font-bold text-[#022d5c]">{pendingCareCount}</p>
-                <p className="text-sm text-gray-500">follow-ups due</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="shadow-sm rounded-xl border-gray-100">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#fbf3db] text-[#D0A348] rounded-lg">
-                <BookOpen className="w-6 h-6" />
+        <Link href={nextSermon ? `/sermons/${nextSermon.id}` : '/sermons'}>
+          <Card className="shadow-sm rounded-xl border-gray-100 hover:shadow-md hover:border-[#D0A348]/30 transition-all cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[#fbf3db] text-[#D0A348] rounded-lg">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">Next Message</p>
+                  <p className="text-lg font-bold text-[#022d5c] truncate">{nextSermon?.title || 'None planned'}</p>
+                  <p className="text-sm text-gray-500 capitalize">{nextSermon?.status || 'No status'}</p>
+                </div>
               </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">Next Message</p>
-                <p className="text-lg font-bold text-[#022d5c] truncate">{nextSermon?.title || 'None planned'}</p>
-                <p className="text-sm text-gray-500 capitalize">{nextSermon?.status || 'No status'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="shadow-sm rounded-xl border-gray-100">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 text-green-600 rounded-lg">
-                <Clock className="w-6 h-6" />
+        <Link href="/settings">
+          <Card className="shadow-sm rounded-xl border-gray-100 hover:shadow-md hover:border-green-200 transition-all cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-100 text-green-600 rounded-lg">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">Study Time</p>
+                  <p className="text-2xl font-bold text-[#022d5c]">{studyHours}h</p>
+                  <p className="text-sm text-gray-500">protected this week</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold tracking-wider text-gray-500 uppercase">Study Time</p>
-                <p className="text-2xl font-bold text-[#022d5c]">{studyHours}h</p>
-                <p className="text-sm text-gray-500">protected this week</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Middle Section: Two Columns */}
@@ -304,7 +312,9 @@ export default function DashboardPage() {
         {/* Left: Ministry Calendar */}
         <Card className="lg:col-span-2 shadow-sm rounded-xl border-gray-100">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="text-xl font-bold text-[#022d5c]">Ministry Calendar</CardTitle>
+            <Link href="/calendar" className="hover:underline">
+              <CardTitle className="text-xl font-bold text-[#022d5c]">Ministry Calendar</CardTitle>
+            </Link>
             <div className="flex items-center gap-4">
               <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-100 rounded">
                 <ChevronLeft className="w-5 h-5 text-gray-500" />
@@ -377,7 +387,9 @@ export default function DashboardPage() {
             <CardHeader className="pb-3 border-b border-gray-50">
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-5 h-5 text-[#D0A348]" />
-                <CardTitle className="text-lg font-bold text-[#022d5c]">Selected Day</CardTitle>
+                <Link href="/calendar" className="hover:underline">
+                  <CardTitle className="text-lg font-bold text-[#022d5c]">Selected Day</CardTitle>
+                </Link>
               </div>
             </CardHeader>
             <CardContent className="pt-4">
@@ -413,7 +425,9 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 mb-1">
                 <BookOpen className="w-5 h-5 text-[#D0A348]" />
-                <CardTitle className="text-lg font-bold text-[#022d5c]">Next Sermon</CardTitle>
+                <Link href="/sermons" className="hover:underline">
+                  <CardTitle className="text-lg font-bold text-[#022d5c]">Next Sermon</CardTitle>
+                </Link>
               </div>
               {nextSermon ? (
                 <>
@@ -452,7 +466,9 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 mb-1">
                 <Clock className="w-5 h-5 text-[#022d5c]" />
-                <CardTitle className="text-lg font-bold text-[#022d5c]">📖 Study Time This Week</CardTitle>
+                <Link href="/settings" className="hover:underline">
+                  <CardTitle className="text-lg font-bold text-[#022d5c]">📖 Study Time This Week</CardTitle>
+                </Link>
               </div>
             </CardHeader>
             <CardContent>
@@ -507,28 +523,30 @@ export default function DashboardPage() {
               const initial = memberName.charAt(0).toUpperCase()
               
               return (
-                <Card key={task.id} className="min-w-[280px] w-[280px] shrink-0 snap-start shadow-sm border-gray-100">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg shrink-0">
-                        {initial}
+                <Link key={task.id} href="/care">
+                  <Card className="min-w-[280px] w-[280px] shrink-0 snap-start shadow-sm border-gray-100 hover:shadow-md hover:border-[#D0A348]/30 transition-all cursor-pointer">
+                    <CardContent className="p-5">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg shrink-0">
+                          {initial}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-[#022d5c] truncate">{memberName}</h4>
+                          <Badge variant="outline" className="mt-1 text-xs border-[#D0A348] text-[#D0A348] bg-[#fbf3db]">
+                            {task.task_type || 'Care'}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-[#022d5c] truncate">{memberName}</h4>
-                        <Badge variant="outline" className="mt-1 text-xs border-[#D0A348] text-[#D0A348] bg-[#fbf3db]">
-                          {task.task_type || 'Care'}
-                        </Badge>
+                      <p className="text-sm text-gray-600 line-clamp-2 min-h-[40px] mb-3">
+                        {task.description}
+                      </p>
+                      <div className="text-xs font-medium text-gray-400 flex items-center gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        Due: {(task.due_date || task.follow_up_date) ? new Date(task.due_date || task.follow_up_date).toLocaleDateString() : 'N/A'}
                       </div>
-                    </div>
-                    <p className="text-sm text-gray-600 line-clamp-2 min-h-[40px] mb-3">
-                      {task.description}
-                    </p>
-                    <div className="text-xs font-medium text-gray-400 flex items-center gap-1.5">
-                      <CalendarDays className="w-3.5 h-3.5" />
-                      Due: {(task.due_date || task.follow_up_date) ? new Date(task.due_date || task.follow_up_date).toLocaleDateString() : 'N/A'}
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               )
             })}
           </div>
