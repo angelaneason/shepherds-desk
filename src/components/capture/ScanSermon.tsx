@@ -33,6 +33,7 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
   const [pages, setPages] = useState<PageItem[]>([]);
   const [title, setTitle] = useState('');
   const [scriptureRef, setScriptureRef] = useState('');
+  const [speaker, setSpeaker] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +137,8 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
       const insertData = {
         author_id: user.id,
         title,
-        scripture_reference: scriptureRef || null,
+        subtitle: speaker ? `Speaker: ${speaker}` : null,
+        scripture_primary: scriptureRef || null,
         content: combinedHtml,
         status: 'draft',
       };
@@ -192,7 +194,7 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
             <DialogTitle className="text-xl font-bold text-white">Scan Sermon</DialogTitle>
           </div>
           <DialogDescription className="text-gray-200 mt-2">
-            Photograph each page of your handwritten sermon. Take clear, well-lit photos for best results.
+            Upload your sermon as a PDF, Word doc, photo, or text file. Multi-page documents supported.
           </DialogDescription>
         </DialogHeader>
 
@@ -228,6 +230,15 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
                     value={scriptureRef}
                     onChange={(e) => setScriptureRef(e.target.value)}
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#022d5c] mb-1">Speaker/Preacher (Optional)</label>
+                  <Input 
+                    placeholder="e.g. Pastor James Wilson" 
+                    value={speaker}
+                    onChange={(e) => setSpeaker(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Leave blank if this is your own sermon</p>
                 </div>
               </div>
 
