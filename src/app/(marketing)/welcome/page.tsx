@@ -43,12 +43,12 @@ export default function WelcomePage() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <Button asChild size="lg" className="bg-gold hover:bg-gold/90 text-navy font-semibold text-base h-14 px-8 rounded-full shadow-lg shadow-gold/20">
-              <Link href="/login">Start Free Trial <ChevronRight className="ml-2 h-5 w-5" /></Link>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="border-white/30 hover:bg-white/10 text-white font-semibold text-base h-14 px-8 rounded-full bg-transparent">
-              <a href="#features">See Features</a>
-            </Button>
+            <Link href="/login" className="inline-flex items-center justify-center bg-gold hover:bg-gold/90 text-navy font-semibold text-base h-14 px-8 rounded-full shadow-lg shadow-gold/20">
+              Start Free Trial <ChevronRight className="ml-2 h-5 w-5" />
+            </Link>
+            <a href="#features" className="inline-flex items-center justify-center border border-white/30 hover:bg-white/10 text-white font-semibold text-base h-14 px-8 rounded-full bg-transparent">
+              See Features
+            </a>
           </div>
         </div>
       </section>
@@ -214,9 +214,9 @@ export default function WelcomePage() {
                   ))}
                 </ul>
                 
-                <Button asChild size="lg" className="w-full bg-gold hover:bg-gold/90 text-navy font-bold h-14 rounded-xl">
-                  <Link href="/login">Start Your Free Trial</Link>
-                </Button>
+                <Link href="/login" className="inline-flex items-center justify-center w-full bg-gold hover:bg-gold/90 text-navy font-bold h-14 rounded-xl">
+                  Start Your Free Trial
+                </Link>
               </div>
             </div>
           </div>
@@ -243,9 +243,9 @@ export default function WelcomePage() {
           <p className="text-white/80 text-lg md:text-xl mb-10">
             Join pastors who are spending less time on admin and more time in ministry.
           </p>
-          <Button asChild size="lg" className="bg-gold hover:bg-gold/90 text-navy font-semibold text-base h-14 px-10 rounded-full shadow-lg shadow-gold/20">
-            <Link href="/login">Start Free Trial</Link>
-          </Button>
+          <Link href="/login" className="inline-flex items-center justify-center bg-gold hover:bg-gold/90 text-navy font-semibold text-base h-14 px-10 rounded-full shadow-lg shadow-gold/20">
+            Start Free Trial
+          </Link>
         </div>
       </section>
 
