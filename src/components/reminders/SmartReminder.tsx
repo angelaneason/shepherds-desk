@@ -139,11 +139,17 @@ export function SmartReminder() {
           ? `${parsed.date}T${parsed.time}:00`
           : `${parsed.date}T09:00:00`
 
+        // Calculate end time (1 hour after start)
+        const startDate = new Date(startTime)
+        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000)
+        const endTime = endDate.toISOString()
+
         await (supabase.from('calendar_events').insert({
           profile_id: user.id,
           title: parsed.task,
           event_type: parsed.category === 'visit' ? 'visit' : parsed.category === 'personal' ? 'personal' : 'meeting',
           start_time: startTime,
+          end_time: endTime,
           all_day: !parsed.time,
           description: parsed.person ? `Related to: ${parsed.person}` : null,
         }) as any)
