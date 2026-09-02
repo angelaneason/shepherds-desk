@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { LayoutDashboard, BookOpen, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
+import { SupportChat } from '@/components/support/SupportChat'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 
@@ -319,6 +320,8 @@ export default function DashboardLayout({
           </button>
         </div>
       </nav>
+
+      <SupportChat />
     </div>
   )
 }
