@@ -368,9 +368,42 @@ export function SmartReminder() {
               </div>
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                 <Calendar className="w-5 h-5 text-[#D0A348] shrink-0" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-gray-800">{formatDate(parsed.date)}</p>
-                  {parsed.time && <span className="text-xs text-gray-500">{parsed.time}</span>}
+                </div>
+              </div>
+              {/* Time Picker */}
+              <div className="p-3 bg-gray-50 rounded-xl">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Time</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setParsed({ ...parsed, time: null })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      !parsed.time
+                        ? 'bg-[#022d5c] text-white'
+                        : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]'
+                    }`}
+                  >
+                    All Day
+                  </button>
+                  <button
+                    onClick={() => setParsed({ ...parsed, time: parsed.time || '09:00' })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      parsed.time
+                        ? 'bg-[#022d5c] text-white'
+                        : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]'
+                    }`}
+                  >
+                    Set Time
+                  </button>
+                  {parsed.time && (
+                    <input
+                      type="time"
+                      value={parsed.time}
+                      onChange={(e) => setParsed({ ...parsed, time: e.target.value })}
+                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D0A348]"
+                    />
+                  )}
                 </div>
               </div>
               {parsed.person && (
