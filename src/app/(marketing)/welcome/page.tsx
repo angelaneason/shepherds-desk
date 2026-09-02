@@ -123,7 +123,7 @@ export default function WelcomePage() {
               </div>
               <h2 className="text-3xl md:text-4xl font-[family-name:var(--font-playfair)] text-navy mb-6">AI That Respects Your Voice</h2>
               <p className="text-charcoal/80 mb-6 leading-relaxed text-lg">
-                Shepherd's Desk AI doesn't write your sermons — it helps you develop what God has already placed on your heart. Brainstorm titles, generate outlines, find illustrations, and polish your prose.
+                The Shepherd's Desk AI doesn't write your sermons - it helps you develop what God has already placed on your heart. Brainstorm titles, generate outlines, find illustrations, and polish your prose.
               </p>
               <p className="font-[family-name:var(--font-playfair)] text-xl text-navy italic">
                 Your calling. Your voice. God's message.
@@ -261,7 +261,7 @@ export default function WelcomePage() {
                 height={32} 
                 className="h-8 w-auto object-contain brightness-0 invert opacity-80"
               />
-              <span className="font-[family-name:var(--font-playfair)] font-bold text-xl text-white/90">Shepherd's Desk</span>
+              <span className="font-[family-name:var(--font-playfair)] font-bold text-xl text-white/90">The Shepherd's Desk</span>
             </div>
             
             <nav className="flex gap-6 text-sm text-white/60">
@@ -273,7 +273,7 @@ export default function WelcomePage() {
           </div>
           
           <div className="text-center md:text-left text-white/40 text-sm border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p>© {new Date().getFullYear()} Shepherd's Desk. Built with love for those who shepherd God's people.</p>
+            <p>© {new Date().getFullYear()} The Shepherd's Desk. Built with love for those who shepherd God's people.</p>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 cursor-pointer transition-colors">
                 {/* Social placeholder */}
