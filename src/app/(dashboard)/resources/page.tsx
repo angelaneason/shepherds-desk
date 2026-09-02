@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Search, Plus, Sparkles, Tag, Book, MoreVertical, Edit, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Plus, Sparkles, Tag, Book, MoreVertical, Edit, Trash2, X, ChevronDown, ChevronUp, Phone, MapPin, Globe, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Resource {
@@ -17,12 +17,17 @@ interface Resource {
   content: string;
   scripture_references: string[];
   tags: string[];
+  phone: string | null;
+  address: string | null;
+  website: string | null;
+  hours: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const CATEGORIES = [
   { id: 'all', label: 'All' },
+  // Pastoral Counseling
   { id: 'grief', label: 'Grief' },
   { id: 'marriage', label: 'Marriage' },
   { id: 'anxiety', label: 'Anxiety' },
@@ -35,8 +40,19 @@ const CATEGORIES = [
   { id: 'parenting', label: 'Parenting' },
   { id: 'finances', label: 'Finances' },
   { id: 'loneliness', label: 'Loneliness' },
+  // Community / Local Resources
+  { id: 'housing', label: '🏠 Housing' },
+  { id: 'food_pantry', label: '🍞 Food Pantry' },
+  { id: 'shelter', label: '🏘️ Shelter' },
+  { id: 'crisis_hotline', label: '📞 Crisis Hotline' },
+  { id: 'mental_health', label: '🧠 Mental Health' },
+  { id: 'legal_aid', label: '⚖️ Legal Aid' },
+  { id: 'medical', label: '🏥 Medical' },
+  { id: 'community', label: '🤝 Community' },
   { id: 'other', label: 'Other' },
 ];
+
+const COMMUNITY_CATEGORIES = ['housing', 'food_pantry', 'shelter', 'crisis_hotline', 'mental_health', 'legal_aid', 'medical', 'community'];
 
 const STARTER_RESOURCES = [
   { title: 'Navigating the Loss of a Loved One', category: 'grief', content: 'Grief is a natural response to loss, and everyone processes it differently. As a pastor, it is crucial to offer a ministry of presence—simply being there without trying to fix their pain. Validate their feelings of sorrow and remind them that Jesus wept with Mary and Martha. Encourage them to lean into their faith, but do not rush their mourning process.', scripture_references: ['Psalm 34:18', 'Matthew 5:4', 'John 11:35'], tags: ['loss', 'comfort', 'mourning'] },
@@ -74,6 +90,10 @@ export default function ResourcesPage() {
   const [content, setContent] = useState('');
   const [scriptures, setScriptures] = useState('');
   const [tags, setTags] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [website, setWebsite] = useState('');
+  const [hours, setHours] = useState('');
 
   // AI Counsel State
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -117,7 +137,10 @@ export default function ResourcesPage() {
       const matchContent = res.content.toLowerCase().includes(q);
       const matchScriptures = res.scripture_references?.some(s => s.toLowerCase().includes(q));
       const matchTags = res.tags?.some(t => t.toLowerCase().includes(q));
-      return matchTitle || matchContent || matchScriptures || matchTags;
+      const matchPhone = (res.phone || '').toLowerCase().includes(q);
+      const matchAddress = (res.address || '').toLowerCase().includes(q);
+      const matchWebsite = (res.website || '').toLowerCase().includes(q);
+      return matchTitle || matchContent || matchScriptures || matchTags || matchPhone || matchAddress || matchWebsite;
     });
   }, [resources, searchQuery, selectedCategory]);
 
@@ -133,6 +156,10 @@ export default function ResourcesPage() {
       setContent(resource.content);
       setScriptures((resource.scripture_references || []).join(', '));
       setTags((resource.tags || []).join(', '));
+      setPhone(resource.phone || '');
+      setAddress(resource.address || '');
+      setWebsite(resource.website || '');
+      setHours(resource.hours || '');
     } else {
       setEditingResource(null);
       setTitle('');
@@ -140,6 +167,10 @@ export default function ResourcesPage() {
       setContent('');
       setScriptures('');
       setTags('');
+      setPhone('');
+      setAddress('');
+      setWebsite('');
+      setHours('');
     }
     setIsModalOpen(true);
   };
@@ -157,6 +188,10 @@ export default function ResourcesPage() {
       content,
       scripture_references: formattedScriptures,
       tags: formattedTags,
+      phone: phone || null,
+      address: address || null,
+      website: website || null,
+      hours: hours || null,
     };
 
     if (editingResource) {
@@ -331,6 +366,36 @@ export default function ResourcesPage() {
                   </div>
                   
                   <div className="mt-auto space-y-3 pt-4 border-t border-gray-100">
+                    {/* Contact Info for Community Resources */}
+                    {(resource.phone || resource.address || resource.website || resource.hours) && (
+                      <div className="bg-blue-50/50 rounded-lg p-3 space-y-1.5 text-sm">
+                        {resource.phone && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                            <a href={`tel:${resource.phone}`} className="hover:text-blue-600 hover:underline">{resource.phone}</a>
+                          </div>
+                        )}
+                        {resource.address && (
+                          <div className="flex items-start gap-2 text-gray-700">
+                            <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                            <span>{resource.address}</span>
+                          </div>
+                        )}
+                        {resource.website && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                            <a href={resource.website.startsWith('http') ? resource.website : `https://${resource.website}`} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 hover:underline truncate">{resource.website}</a>
+                          </div>
+                        )}
+                        {resource.hours && (
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                            <span>{resource.hours}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {resource.scripture_references && resource.scripture_references.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         <Book className="w-3.5 h-3.5 text-[#D0A348] mt-0.5" />
@@ -406,6 +471,33 @@ export default function ResourcesPage() {
                 <Label htmlFor="tags">Tags (comma-separated)</Label>
                 <Input id="tags" placeholder="e.g. faith, hope, marriage" value={tags} onChange={e => setTags(e.target.value)} />
               </div>
+
+              {/* Contact Info Fields - shown for community categories or when any contact field has data */}
+              {(COMMUNITY_CATEGORIES.includes(category) || phone || address || website || hours) && (
+                <div className="space-y-4 p-4 bg-blue-50/50 rounded-lg border border-blue-100">
+                  <p className="text-sm font-semibold text-blue-700 flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4" /> Local Resource Contact Info
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input id="phone" placeholder="(555) 123-4567" value={phone} onChange={e => setPhone(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label htmlFor="website">Website</Label>
+                      <Input id="website" placeholder="www.example.org" value={website} onChange={e => setWebsite(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="address">Address</Label>
+                    <Input id="address" placeholder="123 Main St, City, State ZIP" value={address} onChange={e => setAddress(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="hours">Hours</Label>
+                    <Input id="hours" placeholder="Mon-Fri 9am-5pm, Sat 10am-2pm" value={hours} onChange={e => setHours(e.target.value)} />
+                  </div>
+                </div>
+              )}
               <div className="flex justify-end gap-3 mt-6">
                 <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                 <Button onClick={handleSaveResource} className="bg-[#022d5c] hover:bg-[#011c3a]">Save</Button>
