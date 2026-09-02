@@ -14,17 +14,26 @@ export default function DashboardLayout({
 }) {
   const [isCaptureOpen, setIsCaptureOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [userInitial, setUserInitial] = useState('?')
   const supabase = createClient()
   
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
+        // Set user initial from email
+        const email = user.email || ''
+        setUserInitial(email.charAt(0).toUpperCase())
+        
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, full_name')
           .eq('id', user.id)
-          .single()
+          .single() as any
+        
+        if (profile?.full_name) {
+          setUserInitial(profile.full_name.charAt(0).toUpperCase())
+        }
         
         if (profile && profile.role === 'admin') {
           setIsAdmin(true)
@@ -75,10 +84,14 @@ export default function DashboardLayout({
       />
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-[#022d5c] text-white">
-        <div className="p-6">
-          <h1 className="text-xl font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-playfair)' }}>
-            <span>🐑</span> Shepherd's Desk
-          </h1>
+        <div className="p-4">
+          <Link href="/" className="block">
+            <img 
+              src="/logo-dark.png" 
+              alt="The Shepherd's Desk" 
+              className="h-16 w-auto object-contain"
+            />
+          </Link>
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -138,7 +151,7 @@ export default function DashboardLayout({
               <span className="hidden sm:inline">Quick Capture</span>
             </Button>
             <div className="w-8 h-8 rounded-full bg-[#022d5c] text-white flex items-center justify-center font-bold">
-              P
+              {userInitial}
             </div>
           </div>
         </header>
