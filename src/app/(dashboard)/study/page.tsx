@@ -98,6 +98,9 @@ export default function StudyPage() {
   const [singleStart, setSingleStart] = useState('09:00')
   const [singleEnd, setSingleEnd] = useState('11:00')
 
+  // Focus session history
+  const [focusHistory, setFocusHistory] = useState<any[]>([])
+
   // Encouragement
   const [encourageOffset, setEncourageOffset] = useState(0)
 
@@ -175,6 +178,26 @@ export default function StudyPage() {
         }
       } catch (err) {
         console.error('Error fetching single sessions:', err)
+      }
+
+      // Fetch focus session history (last 30 days)
+      try {
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const { data: focusSessions } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .eq('profile_id', user.id)
+          .eq('event_type', 'sermon_study')
+          .eq('description', 'focus_session')
+          .gte('start_time', thirtyDaysAgo.toISOString())
+          .order('start_time', { ascending: false }) as any
+        
+        if (focusSessions) {
+          setFocusHistory(focusSessions)
+        }
+      } catch (err) {
+        console.error('Error fetching focus history:', err)
       }
 
       // Calculate this week's study hours
@@ -302,7 +325,7 @@ export default function StudyPage() {
     const startTime = new Date(endTime.getTime() - durationMs)
 
     try {
-      await supabase.from('calendar_events').insert({
+      const { data: saved } = await supabase.from('calendar_events').insert({
         profile_id: uid,
         title: 'Focus Session',
         event_type: 'sermon_study',
@@ -310,10 +333,14 @@ export default function StudyPage() {
         end_time: endTime.toISOString(),
         all_day: false,
         description: 'focus_session',
-      })
+      }).select() as any
       // Update weekly hours display
       const addedHours = totalTimerSeconds / 3600
       setStudyHoursThisWeek(prev => Math.round((prev + addedHours) * 10) / 10)
+      // Add to focus history
+      if (saved && saved.length > 0) {
+        setFocusHistory(prev => [saved[0], ...prev])
+      }
     } catch (err) {
       console.error('Error saving focus session:', err)
     }
@@ -742,6 +769,90 @@ export default function StudyPage() {
               )}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ─── Focus Session Log ───────────────────────────────────────────── */}
+      <Card className="shadow-sm rounded-xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-[#022d5c]">
+            <TrendingUp className="w-5 h-5" /> Focus Session Log
+          </CardTitle>
+          <CardDescription>
+            Your completed focus sessions from the last 30 days. Every timer session is logged here and on your calendar.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {focusHistory.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Clock className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              <p className="font-medium">No focus sessions yet</p>
+              <p className="text-sm">Complete a focus timer session above and it will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Summary */}
+              <div className="flex items-center justify-between bg-[#022d5c]/5 p-4 rounded-lg mb-2">
+                <div>
+                  <p className="text-sm font-medium text-[#022d5c]">Last 30 Days</p>
+                  <p className="text-xs text-gray-500">{focusHistory.length} session{focusHistory.length !== 1 ? 's' : ''} completed</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-[#022d5c]">
+                    {Math.round(focusHistory.reduce((sum, s) => {
+                      if (s.start_time && s.end_time) {
+                        return sum + (new Date(s.end_time).getTime() - new Date(s.start_time).getTime()) / (1000 * 60 * 60)
+                      }
+                      return sum
+                    }, 0) * 10) / 10}h
+                  </p>
+                  <p className="text-xs text-gray-500">total focus time</p>
+                </div>
+              </div>
+
+              {/* Session List */}
+              <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                {focusHistory.map(session => {
+                  const startDate = new Date(session.start_time)
+                  const endDate = new Date(session.end_time)
+                  const dateStr = startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                  const timeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  const durationMin = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
+                  const isToday = startDate.toDateString() === new Date().toDateString()
+
+                  return (
+                    <div key={session.id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          isToday ? "bg-[#D0A348]" : "bg-[#022d5c]/30"
+                        )} />
+                        <div>
+                          <p className="text-sm font-medium text-[#022d5c]">
+                            {dateStr}{isToday && <span className="ml-1 text-xs text-[#D0A348]">(today)</span>}
+                          </p>
+                          <p className="text-xs text-gray-400">{timeStr} · {durationMin} min</p>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={async () => {
+                          await supabase.from('calendar_events').delete().eq('id', session.id)
+                          setFocusHistory(prev => prev.filter(s => s.id !== session.id))
+                          const removedHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60)
+                          setStudyHoursThisWeek(prev => Math.max(0, Math.round((prev - removedHours) * 10) / 10))
+                        }} 
+                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 h-7 w-7"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
