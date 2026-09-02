@@ -27,7 +27,7 @@ import {
   addDays,
   areIntervalsOverlapping
 } from 'date-fns'
-import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, Clock, Trash2, MapPin, BookOpen, Heart } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, Clock, Trash2, Pencil, MapPin, BookOpen, Heart } from 'lucide-react'
 
 const EVENT_TYPES = {
   sermon_study: { label: 'Sermon Study', color: 'bg-[#022d5c] text-white', defaultHex: '#022d5c' },
@@ -229,28 +229,75 @@ export default function CalendarPage() {
     }
   }
 
+  const [editingEvent, setEditingEvent] = useState<any | null>(null)
+
   const executeSave = async (payload: any) => {
     setSaving(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .insert({ ...payload, profile_id: user.id })
-        .select()
-        .single()
+      if (editingEvent) {
+        const { data, error } = await supabase
+          .from('calendar_events')
+          .update(payload)
+          .eq('id', editingEvent.id)
+          .select()
+          .single()
 
-      if (error) throw error
+        if (error) throw error
 
-      if (data) {
-        setEvents([...events, data])
-        setIsAddModalOpen(false)
-        setOverlapWarning(null)
-        resetForm()
+        if (data) {
+          setEvents(events.map(e => e.id === editingEvent.id ? data : e))
+
+          // 1. Sync linked Sermon if present
+          if (editingEvent.sermon_id) {
+            await (supabase
+              .from('sermons')
+              .update({
+                title: payload.title,
+                preach_date: eventDate,
+                location: payload.location,
+              } as any)
+              .eq('id', editingEvent.sermon_id) as any)
+          }
+
+          // 2. Sync linked Care Task if present
+          if (editingEvent.care_task_id) {
+            await (supabase
+              .from('care_tasks')
+              .update({
+                description: payload.title,
+                due_date: eventDate,
+                notes: payload.description || null,
+              } as any)
+              .eq('id', editingEvent.care_task_id) as any)
+          }
+
+          setIsAddModalOpen(false)
+          setOverlapWarning(null)
+          setEditingEvent(null)
+          resetForm()
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('calendar_events')
+          .insert({ ...payload, profile_id: user.id })
+          .select()
+          .single()
+
+        if (error) throw error
+
+        if (data) {
+          setEvents([...events, data])
+          setIsAddModalOpen(false)
+          setOverlapWarning(null)
+          resetForm()
+        }
       }
     } catch (error) {
       console.error('Error saving event:', error)
+      alert('Error saving event. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -274,6 +321,7 @@ export default function CalendarPage() {
   }
 
   const resetForm = () => {
+    setEditingEvent(null)
     setTitle('')
     setEventType('meeting')
     setEventDate(format(selectedDay || new Date(), 'yyyy-MM-dd'))
@@ -294,6 +342,44 @@ export default function CalendarPage() {
     } else {
       setEventDate(format(new Date(), 'yyyy-MM-dd'))
     }
+    setIsAddModalOpen(true)
+  }
+
+  const openEditModal = (event: any) => {
+    const realId = event.id.split('_')[0]
+    const originalEvent = events.find(e => e.id === realId) || event
+
+    setEditingEvent(originalEvent)
+    setTitle(originalEvent.title || '')
+    setEventType(originalEvent.event_type || 'meeting')
+    
+    const startDate = parseISO(originalEvent.start_time)
+    const endDate = originalEvent.end_time ? parseISO(originalEvent.end_time) : new Date(startDate.getTime() + 60 * 60 * 1000)
+    
+    setEventDate(format(startDate, 'yyyy-MM-dd'))
+    setStartTime(format(startDate, 'HH:mm'))
+    setEndTime(format(endDate, 'HH:mm'))
+    setAllDay(originalEvent.all_day || false)
+    setDescription(originalEvent.description || '')
+    setLocation(originalEvent.location || '')
+    
+    if (originalEvent.recurrence_rule) {
+      if (originalEvent.recurrence_rule.includes('FREQ=DAILY')) setRepeat('daily')
+      else if (originalEvent.recurrence_rule.includes('FREQ=MONTHLY')) setRepeat('monthly')
+      else if (originalEvent.recurrence_rule.includes('INTERVAL=2')) setRepeat('bi-weekly')
+      else if (originalEvent.recurrence_rule.includes('FREQ=WEEKLY')) setRepeat('weekly')
+      
+      const byDayMatch = originalEvent.recurrence_rule.match(/BYDAY=([A-Z,]+)/)
+      if (byDayMatch) {
+        setRepeatDays(byDayMatch[1].split(','))
+      } else {
+        setRepeatDays([])
+      }
+    } else {
+      setRepeat('none')
+      setRepeatDays([])
+    }
+
     setIsAddModalOpen(true)
   }
 
@@ -474,15 +560,27 @@ export default function CalendarPage() {
                   {selectedDayEvents.map(event => (
                     <div key={event.id} className="p-3 rounded-lg border bg-white shadow-sm flex flex-col gap-2 relative group">
                       <div className="flex justify-between items-start gap-2">
-                        <h4 className="font-medium text-sm leading-tight pr-6">{event.title}</h4>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-gray-400 hover:text-red-500 absolute top-2 right-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleDeleteEvent(event.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        <h4 className="font-medium text-sm leading-tight pr-12">{event.title}</h4>
+                        <div className="flex items-center gap-1 absolute top-2 right-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-gray-400 hover:text-[#022d5c]"
+                            onClick={() => openEditModal(event)}
+                            title="Edit event"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-gray-400 hover:text-red-500"
+                            onClick={() => handleDeleteEvent(event.id)}
+                            title="Delete event"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                       
                       <div className="flex flex-col gap-1.5 mt-1">
@@ -549,16 +647,18 @@ export default function CalendarPage() {
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Add New Event</DialogTitle>
+            <DialogTitle>{editingEvent ? 'Edit Event' : 'Add New Event'}</DialogTitle>
           </DialogHeader>
           
-          <div className="flex flex-wrap gap-2 pt-2 border-b pb-4">
-            <span className="text-xs font-medium text-slate-500 w-full mb-1">Quick Templates:</span>
-            <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200" onClick={() => applyTemplate('weekly-bible-study')}>Bible Study</Badge>
-            <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200" onClick={() => applyTemplate('weekly-service')}>Sunday Service</Badge>
-            <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200" onClick={() => applyTemplate('weekly-brotherhood')}>Brotherhood</Badge>
-            <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200" onClick={() => applyTemplate('monthly-prayer')}>Prayer Meeting</Badge>
-          </div>
+          {!editingEvent && (
+            <div className="flex flex-wrap gap-2 pt-2 border-b pb-4">
+              <span className="text-xs font-medium text-slate-500 w-full mb-1">Quick Templates:</span>
+              <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200" onClick={() => applyTemplate('weekly-bible-study')}>Bible Study</Badge>
+              <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200" onClick={() => applyTemplate('weekly-service')}>Sunday Service</Badge>
+              <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200" onClick={() => applyTemplate('weekly-brotherhood')}>Brotherhood</Badge>
+              <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200" onClick={() => applyTemplate('monthly-prayer')}>Prayer Meeting</Badge>
+            </div>
+          )}
 
           <ScrollArea className="max-h-[60vh] pr-4">
             <form id="event-form" onSubmit={checkOverlapsAndSave} className="space-y-4 py-4">
@@ -695,7 +795,7 @@ export default function CalendarPage() {
               Cancel
             </Button>
             <Button type="submit" form="event-form" disabled={!title.trim() || saving} className="bg-[#022d5c] hover:bg-[#D0A348] text-white">
-              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Save Event'}
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : (editingEvent ? 'Update Event' : 'Save Event')}
             </Button>
           </div>
         </DialogContent>
