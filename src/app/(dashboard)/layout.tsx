@@ -49,6 +49,8 @@ export default function DashboardLayout({
     { name: 'Ideas', href: '/ideas', icon: Lightbulb },
     { name: 'Calendar', href: '/calendar', icon: CalendarDays },
     { name: 'Pastoral Care', href: '/care', icon: Heart },
+    { name: 'Refer a Pastor', href: '/referrals', icon: Gift },
+    { name: 'Settings', href: '/settings', icon: Settings },
   ]
 
   const handlePhotoCaptured = async (text: string) => {
@@ -89,7 +91,7 @@ export default function DashboardLayout({
             <img 
               src="/logo-dark.png" 
               alt="The Shepherd's Desk" 
-              className="h-16 w-auto object-contain"
+              className="h-24 w-auto object-contain"
             />
           </Link>
         </div>
@@ -108,33 +110,17 @@ export default function DashboardLayout({
               </Link>
             )
           })}
-        </nav>
-
-        <div className="p-4 border-t border-white/10 space-y-2">
           {isAdmin && (
             <Link 
               href="/admin"
-              className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 hover:text-[#D0A348] transition-colors"
+              className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 hover:text-[#D0A348] transition-colors text-[#D0A348]"
             >
               <Shield className="w-5 h-5" />
               Admin
             </Link>
           )}
-          <Link 
-            href="/referrals"
-            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 hover:text-[#D0A348] transition-colors"
-          >
-            <Gift className="w-5 h-5" />
-            Refer a Pastor
-          </Link>
-          <Link 
-            href="/settings"
-            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 hover:text-[#D0A348] transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-            Settings
-          </Link>
-        </div>
+        </nav>
+
       </aside>
 
       {/* Main Content */}
