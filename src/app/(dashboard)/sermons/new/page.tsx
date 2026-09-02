@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, ChevronDown, ChevronUp, Trash2, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,38 @@ export default function NewSermonPage() {
   const [status, setStatus] = useState<"draft" | "review" | "ready" | "preached">("draft");
   const [content, setContent] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Study Sessions State
+  const [studySessions, setStudySessions] = useState<{ id: string; date: string; start: string; end: string }[]>([]);
+  const [isStudyScheduleOpen, setIsStudyScheduleOpen] = useState(false);
+  const [newSessionDate, setNewSessionDate] = useState("");
+  const [newSessionStart, setNewSessionStart] = useState("09:00");
+  const [newSessionEnd, setNewSessionEnd] = useState("11:00");
+
+  useEffect(() => {
+    if (preachDate && !newSessionDate) {
+      const pDate = new Date(preachDate);
+      pDate.setDate(pDate.getDate() - 3); // Default 3 days before
+      setNewSessionDate(pDate.toISOString().split('T')[0]);
+    }
+  }, [preachDate, newSessionDate]);
+
+  const handleAddSession = () => {
+    if (!newSessionDate || !newSessionStart || !newSessionEnd) return;
+    setStudySessions([
+      ...studySessions,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        date: newSessionDate,
+        start: newSessionStart,
+        end: newSessionEnd,
+      }
+    ]);
+  };
+
+  const handleRemoveSession = (id: string) => {
+    setStudySessions(studySessions.filter(s => s.id !== id));
+  };
   
   const supabase = createClient();
 
@@ -62,6 +94,20 @@ export default function NewSermonPage() {
           all_day: true,
           color: "#a855f7"
         } as any);
+      }
+      
+      if (studySessions.length > 0) {
+        const studyEvents = studySessions.map(session => ({
+          profile_id: user.id,
+          title: `Study: ${title || 'Sermon Prep'}`,
+          event_type: "study",
+          start_time: new Date(`${session.date}T${session.start}:00`).toISOString(),
+          end_time: new Date(`${session.date}T${session.end}:00`).toISOString(),
+          description: `sermon_study:${data.id}`,
+          all_day: false,
+          color: "#022d5c"
+        }));
+        await supabase.from("calendar_events").insert(studyEvents as any);
       }
       
       router.push(`/sermons/${data.id}`);
@@ -162,6 +208,81 @@ export default function NewSermonPage() {
                 />
               </div>
             </div>
+
+            {preachDate && (
+              <div className="pt-4 border-t mt-4">
+                <button 
+                  onClick={() => setIsStudyScheduleOpen(!isStudyScheduleOpen)}
+                  className="flex items-center justify-between w-full text-left"
+                >
+                  <h3 className="text-sm font-semibold text-[#022d5c] flex items-center gap-2">
+                    📚 Schedule Study Time
+                  </h3>
+                  {isStudyScheduleOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                </button>
+                
+                {isStudyScheduleOpen && (
+                  <div className="mt-4 space-y-4">
+                    {studySessions.map((session) => (
+                      <div key={session.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-md border text-sm">
+                        <div>
+                          <p className="font-medium">{new Date(session.date).toLocaleDateString()}</p>
+                          <p className="text-slate-500">{session.start} - {session.end}</p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleRemoveSession(session.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+
+                    <div className="bg-gray-50 p-3 rounded-md border space-y-3">
+                      <p className="font-medium text-sm">Add Study Session</p>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-500">Date</label>
+                          <Input 
+                            type="date" 
+                            value={newSessionDate}
+                            onChange={(e) => setNewSessionDate(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-500">Start</label>
+                          <Input 
+                            type="time" 
+                            value={newSessionStart}
+                            onChange={(e) => setNewSessionStart(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-500">End</label>
+                          <Input 
+                            type="time" 
+                            value={newSessionEnd}
+                            onChange={(e) => setNewSessionEnd(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <Button 
+                          type="button" 
+                          onClick={handleAddSession}
+                          className="bg-[#D0A348] text-white hover:bg-[#D0A348]/90 h-8 text-xs"
+                        >
+                          <Plus className="w-3 h-3 mr-1" /> Add
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <SermonEditor 

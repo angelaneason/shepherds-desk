@@ -9,8 +9,10 @@ interface ParsedReminder {
   person: string | null
   date: string
   time: string | null
+  endTime: string | null
   category: string
   priority: string
+  isStudyTime: boolean
   createCalendarEvent: boolean
   createCareTask: boolean
 }
@@ -139,23 +141,33 @@ export function SmartReminder() {
           ? `${parsed.date}T${parsed.time}:00`
           : `${parsed.date}T09:00:00`
 
-        // Calculate end time (1 hour after start)
-        const startDate = new Date(startTime)
-        const endDate = new Date(startDate.getTime() + 60 * 60 * 1000)
-        const endTime = endDate.toISOString()
+        // Use parsed endTime, or calculate 1 hour after start
+        let endTimeStr: string
+        if (parsed.endTime) {
+          endTimeStr = `${parsed.date}T${parsed.endTime}:00`
+        } else {
+          const startDate = new Date(startTime)
+          const endDate = new Date(startDate.getTime() + 60 * 60 * 1000)
+          endTimeStr = endDate.toISOString()
+        }
+
+        // Determine event type
+        const eventType = parsed.isStudyTime ? 'study' : 
+          parsed.category === 'visit' ? 'visit' : 
+          parsed.category === 'personal' ? 'personal' : 'meeting'
 
         await (supabase.from('calendar_events').insert({
           profile_id: user.id,
-          title: parsed.task,
-          event_type: parsed.category === 'visit' ? 'visit' : parsed.category === 'personal' ? 'personal' : 'meeting',
+          title: parsed.isStudyTime ? `📚 ${parsed.task}` : parsed.task,
+          event_type: eventType,
           start_time: startTime,
-          end_time: endTime,
+          end_time: endTimeStr,
           all_day: !parsed.time,
-          description: parsed.person ? `Related to: ${parsed.person}` : null,
+          description: parsed.isStudyTime ? 'study_time' : (parsed.person ? `Related to: ${parsed.person}` : null),
         }) as any)
       }
 
-      if (parsed.createCareTask) {
+      if (parsed.createCareTask && !parsed.isStudyTime) {
         const taskType = parsed.category === 'visit' ? 'visit' : parsed.category === 'call' ? 'call' : parsed.category === 'hospital' ? 'hospital' : 'other'
         await (supabase.from('care_tasks').insert({
           profile_id: user.id,
@@ -397,12 +409,21 @@ export function SmartReminder() {
                     Set Time
                   </button>
                   {parsed.time && (
-                    <input
-                      type="time"
-                      value={parsed.time}
-                      onChange={(e) => setParsed({ ...parsed, time: e.target.value })}
-                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D0A348]"
-                    />
+                    <>
+                      <input
+                        type="time"
+                        value={parsed.time}
+                        onChange={(e) => setParsed({ ...parsed, time: e.target.value })}
+                        className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D0A348]"
+                      />
+                      <span className="text-xs text-gray-400">to</span>
+                      <input
+                        type="time"
+                        value={parsed.endTime || ''}
+                        onChange={(e) => setParsed({ ...parsed, endTime: e.target.value || null })}
+                        className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D0A348]"
+                      />
+                    </>
                   )}
                 </div>
               </div>
@@ -420,6 +441,7 @@ export function SmartReminder() {
                     { value: 'call', label: '📞 Call', },
                     { value: 'visit', label: '🏠 Visit' },
                     { value: 'hospital', label: '🏥 Hospital' },
+                    { value: 'study', label: '📚 Study' },
                     { value: 'other', label: '📋 Other' },
                   ].map((type) => (
                     <button
