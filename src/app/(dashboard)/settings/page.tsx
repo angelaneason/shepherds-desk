@@ -412,7 +412,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-8">
-            <form onSubmit={handleSaveStudyPreferences} className="space-y-6">
+            <form onSubmit={handleSaveStudyGoals} className="space-y-6">
               <div className="space-y-4 max-w-md">
                 <div className="space-y-2">
                   <Label htmlFor="studyGoalHours">Weekly Study Goal (Hours)</Label>
