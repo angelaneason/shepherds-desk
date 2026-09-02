@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Search, Plus, Sparkles, Tag, Book, MoreVertical, Edit, Trash2, X, ChevronDown, ChevronUp, Phone, MapPin, Globe, Clock } from 'lucide-react';
+import { Search, Plus, Sparkles, Tag, Book, MoreVertical, Edit, Trash2, X, ChevronDown, ChevronUp, Phone, MapPin, Globe, Clock, Share2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Resource {
@@ -104,6 +104,7 @@ export default function ResourcesPage() {
   
   // Expand states for cards
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchResources();
@@ -398,6 +399,32 @@ export default function ResourcesPage() {
                     <CardTitle className="text-lg leading-tight">{resource.title}</CardTitle>
                   </div>
                   <div className="flex gap-1 ml-2">
+                    <button 
+                      onClick={() => {
+                        const lines = [resource.title];
+                        lines.push(catLabel);
+                        if (resource.phone) lines.push(`Phone: ${resource.phone}`);
+                        if (resource.address) lines.push(`Address: ${resource.address}`);
+                        if (resource.website) lines.push(`Website: ${resource.website}`);
+                        if (resource.hours) lines.push(`Hours: ${resource.hours}`);
+                        lines.push('');
+                        lines.push(resource.content);
+                        if (resource.scripture_references?.length) {
+                          lines.push('');
+                          lines.push('Scripture: ' + resource.scripture_references.join(', '));
+                        }
+                        navigator.clipboard.writeText(lines.join('\n'));
+                        setCopiedId(resource.id);
+                        setTimeout(() => setCopiedId(null), 2000);
+                      }} 
+                      className={cn(
+                        "p-1.5 rounded hover:bg-gray-100 transition-colors",
+                        copiedId === resource.id ? "text-green-500" : "text-gray-400 hover:text-[#022d5c]"
+                      )}
+                      title="Copy to share"
+                    >
+                      {copiedId === resource.id ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                    </button>
                     <button onClick={() => handleOpenModal(resource)} className="p-1.5 text-gray-400 hover:text-[#022d5c] rounded hover:bg-gray-100">
                       <Edit className="w-4 h-4" />
                     </button>
