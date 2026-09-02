@@ -224,6 +224,7 @@ export default function SettingsPage() {
         start_time: startDate.toISOString(),
         end_time: endDate.toISOString(),
         all_day: false,
+        recurrence_rule: 'FREQ=WEEKLY',
         description: 'recurring_study',
       }).select() as any
 

@@ -48,6 +48,8 @@ function expandEvent(event: any, startRange: Date, endRange: Date): any[] {
     if (k && v) rule[k] = v
   })
   
+  const exdates = rule.EXDATE ? rule.EXDATE.split(',') : []
+
   const results: any[] = []
   const eventStart = parseISO(event.start_time)
   const eventEnd = parseISO(event.end_time)
@@ -62,29 +64,33 @@ function expandEvent(event: any, startRange: Date, endRange: Date): any[] {
   const limitDate = new Date(Math.min(absoluteEnd.getTime(), endRange.getTime() + 30 * 24 * 60 * 60 * 1000))
 
   while (current <= limitDate && iterations < 2000) {
+    const currentIsoDate = format(current, 'yyyyMMdd')
     let matches = false
-    if (rule.FREQ === 'DAILY') {
-      matches = true
-    } else if (rule.FREQ === 'WEEKLY') {
-      const interval = rule.INTERVAL ? parseInt(rule.INTERVAL) : 1
-      
-      const currentStartOfWeek = startOfWeek(current)
-      const eventStartOfWeek = startOfWeek(eventStart)
-      
-      const weeksDiff = Math.floor((currentStartOfWeek.getTime() - eventStartOfWeek.getTime()) / (7 * 24 * 60 * 60 * 1000))
-      
-      if (weeksDiff >= 0 && weeksDiff % interval === 0) {
-        if (rule.BYDAY) {
-           const days = rule.BYDAY.split(',')
-           if (days.includes(DAY_MAP[current.getDay()])) {
-             matches = true
-           }
-        } else {
-           if (current.getDay() === eventStart.getDay()) matches = true
+
+    if (!exdates.includes(currentIsoDate)) {
+      if (rule.FREQ === 'DAILY') {
+        matches = true
+      } else if (rule.FREQ === 'WEEKLY') {
+        const interval = rule.INTERVAL ? parseInt(rule.INTERVAL) : 1
+        
+        const currentStartOfWeek = startOfWeek(current)
+        const eventStartOfWeek = startOfWeek(eventStart)
+        
+        const weeksDiff = Math.floor((currentStartOfWeek.getTime() - eventStartOfWeek.getTime()) / (7 * 24 * 60 * 60 * 1000))
+        
+        if (weeksDiff >= 0 && weeksDiff % interval === 0) {
+          if (rule.BYDAY) {
+             const days = rule.BYDAY.split(',')
+             if (days.includes(DAY_MAP[current.getDay()])) {
+               matches = true
+             }
+          } else {
+             if (current.getDay() === eventStart.getDay()) matches = true
+          }
         }
+      } else if (rule.FREQ === 'MONTHLY') {
+        if (current.getDate() === eventStart.getDate()) matches = true
       }
-    } else if (rule.FREQ === 'MONTHLY') {
-      if (current.getDate() === eventStart.getDate()) matches = true
     }
     
     if (matches && current >= startRange && current <= endRange) {
@@ -198,6 +204,8 @@ export default function CalendarPage() {
 
     if (overlaps) {
       setOverlapWarning(payload)
+    } else if (editingEvent && (editingEvent.recurrence_rule || editingEvent.id.includes('_'))) {
+      setRecurringPrompt({ actionType: 'edit', event: editingEvent, payload })
     } else {
       executeSave(payload)
     }
@@ -230,6 +238,107 @@ export default function CalendarPage() {
   }
 
   const [editingEvent, setEditingEvent] = useState<any | null>(null)
+  const [recurringPrompt, setRecurringPrompt] = useState<{
+    actionType: 'edit' | 'delete'
+    event: any
+    payload?: any
+  } | null>(null)
+
+  const handleConfirmRecurringAction = async (scope: 'single' | 'series') => {
+    if (!recurringPrompt) return
+    const { actionType, event, payload } = recurringPrompt
+    const realId = event.id.split('_')[0]
+    const masterEvent = events.find(e => e.id === realId) || event
+    const eventOccurrenceDate = format(parseISO(event.start_time), 'yyyyMMdd')
+
+    setSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      if (actionType === 'delete') {
+        if (scope === 'series') {
+          const { error } = await supabase
+            .from('calendar_events')
+            .delete()
+            .eq('id', realId)
+          if (error) throw error
+          setEvents(events.filter(e => e.id !== realId))
+        } else {
+          // Exclude this single date from recurrence
+          const currentRule = masterEvent.recurrence_rule || ''
+          const updatedRule = currentRule.includes('EXDATE=')
+            ? currentRule.replace('EXDATE=', `EXDATE=${eventOccurrenceDate},`)
+            : `${currentRule};EXDATE=${eventOccurrenceDate}`
+
+          const { data, error } = await supabase
+            .from('calendar_events')
+            .update({ recurrence_rule: updatedRule })
+            .eq('id', realId)
+            .select()
+            .single()
+
+          if (error) throw error
+          if (data) {
+            setEvents(events.map(e => e.id === realId ? data : e))
+          }
+        }
+      } else if (actionType === 'edit' && payload) {
+        if (scope === 'series') {
+          const { data, error } = await supabase
+            .from('calendar_events')
+            .update(payload)
+            .eq('id', realId)
+            .select()
+            .single()
+
+          if (error) throw error
+          if (data) {
+            setEvents(events.map(e => e.id === realId ? data : e))
+          }
+        } else {
+          // Exclude date from master event and add standalone event for this occurrence
+          const currentRule = masterEvent.recurrence_rule || ''
+          const updatedRule = currentRule.includes('EXDATE=')
+            ? currentRule.replace('EXDATE=', `EXDATE=${eventOccurrenceDate},`)
+            : `${currentRule};EXDATE=${eventOccurrenceDate}`
+
+          await supabase
+            .from('calendar_events')
+            .update({ recurrence_rule: updatedRule })
+            .eq('id', realId)
+
+          const singlePayload = {
+            ...payload,
+            recurrence_rule: null,
+            profile_id: user.id,
+          }
+          const { data: newEv, error: insertErr } = await supabase
+            .from('calendar_events')
+            .insert(singlePayload)
+            .select()
+            .single()
+
+          if (insertErr) throw insertErr
+          if (newEv) {
+            const updatedMaster = { ...masterEvent, recurrence_rule: updatedRule }
+            setEvents([...events.map(e => e.id === realId ? updatedMaster : e), newEv])
+          }
+        }
+
+        setIsAddModalOpen(false)
+        setEditingEvent(null)
+        resetForm()
+      }
+    } catch (err: any) {
+      console.error('Error handling recurring action:', err)
+      alert(`Error: ${err?.message || 'Something went wrong'}`)
+    } finally {
+      setSaving(false)
+      setRecurringPrompt(null)
+      setOverlapWarning(null)
+    }
+  }
 
   const executeSave = async (payload: any) => {
     setSaving(true)
@@ -303,18 +412,33 @@ export default function CalendarPage() {
     }
   }
 
-  const handleDeleteEvent = async (id: string) => {
-    const realId = id.split('_')[0] // handle expanded instances
-    if (!confirm('Are you sure you want to delete this event? This will delete all occurrences if recurring.')) return
+  const handleDeleteEvent = async (eventOrId: any) => {
+    const realEvent = typeof eventOrId === 'string'
+      ? expandedEvents.find(e => e.id === eventOrId) || events.find(e => e.id === eventOrId)
+      : eventOrId
+
+    if (!realEvent) return
+
+    const isRecurring = !!realEvent.recurrence_rule || realEvent.id.includes('_')
+    
+    if (isRecurring) {
+      setRecurringPrompt({
+        actionType: 'delete',
+        event: realEvent,
+      })
+      return
+    }
+
+    if (!confirm('Are you sure you want to delete this event?')) return
 
     try {
       const { error } = await supabase
         .from('calendar_events')
         .delete()
-        .eq('id', realId)
+        .eq('id', realEvent.id)
       
       if (error) throw error
-      setEvents(events.filter(e => e.id !== realId))
+      setEvents(events.filter(e => e.id !== realEvent.id))
     } catch (error) {
       console.error('Error deleting event:', error)
     }
@@ -824,6 +948,56 @@ export default function CalendarPage() {
               disabled={saving}
             >
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Schedule Anyway'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recurring Series Confirmation Dialog */}
+      <Dialog open={!!recurringPrompt} onOpenChange={(open) => !open && setRecurringPrompt(null)}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle className="text-[#022d5c] flex items-center gap-2">
+              ↻ Recurring Event
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-slate-700 text-sm">
+              {recurringPrompt?.actionType === 'delete'
+                ? 'This event is part of a recurring series. Would you like to delete only this occurrence or all future occurrences in the series?'
+                : 'This event is part of a recurring series. Would you like to apply your changes to only this occurrence or the entire recurring series?'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 pt-4">
+            <Button 
+              variant="outline"
+              className="w-full justify-start text-left border-gray-200 hover:border-[#022d5c]"
+              onClick={() => handleConfirmRecurringAction('single')}
+              disabled={saving}
+            >
+              <div className="flex flex-col items-start">
+                <span className="font-semibold text-[#022d5c]">
+                  {recurringPrompt?.actionType === 'delete' ? 'Delete this event only' : 'Update this event only'}
+                </span>
+                <span className="text-xs text-gray-500">Other occurrences in the series will remain unchanged</span>
+              </div>
+            </Button>
+            
+            <Button 
+              className={recurringPrompt?.actionType === 'delete' ? 'bg-red-600 hover:bg-red-700 text-white w-full justify-start text-left' : 'bg-[#022d5c] hover:bg-[#D0A348] text-white w-full justify-start text-left'}
+              onClick={() => handleConfirmRecurringAction('series')}
+              disabled={saving}
+            >
+              <div className="flex flex-col items-start">
+                <span className="font-semibold">
+                  {recurringPrompt?.actionType === 'delete' ? 'Delete all occurrences in series' : 'Update all occurrences in series'}
+                </span>
+                <span className="text-xs text-white/80">Applies across your weekly and monthly calendar</span>
+              </div>
+            </Button>
+          </div>
+          <DialogFooter className="mt-2">
+            <Button variant="ghost" size="sm" onClick={() => setRecurringPrompt(null)} disabled={saving}>
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>
