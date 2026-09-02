@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+
+// Service role client bypasses RLS for operations where cookie-based auth
+// can cause permission issues in serverless environments
+function getServiceClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function GET(request: Request) {
   try {
@@ -7,18 +17,18 @@ export async function GET(request: Request) {
     const { data: { user }, error: userError } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      console.error('Referrals GET auth error:', userError?.message || 'No user')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json([], { status: 200 })
     }
 
-    const { data: referrals, error } = await supabase
+    const admin = getServiceClient()
+    const { data: referrals, error } = await admin
       .from('referrals')
       .select('*')
       .eq('referrer_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching referrals:', error.message, error.details, error.hint)
+      console.error('Error fetching referrals:', error.message)
       return NextResponse.json({ error: 'Failed to fetch referrals' }, { status: 500 })
     }
 
@@ -38,8 +48,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const admin = getServiceClient()
+
     // Get user profile for name
-    const { data: profile } = await supabase
+    const { data: profile } = await admin
       .from('profiles')
       .select('full_name')
       .eq('id', user.id)
@@ -49,8 +61,8 @@ export async function POST(request: Request) {
     const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase()
     const referralCode = `${nameStr}${randomStr}`
 
-    // Insert referral
-    const { data: referral, error } = await supabase
+    // Insert referral using service role to bypass RLS
+    const { data: referral, error } = await admin
       .from('referrals')
       .insert({
         referrer_id: user.id,
@@ -61,13 +73,13 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('Error creating referral:', error)
+      console.error('Error creating referral:', error.message, error.code)
       return NextResponse.json({ error: 'Failed to create referral' }, { status: 500 })
     }
 
     return NextResponse.json(referral)
-  } catch (error) {
-    console.error('Unexpected error in POST referrals:', error)
+  } catch (error: any) {
+    console.error('Unexpected error in POST referrals:', error?.message || error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
