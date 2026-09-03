@@ -268,6 +268,7 @@ export default function WelcomePage() {
               <a href="#features" className="hover:text-gold transition-colors">Features</a>
               <a href="#" className="hover:text-gold transition-colors">Pricing</a>
               <Link href="/login" className="hover:text-gold transition-colors">Login</Link>
+              <Link href="/privacy" className="hover:text-gold transition-colors">Privacy Policy</Link>
               <a href="#" className="hover:text-gold transition-colors">Contact</a>
             </nav>
           </div>
