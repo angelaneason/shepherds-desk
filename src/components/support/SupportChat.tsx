@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageCircle, X, HelpCircle, Bug, Sparkles, ChevronRight, Send, ArrowLeft, BookOpen } from 'lucide-react'
+import { MessageCircle, X, HelpCircle, Bug, Sparkles, ChevronRight, Send, ArrowLeft, BookOpen, Info } from 'lucide-react'
 
 type ChatView = 'menu' | 'question' | 'bug' | 'enhancement' | 'faq'
 
@@ -50,7 +50,7 @@ export function SupportChat() {
                   <ArrowLeft className="w-4 h-4" />
                 </button>
               )}
-              <MessageCircle className="w-5 h-5" />
+              <Info className="w-5 h-5 text-[#D0A348]" />
               <span className="font-semibold">
                 {view === 'menu' && 'Support'}
                 {view === 'question' && 'Ask a Question'}
@@ -161,9 +161,11 @@ export function SupportChat() {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 w-14 h-14 rounded-full bg-[#022d5c] text-white shadow-lg hover:shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 w-10 h-10 md:w-11 md:h-11 rounded-full bg-[#022d5c] text-white shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 border border-[#D0A348]/40 hover:border-[#D0A348]"
+        title="Help & Support"
+        aria-label="Help & Support"
       >
-        {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+        {isOpen ? <X className="w-5 h-5 text-white" /> : <Info className="w-5 h-5 text-white" />}
       </button>
     </>
   )
