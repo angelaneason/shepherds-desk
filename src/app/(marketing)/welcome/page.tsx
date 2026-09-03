@@ -267,6 +267,7 @@ export default function WelcomePage() {
             <nav className="flex gap-6 text-sm text-white/60">
               <a href="#features" className="hover:text-gold transition-colors">Features</a>
               <a href="#" className="hover:text-gold transition-colors">Pricing</a>
+              <Link href="/download" className="hover:text-gold transition-colors">Download App</Link>
               <Link href="/login" className="hover:text-gold transition-colors">Login</Link>
               <Link href="/privacy" className="hover:text-gold transition-colors">Privacy Policy</Link>
               <a href="#" className="hover:text-gold transition-colors">Contact</a>
