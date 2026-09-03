@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BookOpen, Trash2, Plus, Clock, Calendar, Target, TrendingUp, CalendarPlus, RefreshCw, Play, Pause, RotateCcw, Flame, Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import StudyTools from '@/components/study/StudyTools'
 
 // ─── Pastor Encouragement Data ───────────────────────────────────────────────
 const ENCOURAGEMENTS = [
@@ -771,6 +772,9 @@ export default function StudyPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ─── Study Tools ─────────────────────────────────────────────────── */}
+      <StudyTools />
 
       {/* ─── Focus Session Log ───────────────────────────────────────────── */}
       <Card className="shadow-sm rounded-xl">
