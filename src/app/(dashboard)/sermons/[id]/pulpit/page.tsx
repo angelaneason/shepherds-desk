@@ -115,10 +115,10 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen bg-[#022d5c] text-white flex flex-col font-serif selection:bg-[#D0A348] selection:text-white">
-      {/* Top Bar - Fades in on hover */}
-      <div className="fixed top-0 left-0 right-0 p-4 flex justify-between items-center opacity-0 hover:opacity-100 transition-opacity duration-300 z-50 bg-gradient-to-b from-[#022d5c] to-transparent">
+      {/* Top Bar - Always visible */}
+      <div className="fixed top-0 left-0 right-0 px-4 py-3 flex justify-between items-center z-50 bg-[#011c3a]/95 border-b border-white/10 backdrop-blur-md shadow-md">
         <Link href={`/sermons/${id}`}>
-          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+          <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" title="Exit Pulpit Mode">
             <X className="h-6 w-6" />
           </Button>
         </Link>
