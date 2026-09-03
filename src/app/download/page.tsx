@@ -37,7 +37,7 @@ export default function DownloadPage() {
             Download the APK directly to your Android device. No Play Store needed.
           </p>
           <a 
-            href="https://expo.dev/accounts/tiny-tech/projects/shepherds-desk/builds/0b4453bb-eea9-4937-bf82-dbb7699c4cd2"
+            href="https://expo.dev/artifacts/eas/0QpN724gXjYp2sxIq7TfLx4HaenlYY0zb0ryr2K9XTk.apk"
             target="_blank"
             rel="noopener noreferrer"
             style={{ 
@@ -56,7 +56,7 @@ export default function DownloadPage() {
             ⬇️ Download for Android
           </a>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16 }}>
-            v1.0.1 • APK • ~25 MB
+            v2.0.0 • APK • Full Feature Release
           </p>
         </div>
 
