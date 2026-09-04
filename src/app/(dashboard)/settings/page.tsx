@@ -14,11 +14,14 @@ export default function SettingsPage() {
   const supabase = createClient()
 
   // Profile State
+  const [title, setTitle] = useState('Pastor')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [churchName, setChurchName] = useState('')
   const [churchId, setChurchId] = useState<string | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
+
+  const TITLE_OPTIONS = ['Pastor', 'Minister', 'Teacher', 'Preacher', 'Reverend', 'Bishop', 'Elder', 'Evangelist', 'Deacon', 'Chaplain', 'Other']
 
   // Branding State
   const [primaryColor, setPrimaryColor] = useState("#022d5c")
@@ -53,7 +56,8 @@ export default function SettingsPage() {
             .single() as any
 
           if (profile) {
-            setFullName(profile.full_name || '')
+            setFullName(profile.full_name || user.user_metadata?.full_name || '')
+            setTitle(user.user_metadata?.title || 'Pastor')
             setChurchId(profile.church_id)
             if (profile.trial_ends_at) {
               const endsAt = new Date(profile.trial_ends_at)
@@ -103,18 +107,37 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!profileId || !churchId) return
+    if (!profileId) return
 
     try {
+      // 1. Save title, name, and church name to user metadata for instant cloud access
+      await supabase.auth.updateUser({
+        data: { full_name: fullName, title: title, church_name: churchName }
+      })
+
+      // 2. Update profiles table
       await supabase
         .from('profiles')
-        .update({ full_name: fullName })
+        .update({ full_name: fullName } as any)
         .eq('id', profileId)
 
-      await supabase
-        .from('churches')
-        .update({ name: churchName })
-        .eq('id', churchId)
+      // 3. Update or create church record
+      if (churchId) {
+        await supabase
+          .from('churches')
+          .update({ name: churchName })
+          .eq('id', churchId)
+      } else if (churchName.trim()) {
+        const { data: newChurch } = await supabase
+          .from('churches')
+          .insert({ name: churchName.trim() })
+          .select()
+          .single() as any
+        if (newChurch) {
+          await supabase.from('profiles').update({ church_id: newChurch.id } as any).eq('id', profileId)
+          setChurchId(newChurch.id)
+        }
+      }
 
       alert('Profile updated successfully!')
     } catch (error) {
@@ -181,14 +204,27 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSaveProfile} className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="title">Title</Label>
+                <select
+                  id="title"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-white text-sm text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#022d5c]"
+                >
+                  {TITLE_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input 
                   id="fullName" 
                   value={fullName} 
                   onChange={e => setFullName(e.target.value)}
-                  placeholder="Your Name"
+                  placeholder="e.g. Angie Neason"
                 />
               </div>
               <div className="space-y-2">

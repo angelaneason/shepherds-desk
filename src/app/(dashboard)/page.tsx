@@ -54,6 +54,7 @@ export default function DashboardPage() {
   const [calendarEvents, setCalendarEvents] = useState<any[]>([])
   const [nextSermon, setNextSermon] = useState<any>(null)
   const [careTasks, setCareTasks] = useState<any[]>([])
+  const [pastorDisplay, setPastorDisplay] = useState('Pastor')
 
   const currentHour = new Date().getHours()
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening'
@@ -91,12 +92,18 @@ export default function DashboardPage() {
         const todays = events?.filter((e: any) => e.start_time?.startsWith(todayStr)) || []
         setTodayEventsCount(todays.length)
         
-        // Fetch weekly study goal
+        // Fetch profile details & study goal
         const { data: profile } = await supabase
           .from('profiles')
-          .select('weekly_study_goal_hours')
+          .select('full_name, weekly_study_goal_hours')
           .eq('id', user.id)
           .single() as any
+        
+        const title = user.user_metadata?.title || 'Pastor'
+        const rawName = profile?.full_name || user.user_metadata?.full_name || ''
+        // Avoid repeating title if full_name already includes it
+        const cleanName = rawName.replace(new RegExp(`^${title}\\s*`, 'i'), '').trim()
+        setPastorDisplay(cleanName ? `${title} ${cleanName}` : (rawName || 'Pastor'))
         
         if (profile?.weekly_study_goal_hours) {
           setStudyGoal(profile.weekly_study_goal_hours)
@@ -228,7 +235,7 @@ export default function DashboardPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-[#022d5c] font-playfair">{greeting}, Pastor</h1>
+        <h1 className="text-4xl font-bold text-[#022d5c] font-playfair">{greeting}, {pastorDisplay}</h1>
         <p className="text-gray-500 mt-2">{formatDate(new Date())}</p>
       </div>
 

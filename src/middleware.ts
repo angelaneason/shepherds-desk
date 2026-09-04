@@ -35,13 +35,13 @@ export async function middleware(request: NextRequest) {
 
   const url = request.nextUrl.clone()
   
-  // Public paths that don't require authentication
+  // Public paths that don't require cookie authentication (including mobile API calls)
   const isPublicPath = 
+    url.pathname.startsWith('/api') ||
     url.pathname === '/login' || 
     url.pathname.startsWith('/auth') || 
     url.pathname === '/welcome' ||
     url.pathname === '/download' ||
-    url.pathname === '/api/version' ||
     url.pathname === '/privacy' ||
     url.pathname === '/terms'
   const isStaticPath = url.pathname.startsWith('/_next') || url.pathname.includes('.')
