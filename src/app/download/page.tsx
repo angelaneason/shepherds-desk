@@ -37,7 +37,7 @@ export default function DownloadPage() {
             Download the APK directly to your Android device. No Play Store needed.
           </p>
           <a 
-            href="https://expo.dev/artifacts/eas/v920jrq50eESuxJjKxVKWIKF5a5tDtk07wgf01J_CFc.apk"
+            href="https://expo.dev/artifacts/eas/mluwee1TyZ4AG63TL5smrhhg_9zlgDMs8jwGC6pEZr0.apk"
             target="_blank"
             rel="noopener noreferrer"
             style={{ 
@@ -56,7 +56,7 @@ export default function DownloadPage() {
             ⬇️ Download for Android
           </a>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16 }}>
-            v2.1.0 • APK • Full Feature Release (Pulpit Mode, Devotionals, Hamburger Menu & Admin)
+            v2.1.2 • APK • Title Personalization, Sermon Notes Fix & Profile Updates
           </p>
         </div>
 
