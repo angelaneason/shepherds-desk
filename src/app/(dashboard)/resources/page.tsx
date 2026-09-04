@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Search, Plus, Sparkles, Tag, Book, MoreVertical, Edit, Trash2, X, ChevronDown, ChevronUp, Phone, MapPin, Globe, Clock, Share2, Check } from 'lucide-react';
+import { Search, Plus, Sparkles, Tag, Book, MoreVertical, Edit, Trash2, X, ChevronDown, ChevronUp, Phone, MapPin, Globe, Clock, Share2, Check, ExternalLink, Bookmark, BookmarkCheck, MessageSquare, Loader2, Navigation } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Resource {
@@ -106,9 +106,113 @@ export default function ResourcesPage() {
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Location-Based Community Assistance State
+  const [zipCode, setZipCode] = useState('76018');
+  const [discoveredCommunity, setDiscoveredCommunity] = useState<any[]>([]);
+  const [lifelines, setLifelines] = useState<any[]>([]);
+  const [isSearchingCommunity, setIsSearchingCommunity] = useState(false);
+  const [communitySearchedZip, setCommunitySearchedZip] = useState('');
+  const [communitySource, setCommunitySource] = useState<string>('');
+  const [savedLocalMap, setSavedLocalMap] = useState<Record<string, boolean>>({});
+  const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
+
   useEffect(() => {
     fetchResources();
+    if (typeof window !== 'undefined') {
+      const savedZip = localStorage.getItem('shepherds_community_zip');
+      if (savedZip) setZipCode(savedZip);
+    }
   }, []);
+
+  const fetchCommunityResources = async (targetZip = zipCode, targetCat = selectedCategory) => {
+    if (!targetZip.trim()) return;
+    setIsSearchingCommunity(true);
+    try {
+      const res = await fetch(`/api/resources/community?zip=${encodeURIComponent(targetZip.trim())}&category=${encodeURIComponent(targetCat)}`);
+      const data = await res.json();
+      if (data.resources) {
+        setDiscoveredCommunity(data.resources);
+      }
+      if (data.lifelines) {
+        setLifelines(data.lifelines);
+      }
+      setCommunitySearchedZip(data.zip || targetZip);
+      setCommunitySource(data.source || 'google_grounded');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('shepherds_community_zip', targetZip.trim());
+      }
+    } catch (err) {
+      console.error('Failed to fetch community resources:', err);
+    } finally {
+      setIsSearchingCommunity(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'community' && discoveredCommunity.length === 0 && !isSearchingCommunity) {
+      const activeZip = zipCode || '76018';
+      fetchCommunityResources(activeZip, selectedCategory);
+    }
+  }, [activeSection]);
+
+  const handleSaveDiscoveredToLibrary = async (item: any) => {
+    if (!userId) return;
+    try {
+      const payload = {
+        profile_id: userId,
+        title: item.title,
+        category: item.category,
+        content: item.content,
+        scripture_references: [],
+        tags: ['community', 'local', zipCode],
+        phone: item.phone || null,
+        address: item.address || null,
+        website: item.website || null,
+        hours: item.hours || null,
+      };
+
+      const { error } = await supabase
+        .from('counseling_resources')
+        .insert([payload]) as any;
+
+      if (!error) {
+        setSavedLocalMap(prev => ({ ...prev, [item.title]: true }));
+        fetchResources();
+        setActionSuccessMsg(`Saved "${item.title}" to your church library!`);
+        setTimeout(() => setActionSuccessMsg(null), 3500);
+      }
+    } catch (e) {
+      console.error('Error saving resource:', e);
+    }
+  };
+
+  const handleShareResourceSMS = (item: any) => {
+    const lines = [
+      `🤝 Community Resource: ${item.title}`,
+      `Category: ${CATEGORIES.find(c => c.id === item.category)?.label || item.category}`,
+    ];
+    if (item.phone) lines.push(`📞 Phone: ${item.phone}`);
+    if (item.address) lines.push(`📍 Address: ${item.address}`);
+    if (item.hours) lines.push(`⏰ Hours: ${item.hours}`);
+    if (item.website) lines.push(`🌐 Website: ${item.website}`);
+    lines.push('');
+    lines.push(item.content);
+    lines.push('');
+    lines.push(`Shared from The Shepherd's Desk`);
+
+    navigator.clipboard.writeText(lines.join('\n'));
+    setCopiedId(item.id || item.title);
+    setActionSuccessMsg(`Copied info for "${item.title}" ready to text!`);
+    setTimeout(() => {
+      setCopiedId(null);
+      setActionSuccessMsg(null);
+    }, 3500);
+  };
+
+  const isAlreadySaved = (title: string) => {
+    if (savedLocalMap[title]) return true;
+    return resources.some(r => r.title.toLowerCase() === title.toLowerCase());
+  };
 
   const fetchResources = async () => {
     setLoading(true);
@@ -332,6 +436,155 @@ export default function ResourcesPage() {
         </div>
       </div>
 
+      {/* Action Feedback Message */}
+      {actionSuccessMsg && (
+        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium flex items-center justify-between shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <Check className="w-5 h-5 text-emerald-600" />
+            <span>{actionSuccessMsg}</span>
+          </div>
+          <button onClick={() => setActionSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Community Location Banner */}
+      {activeSection === 'community' && (
+        <div className="mb-8 p-5 bg-gradient-to-r from-[#022d5c]/5 via-amber-500/5 to-[#022d5c]/5 border border-[#022d5c]/15 rounded-2xl shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-[#022d5c]" />
+                <h2 className="font-playfair text-xl font-bold text-[#022d5c]">
+                  Community Assistance Locator
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#D0A348]/20 text-[#8c6b24]">
+                  {communitySource === '211_platform' ? '2-1-1 Verified' : 'Live Area Grounding'}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Instantly find verified food pantries, emergency shelters, free clinics, and utility aid by ZIP code.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Input
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') fetchCommunityResources(zipCode, selectedCategory);
+                  }}
+                  placeholder="ZIP Code"
+                  className="w-32 bg-white font-semibold text-center h-10 border-gray-300"
+                  maxLength={10}
+                />
+              </div>
+              <Button
+                onClick={() => fetchCommunityResources(zipCode, selectedCategory)}
+                disabled={isSearchingCommunity || !zipCode.trim()}
+                className="bg-[#022d5c] hover:bg-[#011c3a] text-white h-10 px-4 flex items-center gap-2"
+              >
+                {isSearchingCommunity ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Locating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Navigation className="w-4 h-4" />
+                    <span>Find Nearby</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pinned National Lifelines for Community Assistance */}
+      {activeSection === 'community' && (selectedCategory === 'all' || selectedCategory === 'crisis_hotline' || selectedCategory === 'mental_health') && (
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-playfair text-lg font-bold text-[#022d5c] flex items-center gap-2">
+              <Phone className="w-4 h-4 text-red-600" />
+              24/7 National Crisis Lifelines (Immediate Help)
+            </h3>
+            <span className="text-xs text-gray-500 font-medium">Free, confidential & nationwide</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 988 Lifeline */}
+            <div className="p-4 bg-red-50/60 border border-red-200 rounded-xl flex flex-col justify-between hover:shadow-sm transition-shadow">
+              <div>
+                <span className="text-xs font-bold text-red-700 uppercase tracking-wider">Suicide & Mental Health</span>
+                <h4 className="font-bold text-[#022d5c] mt-1 text-base">988 Lifeline</h4>
+                <p className="text-xs text-gray-600 mt-1">24/7 call or text nationwide for emotional crisis or distress.</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-red-100 flex items-center justify-between gap-2">
+                <a href="tel:988" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors">
+                  <Phone className="w-3.5 h-3.5" /> Call 988
+                </a>
+                <a href="https://988lifeline.org" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1">
+                  Site <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+
+            {/* Domestic Violence */}
+            <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-xl flex flex-col justify-between hover:shadow-sm transition-shadow">
+              <div>
+                <span className="text-xs font-bold text-purple-700 uppercase tracking-wider">Domestic Violence</span>
+                <h4 className="font-bold text-[#022d5c] mt-1 text-base">National DV Hotline</h4>
+                <p className="text-xs text-gray-600 mt-1">Confidential safety planning, shelter referrals, and crisis care.</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-purple-100 flex items-center justify-between gap-2">
+                <a href="tel:1-800-799-7233" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-colors">
+                  <Phone className="w-3.5 h-3.5" /> 1-800-799-SAFE
+                </a>
+                <a href="https://www.thehotline.org" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1">
+                  Site <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+
+            {/* SAMHSA */}
+            <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-xl flex flex-col justify-between hover:shadow-sm transition-shadow">
+              <div>
+                <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Substance & Mental Health</span>
+                <h4 className="font-bold text-[#022d5c] mt-1 text-base">SAMHSA Helpline</h4>
+                <p className="text-xs text-gray-600 mt-1">Free 24/7 treatment referrals and support across the country.</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between gap-2">
+                <a href="tel:1-800-662-4357" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">
+                  <Phone className="w-3.5 h-3.5" /> 1-800-662-HELP
+                </a>
+                <a href="https://www.samhsa.gov" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1">
+                  Site <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+
+            {/* Childhelp */}
+            <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-xl flex flex-col justify-between hover:shadow-sm transition-shadow">
+              <div>
+                <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Child Safety</span>
+                <h4 className="font-bold text-[#022d5c] mt-1 text-base">Childhelp Hotline</h4>
+                <p className="text-xs text-gray-600 mt-1">24/7 professional crisis counselors assisting children and families.</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-amber-100 flex items-center justify-between gap-2">
+                <a href="tel:1-800-422-4453" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors">
+                  <Phone className="w-3.5 h-3.5" /> 1-800-422-4453
+                </a>
+                <a href="https://www.childhelphotline.org" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1">
+                  Site <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search & Filters */}
       <div className="mb-8 space-y-4">
         <div className="relative max-w-xl">
@@ -339,7 +592,7 @@ export default function ResourcesPage() {
           <Input 
             placeholder={activeSection === 'counseling' 
               ? "Search by title, content, scripture, or tags..." 
-              : "Search by name, address, phone, or website..."}
+              : "Filter by name, address, phone, or keyword..."}
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -350,7 +603,12 @@ export default function ResourcesPage() {
           {activeCats.map(cat => (
             <button
               key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
+              onClick={() => {
+                setSelectedCategory(cat.id);
+                if (activeSection === 'community') {
+                  fetchCommunityResources(zipCode, cat.id);
+                }
+              }}
               className={cn(
                 "px-4 py-1.5 rounded-full text-sm whitespace-nowrap border transition-colors",
                 selectedCategory === cat.id 
@@ -364,144 +622,383 @@ export default function ResourcesPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">Loading resources...</div>
-      ) : resources.length === 0 ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <Book className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <CardTitle className="mb-2">Your library is empty</CardTitle>
-            <CardDescription className="mb-6 max-w-md mx-auto">
-              Start building your pastoral counseling library by adding a resource or using our curated starter set.
-            </CardDescription>
-            <Button onClick={handleAddStarterResources} className="bg-[#022d5c] hover:bg-[#011c3a]">
-              Add Starter Resources
-            </Button>
-          </CardContent>
-        </Card>
-      ) : filteredResources.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          No resources found matching your search and category filters.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredResources.map(resource => {
-            const isExpanded = expandedCards[resource.id];
-            const catLabel = CATEGORIES.find(c => c.id === resource.category)?.label || resource.category;
-            
-            return (
-              <Card key={resource.id} className="flex flex-col h-full hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3 flex-row justify-between items-start space-y-0">
-                  <div>
-                    <span className="inline-block px-2 py-1 bg-[#F8F5EE] text-[#022d5c] text-xs font-medium rounded mb-2">
-                      {catLabel}
-                    </span>
-                    <CardTitle className="text-lg leading-tight">{resource.title}</CardTitle>
-                  </div>
-                  <div className="flex gap-1 ml-2">
-                    <button 
-                      onClick={() => {
-                        const lines = [resource.title];
-                        lines.push(catLabel);
-                        if (resource.phone) lines.push(`Phone: ${resource.phone}`);
-                        if (resource.address) lines.push(`Address: ${resource.address}`);
-                        if (resource.website) lines.push(`Website: ${resource.website}`);
-                        if (resource.hours) lines.push(`Hours: ${resource.hours}`);
-                        lines.push('');
-                        lines.push(resource.content);
-                        if (resource.scripture_references?.length) {
-                          lines.push('');
-                          lines.push('Scripture: ' + resource.scripture_references.join(', '));
-                        }
-                        navigator.clipboard.writeText(lines.join('\n'));
-                        setCopiedId(resource.id);
-                        setTimeout(() => setCopiedId(null), 2000);
-                      }} 
-                      className={cn(
-                        "p-1.5 rounded hover:bg-gray-100 transition-colors",
-                        copiedId === resource.id ? "text-green-500" : "text-gray-400 hover:text-[#022d5c]"
-                      )}
-                      title="Copy to share"
-                    >
-                      {copiedId === resource.id ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-                    </button>
-                    <button onClick={() => handleOpenModal(resource)} className="p-1.5 text-gray-400 hover:text-[#022d5c] rounded hover:bg-gray-100">
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDeleteResource(resource.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col">
-                  <div 
-                    className={cn(
-                      "text-sm text-gray-700 whitespace-pre-wrap mb-4 cursor-pointer relative",
-                      !isExpanded && "line-clamp-3"
-                    )}
-                    onClick={() => toggleExpand(resource.id)}
-                  >
-                    {resource.content}
-                  </div>
-                  
-                  <div className="mt-auto space-y-3 pt-4 border-t border-gray-100">
-                    {/* Contact Info for Community Resources */}
-                    {(resource.phone || resource.address || resource.website || resource.hours) && (
-                      <div className="bg-blue-50/50 rounded-lg p-3 space-y-1.5 text-sm">
-                        {resource.phone && (
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                            <a href={`tel:${resource.phone}`} className="hover:text-blue-600 hover:underline">{resource.phone}</a>
-                          </div>
-                        )}
-                        {resource.address && (
-                          <div className="flex items-start gap-2 text-gray-700">
-                            <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
-                            <span>{resource.address}</span>
-                          </div>
-                        )}
-                        {resource.website && (
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                            <a href={resource.website.startsWith('http') ? resource.website : `https://${resource.website}`} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 hover:underline truncate">{resource.website}</a>
-                          </div>
-                        )}
-                        {resource.hours && (
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                            <span>{resource.hours}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+      {activeSection === 'community' && (
+        <div className="space-y-10">
+          {/* Discovered Local Resources Section */}
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-2 border-b border-gray-200">
+              <div>
+                <h3 className="font-playfair text-xl font-bold text-[#022d5c]">
+                  Verified Local Assistance in {communitySearchedZip || zipCode}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {discoveredCommunity.length} active programs located for this area
+                </p>
+              </div>
+              <div className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
+                {communitySource === '211_platform' ? 'Direct from National 2-1-1 Platform' : 'Live Google-Grounded Directory'}
+              </div>
+            </div>
 
-                    {resource.scripture_references && resource.scripture_references.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        <Book className="w-3.5 h-3.5 text-[#D0A348] mt-0.5" />
-                        {resource.scripture_references.map((ref, idx) => (
-                          <span key={idx} className="bg-[#D0A348]/10 text-[#D0A348] text-xs px-2 py-0.5 rounded">
-                            {ref}
+            {isSearchingCommunity ? (
+              <div className="p-12 text-center bg-white rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#022d5c] mx-auto" />
+                <p className="font-semibold text-[#022d5c]">Searching nearby verified resources for {zipCode}...</p>
+                <p className="text-xs text-gray-500 max-w-sm mx-auto">Locating food pantries, emergency shelters, free clinics, and assistance programs.</p>
+              </div>
+            ) : discoveredCommunity.length === 0 ? (
+              <div className="p-8 text-center bg-white rounded-xl border border-dashed border-gray-300">
+                <p className="text-sm text-gray-600 mb-3">No local resources loaded yet for ZIP {zipCode}.</p>
+                <Button onClick={() => fetchCommunityResources(zipCode, selectedCategory)} className="bg-[#022d5c] hover:bg-[#011c3a] text-xs">
+                  <Navigation className="w-3.5 h-3.5 mr-1.5" /> Find Resources in {zipCode}
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {discoveredCommunity
+                  .filter(item => {
+                    if (selectedCategory === 'all') return true;
+                    return item.category === selectedCategory;
+                  })
+                  .filter(item => {
+                    if (!searchQuery.trim()) return true;
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      item.title?.toLowerCase().includes(q) ||
+                      item.content?.toLowerCase().includes(q) ||
+                      item.address?.toLowerCase().includes(q) ||
+                      item.phone?.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((item, idx) => {
+                    const catLabel = CATEGORIES.find(c => c.id === item.category)?.label || item.category;
+                    const saved = isAlreadySaved(item.title);
+
+                    return (
+                      <Card key={item.id || idx} className="flex flex-col h-full hover:shadow-lg transition-all border-blue-100/80 bg-white">
+                        <CardHeader className="pb-3 flex-row justify-between items-start space-y-0">
+                          <div>
+                            <span className="inline-block px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200/60 text-xs font-semibold rounded-full mb-2">
+                              {catLabel}
+                            </span>
+                            <CardTitle className="text-lg leading-tight text-[#022d5c]">{item.title}</CardTitle>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 flex flex-col justify-between">
+                          <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                            {item.content}
+                          </p>
+
+                          <div className="space-y-3 pt-3 border-t border-gray-100 text-xs text-gray-600">
+                            {item.address && (
+                              <a
+                                href={`https://maps.google.com/?q=${encodeURIComponent(item.address)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-start gap-2 hover:text-blue-600 transition-colors group"
+                              >
+                                <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                                <span className="underline group-hover:text-blue-700">{item.address}</span>
+                              </a>
+                            )}
+                            {item.phone && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <a href={`tel:${item.phone}`} className="hover:text-blue-600 font-semibold">{item.phone}</a>
+                              </div>
+                            )}
+                            {item.hours && (
+                              <div className="flex items-center gap-2 text-gray-500">
+                                <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                <span>{item.hours}</span>
+                              </div>
+                            )}
+                            {item.website && (
+                              <div className="flex items-center gap-2">
+                                <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <a
+                                  href={item.website.startsWith('http') ? item.website : `https://${item.website}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline truncate"
+                                >
+                                  {item.website.replace(/^https?:\/\/(www\.)?/, '')}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Quick Actions Bar */}
+                          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-1">
+                              {item.phone && (
+                                <a
+                                  href={`tel:${item.phone}`}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition-colors"
+                                  title="Call organization"
+                                >
+                                  <Phone className="w-3 h-3" /> Call
+                                </a>
+                              )}
+                              {item.address && (
+                                <a
+                                  href={`https://maps.google.com/?q=${encodeURIComponent(item.address)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium text-xs transition-colors"
+                                  title="Open in Maps"
+                                >
+                                  <Navigation className="w-3 h-3" /> Map
+                                </a>
+                              )}
+                              <button
+                                onClick={() => handleShareResourceSMS(item)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 font-medium text-xs transition-colors"
+                                title="Copy formatted text to SMS a church member"
+                              >
+                                <MessageSquare className="w-3 h-3" /> Text
+                              </button>
+                            </div>
+
+                            <button
+                              onClick={() => !saved && handleSaveDiscoveredToLibrary(item)}
+                              disabled={saved}
+                              className={cn(
+                                "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                saved
+                                  ? "bg-emerald-50 text-emerald-700 cursor-default"
+                                  : "bg-[#022d5c] hover:bg-[#011c3a] text-white shadow-xs"
+                              )}
+                              title={saved ? "Saved in your church library" : "Save to church library"}
+                            >
+                              {saved ? (
+                                <>
+                                  <BookmarkCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Saved</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Bookmark className="w-3.5 h-3.5" />
+                                  <span>Save</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+
+          {/* Custom Church Saved Community Resources */}
+          <div className="pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-playfair text-xl font-bold text-[#022d5c]">
+                Church Saved Community Directory ({filteredResources.length})
+              </h3>
+              <p className="text-xs text-gray-500">Custom entries and items saved to your church library</p>
+            </div>
+
+            {filteredResources.length === 0 ? (
+              <div className="p-6 text-center bg-gray-50 rounded-xl text-gray-500 text-xs">
+                No custom resources saved yet in this category. Click &quot;Save&quot; on any discovered item above or &quot;Add Local Resource&quot; to build your church&apos;s custom directory.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredResources.map(resource => {
+                  const isExpanded = expandedCards[resource.id];
+                  const catLabel = CATEGORIES.find(c => c.id === resource.category)?.label || resource.category;
+
+                  return (
+                    <Card key={resource.id} className="flex flex-col h-full hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3 flex-row justify-between items-start space-y-0">
+                        <div>
+                          <span className="inline-block px-2 py-1 bg-[#F8F5EE] text-[#022d5c] text-xs font-medium rounded mb-2">
+                            {catLabel}
                           </span>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {resource.tags && resource.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        <Tag className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
-                        {resource.tags.map((tag, idx) => (
-                          <span key={idx} className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                          <CardTitle className="text-lg leading-tight">{resource.title}</CardTitle>
+                        </div>
+                        <div className="flex gap-1 ml-2">
+                          <button 
+                            onClick={() => handleShareResourceSMS(resource)}
+                            className="p-1.5 text-gray-400 hover:text-[#022d5c] rounded hover:bg-gray-100"
+                            title="Copy formatted text"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleOpenModal(resource)} className="p-1.5 text-gray-400 hover:text-[#022d5c] rounded hover:bg-gray-100">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteResource(resource.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex-1 flex flex-col">
+                        <div 
+                          className={cn(
+                            "text-sm text-gray-700 whitespace-pre-wrap mb-4 cursor-pointer relative",
+                            !isExpanded && "line-clamp-3"
+                          )}
+                          onClick={() => toggleExpand(resource.id)}
+                        >
+                          {resource.content}
+                        </div>
+                        
+                        <div className="mt-auto space-y-3 pt-4 border-t border-gray-100">
+                          {(resource.phone || resource.address || resource.website || resource.hours) && (
+                            <div className="bg-blue-50/50 rounded-lg p-3 space-y-1.5 text-sm">
+                              {resource.phone && (
+                                <div className="flex items-center gap-2 text-gray-700">
+                                  <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                  <a href={`tel:${resource.phone}`} className="hover:text-blue-600 hover:underline">{resource.phone}</a>
+                                </div>
+                              )}
+                              {resource.address && (
+                                <div className="flex items-start gap-2 text-gray-700">
+                                  <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                                  <span>{resource.address}</span>
+                                </div>
+                              )}
+                              {resource.website && (
+                                <div className="flex items-center gap-2 text-gray-700">
+                                  <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                  <a href={resource.website.startsWith('http') ? resource.website : `https://${resource.website}`} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 hover:underline truncate">{resource.website}</a>
+                                </div>
+                              )}
+                              {resource.hours && (
+                                <div className="flex items-center gap-2 text-gray-700">
+                                  <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                  <span>{resource.hours}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
+      )}
+
+      {/* Counseling Resources Section */}
+      {activeSection === 'counseling' && (
+        loading ? (
+          <div className="text-center py-12">Loading resources...</div>
+        ) : resources.length === 0 ? (
+          <Card className="text-center py-12">
+            <CardContent>
+              <Book className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <CardTitle className="mb-2">Your library is empty</CardTitle>
+              <CardDescription className="mb-6 max-w-md mx-auto">
+                Start building your pastoral counseling library by adding a resource or using our curated starter set.
+              </CardDescription>
+              <Button onClick={handleAddStarterResources} className="bg-[#022d5c] hover:bg-[#011c3a]">
+                Add Starter Resources
+              </Button>
+            </CardContent>
+          </Card>
+        ) : filteredResources.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            No counseling resources found matching your search and category filters.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredResources.map(resource => {
+              const isExpanded = expandedCards[resource.id];
+              const catLabel = CATEGORIES.find(c => c.id === resource.category)?.label || resource.category;
+              
+              return (
+                <Card key={resource.id} className="flex flex-col h-full hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3 flex-row justify-between items-start space-y-0">
+                    <div>
+                      <span className="inline-block px-2 py-1 bg-[#F8F5EE] text-[#022d5c] text-xs font-medium rounded mb-2">
+                        {catLabel}
+                      </span>
+                      <CardTitle className="text-lg leading-tight">{resource.title}</CardTitle>
+                    </div>
+                    <div className="flex gap-1 ml-2">
+                      <button 
+                        onClick={() => {
+                          const lines = [resource.title];
+                          lines.push(catLabel);
+                          if (resource.phone) lines.push(`Phone: ${resource.phone}`);
+                          if (resource.address) lines.push(`Address: ${resource.address}`);
+                          if (resource.website) lines.push(`Website: ${resource.website}`);
+                          if (resource.hours) lines.push(`Hours: ${resource.hours}`);
+                          lines.push('');
+                          lines.push(resource.content);
+                          if (resource.scripture_references?.length) {
+                            lines.push('');
+                            lines.push('Scripture: ' + resource.scripture_references.join(', '));
+                          }
+                          navigator.clipboard.writeText(lines.join('\n'));
+                          setCopiedId(resource.id);
+                          setTimeout(() => setCopiedId(null), 2000);
+                        }} 
+                        className={cn(
+                          "p-1.5 rounded hover:bg-gray-100 transition-colors",
+                          copiedId === resource.id ? "text-green-500" : "text-gray-400 hover:text-[#022d5c]"
+                        )}
+                        title="Copy to share"
+                      >
+                        {copiedId === resource.id ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                      </button>
+                      <button onClick={() => handleOpenModal(resource)} className="p-1.5 text-gray-400 hover:text-[#022d5c] rounded hover:bg-gray-100">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDeleteResource(resource.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col">
+                    <div 
+                      className={cn(
+                        "text-sm text-gray-700 whitespace-pre-wrap mb-4 cursor-pointer relative",
+                        !isExpanded && "line-clamp-3"
+                      )}
+                      onClick={() => toggleExpand(resource.id)}
+                    >
+                      {resource.content}
+                    </div>
+                    
+                    <div className="mt-auto space-y-3 pt-4 border-t border-gray-100">
+                      {resource.scripture_references && resource.scripture_references.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          <Book className="w-3.5 h-3.5 text-[#D0A348] mt-0.5" />
+                          {resource.scripture_references.map((ref, idx) => (
+                            <span key={idx} className="bg-[#D0A348]/10 text-[#D0A348] text-xs px-2 py-0.5 rounded">
+                              {ref}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {resource.tags && resource.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
+                          {resource.tags.map((tag, idx) => (
+                            <span key={idx} className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )
       )}
 
       {/* Add/Edit Modal */}
