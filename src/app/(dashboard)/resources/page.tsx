@@ -133,7 +133,7 @@ export default function ResourcesPage() {
     if (!cleanZip) return;
 
     const cacheKey = `${cleanZip}_${targetRadius}`;
-    if (!forceRefresh && cachedZipData[cacheKey]) {
+    if (!forceRefresh && cachedZipData[cacheKey] && cachedZipData[cacheKey].length > 0) {
       setDiscoveredCommunity(cachedZipData[cacheKey]);
       setCommunitySearchedZip(cleanZip);
       return;
@@ -143,9 +143,11 @@ export default function ResourcesPage() {
     try {
       const res = await fetch(`/api/resources/community?zip=${encodeURIComponent(cleanZip)}&category=all&radius=${encodeURIComponent(targetRadius)}`);
       const data = await res.json();
-      if (data.resources) {
+      if (data.resources && data.resources.length > 0) {
         setDiscoveredCommunity(data.resources);
         setCachedZipData(prev => ({ ...prev, [cacheKey]: data.resources }));
+      } else {
+        setDiscoveredCommunity(data.resources || []);
       }
       if (data.lifelines) {
         setLifelines(data.lifelines);
@@ -162,6 +164,34 @@ export default function ResourcesPage() {
       setIsSearchingCommunity(false);
     }
   };
+
+  const filteredDiscoveredCommunity = useMemo(() => {
+    return discoveredCommunity
+      .filter(item => {
+        if (selectedCategory === 'all') return true;
+        const itemCat = (item.category || '').toLowerCase().replace(/[- ]/g, '_');
+        if (itemCat === selectedCategory) return true;
+        const fullText = `${item.title || ''} ${item.content || ''} ${item.category || ''}`.toLowerCase();
+        if (selectedCategory === 'food_pantry' && (fullText.includes('food') || fullText.includes('pantry') || fullText.includes('meal') || fullText.includes('grocer'))) return true;
+        if (selectedCategory === 'shelter' && (fullText.includes('shelter') || fullText.includes('unhoused') || fullText.includes('homeless'))) return true;
+        if (selectedCategory === 'housing' && (fullText.includes('housing') || fullText.includes('rent') || fullText.includes('utility') || fullText.includes('eviction'))) return true;
+        if (selectedCategory === 'medical' && (fullText.includes('clinic') || fullText.includes('medical') || fullText.includes('health') || fullText.includes('doctor') || fullText.includes('dental'))) return true;
+        if (selectedCategory === 'mental_health' && (fullText.includes('mental') || fullText.includes('counsel') || fullText.includes('therapy') || fullText.includes('behavioral'))) return true;
+        if (selectedCategory === 'crisis_hotline' && (fullText.includes('hotline') || fullText.includes('crisis') || fullText.includes('suicide') || fullText.includes('abuse'))) return true;
+        if (selectedCategory === 'legal_aid' && (fullText.includes('legal') || fullText.includes('law') || fullText.includes('court'))) return true;
+        return false;
+      })
+      .filter(item => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          item.title?.toLowerCase().includes(q) ||
+          item.content?.toLowerCase().includes(q) ||
+          item.address?.toLowerCase().includes(q) ||
+          item.phone?.toLowerCase().includes(q)
+        );
+      });
+  }, [discoveredCommunity, selectedCategory, searchQuery]);
 
   useEffect(() => {
     if (activeSection === 'community' && discoveredCommunity.length === 0 && !isSearchingCommunity) {
@@ -677,30 +707,29 @@ export default function ResourcesPage() {
             ) : discoveredCommunity.length === 0 ? (
               <div className="p-8 text-center bg-white rounded-xl border border-dashed border-gray-300">
                 <p className="text-sm text-gray-600 mb-3">No local resources loaded yet for ZIP {zipCode}.</p>
-                <Button onClick={() => fetchCommunityResources(zipCode, selectedCategory)} className="bg-[#022d5c] hover:bg-[#011c3a] text-xs">
+                <Button onClick={() => fetchCommunityResources(zipCode, radius, true)} className="bg-[#022d5c] hover:bg-[#011c3a] text-xs">
                   <Navigation className="w-3.5 h-3.5 mr-1.5" /> Find Resources in {zipCode}
                 </Button>
               </div>
+            ) : filteredDiscoveredCommunity.length === 0 ? (
+              <div className="p-8 text-center bg-white rounded-xl border border-gray-200 space-y-3">
+                <p className="text-sm font-semibold text-gray-700">
+                  No programs found under &quot;{CATEGORIES.find(c => c.id === selectedCategory)?.label || selectedCategory}&quot; for {zipCode}.
+                </p>
+                <p className="text-xs text-gray-500">
+                  {discoveredCommunity.length} other assistance programs were found in this area.
+                </p>
+                <div className="flex justify-center gap-2 pt-2">
+                  <Button onClick={() => setSelectedCategory('all')} variant="outline" className="text-xs">
+                    View All {discoveredCommunity.length} Programs
+                  </Button>
+                </div>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {discoveredCommunity
-                  .filter(item => {
-                    if (selectedCategory === 'all') return true;
-                    return item.category === selectedCategory;
-                  })
-                  .filter(item => {
-                    if (!searchQuery.trim()) return true;
-                    const q = searchQuery.toLowerCase();
-                    return (
-                      item.title?.toLowerCase().includes(q) ||
-                      item.content?.toLowerCase().includes(q) ||
-                      item.address?.toLowerCase().includes(q) ||
-                      item.phone?.toLowerCase().includes(q)
-                    );
-                  })
-                  .map((item, idx) => {
-                    const catLabel = CATEGORIES.find(c => c.id === item.category)?.label || item.category;
-                    const saved = isAlreadySaved(item.title);
+                {filteredDiscoveredCommunity.map((item, idx) => {
+                  const catLabel = CATEGORIES.find(c => c.id === item.category)?.label || item.category;
+                  const saved = isAlreadySaved(item.title);
 
                     return (
                       <Card key={item.id || idx} className="flex flex-col h-full hover:shadow-lg transition-all border-blue-100/80 bg-white">

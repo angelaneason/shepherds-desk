@@ -45,9 +45,28 @@ const NATIONAL_LIFELINES = [
   },
 ];
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 // In-memory cache for fast sub-second repeat queries (7-day TTL)
 const communityCache = new Map<string, { timestamp: number; data: any }>();
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+
+function normalizeCategory(cat: string, titleAndContent: string): string {
+  const lower = (cat || '').toLowerCase().replace(/[- ]/g, '_');
+  if (['food_pantry', 'shelter', 'housing', 'medical', 'crisis_hotline', 'mental_health', 'legal_aid'].includes(lower)) {
+    return lower;
+  }
+  const t = titleAndContent.toLowerCase();
+  if (t.includes('food') || t.includes('pantry') || t.includes('meal') || t.includes('grocer')) return 'food_pantry';
+  if (t.includes('shelter') || t.includes('unhoused') || t.includes('homeless')) return 'shelter';
+  if (t.includes('housing') || t.includes('rent') || t.includes('utility')) return 'housing';
+  if (t.includes('clinic') || t.includes('medical') || t.includes('doctor') || t.includes('health')) return 'medical';
+  if (t.includes('mental') || t.includes('counsel') || t.includes('therapy')) return 'mental_health';
+  if (t.includes('legal') || t.includes('court') || t.includes('law')) return 'legal_aid';
+  if (t.includes('hotline') || t.includes('crisis') || t.includes('suicide') || t.includes('abuse')) return 'crisis_hotline';
+  return 'community';
+}
 
 export async function GET(req: Request) {
   try {
@@ -56,10 +75,10 @@ export async function GET(req: Request) {
     const category = (searchParams.get('category') || 'all').trim();
     const radius = (searchParams.get('radius') || '10').trim();
 
-    // Check cache
+    // Check cache: ONLY return if non-empty
     const cacheKey = `${zip}_${category}_${radius}`;
     const cached = communityCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS && cached.data?.resources?.length > 0) {
       return NextResponse.json({
         ...cached.data,
         cached: true,
@@ -171,18 +190,21 @@ Each JSON object must have these exact keys:
       }
     }
 
-    const formatted = discoveredResources.map((item, idx) => ({
-      id: `local-${zip}-${idx}-${Date.now()}`,
-      title: item.title || 'Community Resource',
-      category: item.category || (category === 'all' ? 'community' : category),
-      address: item.address || '',
-      phone: item.phone || '',
-      website: item.website || '',
-      hours: item.hours || '',
-      content: item.content || '',
-      source: 'google_grounded',
-      isLocal: true,
-    }));
+    const formatted = discoveredResources.map((item, idx) => {
+      const normCat = normalizeCategory(item.category, `${item.title || ''} ${item.content || ''}`);
+      return {
+        id: `local-${zip}-${idx}-${Date.now()}`,
+        title: item.title || 'Community Resource',
+        category: normCat,
+        address: item.address || '',
+        phone: item.phone || '',
+        website: item.website || '',
+        hours: item.hours || '',
+        content: item.content || '',
+        source: 'google_grounded',
+        isLocal: true,
+      };
+    });
 
     const responsePayload = {
       zip,
@@ -192,11 +214,13 @@ Each JSON object must have these exact keys:
       resources: formatted,
     };
 
-    // Cache the result for instant repeat queries
-    communityCache.set(cacheKey, {
-      timestamp: Date.now(),
-      data: responsePayload,
-    });
+    // Cache ONLY if non-empty
+    if (formatted.length > 0) {
+      communityCache.set(cacheKey, {
+        timestamp: Date.now(),
+        data: responsePayload,
+      });
+    }
 
     return NextResponse.json(responsePayload);
   } catch (error: any) {
