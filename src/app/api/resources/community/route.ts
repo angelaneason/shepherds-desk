@@ -148,7 +148,7 @@ export async function GET(req: Request) {
       : category.replace(/_/g, ' ');
 
     const prompt = `You are a specialized community resource locator assisting pastors and church care teams.
-Task: Find 6 to 8 real, verified, currently operating non-profit community assistance organizations, food pantries, emergency shelters, utility assistance charities, or free medical clinics physically located within a ${radius}-mile radius of ZIP code ${zip}.
+Task: Find 5 to 6 real, verified, currently operating non-profit community assistance organizations, food pantries, emergency shelters, utility assistance charities, or free medical clinics physically located within a ${radius}-mile radius of ZIP code ${zip}.
 Service focus: ${categoryText}.
 
 Format your response as ONLY a valid raw JSON array of objects. Do not wrap in markdown code blocks, backticks, or write any conversational introduction or conclusion.
@@ -161,33 +161,38 @@ Each JSON object must have these exact keys:
 - "hours": operating, intake, or distribution hours if known
 - "content": 1-2 practical sentences explaining who they help (e.g. eligibility or distribution rules) and what services they offer to neighbors in need.`;
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 2048,
-      },
-    });
-    let rawText = result.response.text().trim();
+    const result = await model.generateContent(prompt);
+    const rawText = result.response.text().trim();
 
-    // Clean any accidental markdown backticks
-    rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-
+    // Bulletproof JSON Array extraction
+    let cleaned = rawText.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+    const startIdx = cleaned.indexOf('[');
+    if (startIdx !== -1) {
+      cleaned = cleaned.substring(startIdx);
+    }
+    const endIdx = cleaned.lastIndexOf(']');
+    
     let discoveredResources: any[] = [];
-    try {
-      discoveredResources = JSON.parse(rawText);
-      if (!Array.isArray(discoveredResources)) {
-        discoveredResources = [];
+    if (endIdx !== -1) {
+      try {
+        discoveredResources = JSON.parse(cleaned.substring(0, endIdx + 1));
+      } catch (parseErr) {
+        console.warn('Direct JSON parse failed, falling back to object extraction');
       }
-    } catch (parseErr) {
-      const match = rawText.match(/\[\s*\{[\s\S]*\}\s*\]/);
-      if (match) {
-        try {
-          discoveredResources = JSON.parse(match[0]);
-        } catch {
-          discoveredResources = [];
-        }
-      }
+    }
+
+    // Fallback: extract individual JSON objects if array parse failed
+    if (!Array.isArray(discoveredResources) || discoveredResources.length === 0) {
+      const objectMatches = cleaned.match(/\{[\s\S]*?"title"[\s\S]*?\}/g) || [];
+      discoveredResources = objectMatches
+        .map(objStr => {
+          try {
+            return JSON.parse(objStr);
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean);
     }
 
     const formatted = discoveredResources.map((item, idx) => {
