@@ -85,44 +85,70 @@ export async function GET(req: Request) {
       });
     }
 
-    // 1. If 211 National Data Platform API Key is configured, attempt 2-1-1 first
+    // 1. If 211 National Data Platform API Key is configured, attempt official 2-1-1 Search V2
     const twoOneOneKey = process.env.TWO_ONE_ONE_API_KEY;
     if (twoOneOneKey) {
       try {
-        const response = await fetch(`https://api.211.org/v2/search?Location=${encodeURIComponent(zip)}&Keyword=${encodeURIComponent(category === 'all' ? 'emergency assistance' : category)}`, {
+        const keyword = category === 'all' ? 'food shelter assistance' : category.replace(/_/g, ' ');
+        const url = `https://api.211.org/resources/v2/search/keyword?location=${encodeURIComponent(zip)}&keywords=${encodeURIComponent(keyword)}`;
+        
+        const response = await fetch(url, {
           headers: {
-            'Ocp-Apim-Subscription-Key': twoOneOneKey,
+            'Api-Key': twoOneOneKey,
+            'locationMode': 'Near',
+            'distance': radius || '10',
+            'searchMode': 'Any',
+            'orderByDistance': 'true',
+            'size': '10',
             'Accept': 'application/json'
           }
         });
 
         if (response.ok) {
           const data = await response.json();
-          if (data && (Array.isArray(data) || Array.isArray(data.results))) {
-            const rawList = Array.isArray(data) ? data : data.results;
-            const formatted211 = rawList.map((item: any, idx: number) => ({
-              id: `211-${item.id || idx}`,
-              title: item.name || item.agencyName || 'Community Resource',
-              category: category === 'all' ? 'community' : category,
-              address: item.address || item.physicalAddress || '',
-              phone: item.phone || item.primaryPhone || '',
-              website: item.website || item.url || '',
-              hours: item.hours || '',
-              content: item.description || item.serviceDescription || '',
-              source: '211',
-              isLocal: true
-            }));
+          const rawList = data?.results || (Array.isArray(data) ? data : []);
+          if (rawList.length > 0) {
+            const formatted211 = rawList.map((item: any, idx: number) => {
+              const fullAddress = item.address
+                ? [item.address.streetAddress, item.address.city, item.address.stateProvince, item.address.postalCode].filter(Boolean).join(', ')
+                : '';
 
-            return NextResponse.json({
+              const title = item.nameService || item.nameOrganization || 'Community Resource';
+              const content = item.descriptionService || item.descriptionOrganization || '';
+              const normCat = normalizeCategory(category, `${title} ${content}`);
+
+              return {
+                id: `211-${item.idServiceAtLocation || item.idOrganization || idx}`,
+                title: item.nameOrganization ? `${item.nameOrganization} - ${item.nameService || 'Assistance'}` : title,
+                category: normCat,
+                address: fullAddress,
+                phone: item.phone || '',
+                website: item.website || '',
+                hours: item.hours || '',
+                content: content,
+                source: '211_platform',
+                isLocal: true
+              };
+            });
+
+            const payload211 = {
               zip,
+              radius: `${radius} miles`,
               source: '211_platform',
               lifelines: filterLifelines(category),
               resources: formatted211
+            };
+
+            communityCache.set(cacheKey, {
+              timestamp: Date.now(),
+              data: payload211,
             });
+
+            return NextResponse.json(payload211);
           }
         }
       } catch (e211) {
-        console.warn('2-1-1 API query failed or fallback needed:', e211);
+        console.warn('2-1-1 API query failed, falling back to Google Grounding:', e211);
       }
     }
 
@@ -139,7 +165,7 @@ export async function GET(req: Request) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-3.5-flash-lite',
       tools: [{ googleSearch: {} }]
     });
 

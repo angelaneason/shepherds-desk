@@ -53,6 +53,7 @@ const CATEGORIES = [
 ];
 
 const COMMUNITY_CATEGORIES = ['housing', 'food_pantry', 'shelter', 'crisis_hotline', 'mental_health', 'legal_aid', 'medical', 'community'];
+const COUNSELING_DB_CATEGORIES = ['grief', 'marriage', 'anxiety', 'addiction', 'depression', 'family', 'faith_crisis', 'anger', 'forgiveness', 'parenting', 'finances', 'loneliness', 'other'];
 
 const STARTER_RESOURCES = [
   { title: 'Navigating the Loss of a Loved One', category: 'grief', content: 'Grief is a natural response to loss, and everyone processes it differently. As a pastor, it is crucial to offer a ministry of presence—simply being there without trying to fix their pain. Validate their feelings of sorrow and remind them that Jesus wept with Mary and Martha. Encourage them to lean into their faith, but do not rush their mourning process.', scripture_references: ['Psalm 34:18', 'Matthew 5:4', 'John 11:35'], tags: ['loss', 'comfort', 'mourning'] },
@@ -201,33 +202,56 @@ export default function ResourcesPage() {
   }, [activeSection]);
 
   const handleSaveDiscoveredToLibrary = async (item: any) => {
-    if (!userId) return;
+    if (!userId) {
+      alert('Please sign in to save resources to your library.');
+      return;
+    }
     try {
+      const cleanTitleKey = (item.title || '').toLowerCase().trim();
+      // Optimistically mark saved in UI
+      setSavedLocalMap(prev => ({ ...prev, [cleanTitleKey]: true }));
+
+      const isCounseling = COUNSELING_DB_CATEGORIES.includes(item.category);
+      const dbCat = isCounseling ? item.category : 'other';
+
+      const metaTags: string[] = ['community', 'local'];
+      if (zipCode) metaTags.push(zipCode);
+      if (!isCounseling && item.category) metaTags.push(`cat:${item.category}`);
+      if (item.phone) metaTags.push(`phone:${item.phone}`);
+      if (item.address) metaTags.push(`address:${item.address}`);
+      if (item.website) metaTags.push(`website:${item.website}`);
+      if (item.hours) metaTags.push(`hours:${item.hours}`);
+
       const payload = {
         profile_id: userId,
         title: item.title,
-        category: item.category,
-        content: item.content,
+        category: dbCat,
+        content: item.content || '',
         scripture_references: [],
-        tags: ['community', 'local', zipCode],
-        phone: item.phone || null,
-        address: item.address || null,
-        website: item.website || null,
-        hours: item.hours || null,
+        tags: metaTags,
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('counseling_resources')
-        .insert([payload]) as any;
+        .insert([payload])
+        .select() as any;
 
-      if (!error) {
-        setSavedLocalMap(prev => ({ ...prev, [item.title]: true }));
-        fetchResources();
+      if (error) {
+        console.error('Supabase insert error:', error);
+        setSavedLocalMap(prev => {
+          const next = { ...prev };
+          delete next[cleanTitleKey];
+          return next;
+        });
+        alert(`Could not save resource: ${error.message || 'Database error'}`);
+      } else {
+        await fetchResources();
         setActionSuccessMsg(`Saved "${item.title}" to your church library!`);
-        setTimeout(() => setActionSuccessMsg(null), 3500);
+        setTimeout(() => setActionSuccessMsg(null), 4000);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error saving resource:', e);
+      alert(`Error saving resource: ${e?.message || 'Unknown error'}`);
     }
   };
 
@@ -255,8 +279,10 @@ export default function ResourcesPage() {
   };
 
   const isAlreadySaved = (title: string) => {
-    if (savedLocalMap[title]) return true;
-    return resources.some(r => r.title.toLowerCase() === title.toLowerCase());
+    if (!title) return false;
+    const clean = title.toLowerCase().trim();
+    if (savedLocalMap[clean]) return true;
+    return resources.some(r => r.title?.toLowerCase().trim() === clean);
   };
 
   const fetchResources = async () => {
@@ -271,7 +297,54 @@ export default function ResourcesPage() {
         .order('created_at', { ascending: false }) as any;
       
       if (!error && data) {
-        setResources(data);
+        const mapped = data.map((r: any) => {
+          let displayCategory = r.category;
+          let phone = r.phone || null;
+          let address = r.address || null;
+          let website = r.website || null;
+          let hours = r.hours || null;
+          const displayTags: string[] = [];
+
+          if (Array.isArray(r.tags)) {
+            for (const tag of r.tags) {
+              if (typeof tag === 'string') {
+                if (tag.startsWith('cat:')) {
+                  displayCategory = tag.slice(4);
+                } else if (tag.startsWith('phone:')) {
+                  if (!phone) phone = tag.slice(6);
+                } else if (tag.startsWith('address:')) {
+                  if (!address) address = tag.slice(8);
+                } else if (tag.startsWith('website:')) {
+                  if (!website) website = tag.slice(8);
+                } else if (tag.startsWith('hours:')) {
+                  if (!hours) hours = tag.slice(6);
+                } else {
+                  displayTags.push(tag);
+                }
+              }
+            }
+          }
+
+          return {
+            ...r,
+            category: displayCategory,
+            phone,
+            address,
+            website,
+            hours,
+            tags: displayTags,
+          };
+        });
+
+        setResources(mapped);
+
+        const map: Record<string, boolean> = {};
+        mapped.forEach((item: any) => {
+          if (item.title) {
+            map[item.title.toLowerCase().trim()] = true;
+          }
+        });
+        setSavedLocalMap(map);
       }
     }
     setLoading(false);
@@ -335,19 +408,25 @@ export default function ResourcesPage() {
     if (!userId) return;
     
     const formattedScriptures = scriptures.split(',').map(s => s.trim()).filter(Boolean);
-    const formattedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
+    const userTags = tags.split(',').map(t => t.trim()).filter(Boolean);
+
+    const isCounseling = COUNSELING_DB_CATEGORIES.includes(category);
+    const dbCat = isCounseling ? category : 'other';
+
+    const metaTags = [...userTags];
+    if (!isCounseling && category) metaTags.push(`cat:${category}`);
+    if (phone) metaTags.push(`phone:${phone}`);
+    if (address) metaTags.push(`address:${address}`);
+    if (website) metaTags.push(`website:${website}`);
+    if (hours) metaTags.push(`hours:${hours}`);
 
     const payload = {
       profile_id: userId,
       title,
-      category,
+      category: dbCat,
       content,
       scripture_references: formattedScriptures,
-      tags: formattedTags,
-      phone: phone || null,
-      address: address || null,
-      website: website || null,
-      hours: hours || null,
+      tags: metaTags,
     };
 
     if (editingResource) {
@@ -355,12 +434,26 @@ export default function ResourcesPage() {
         .from('counseling_resources')
         .update(payload)
         .eq('id', editingResource.id) as any;
-      if (!error) fetchResources();
+      if (!error) {
+        fetchResources();
+        setActionSuccessMsg(`Updated "${title}"`);
+        setTimeout(() => setActionSuccessMsg(null), 3000);
+      } else {
+        console.error('Update error:', error);
+        alert(`Error updating: ${error.message}`);
+      }
     } else {
       const { error } = await supabase
         .from('counseling_resources')
         .insert([payload]) as any;
-      if (!error) fetchResources();
+      if (!error) {
+        fetchResources();
+        setActionSuccessMsg(`Saved "${title}" to your church library!`);
+        setTimeout(() => setActionSuccessMsg(null), 3000);
+      } else {
+        console.error('Insert error:', error);
+        alert(`Error saving: ${error.message}`);
+      }
     }
     setIsModalOpen(false);
   };
