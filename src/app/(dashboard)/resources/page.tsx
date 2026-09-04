@@ -108,6 +108,7 @@ export default function ResourcesPage() {
 
   // Location-Based Community Assistance State
   const [zipCode, setZipCode] = useState('76018');
+  const [radius, setRadius] = useState('10');
   const [discoveredCommunity, setDiscoveredCommunity] = useState<any[]>([]);
   const [lifelines, setLifelines] = useState<any[]>([]);
   const [isSearchingCommunity, setIsSearchingCommunity] = useState(false);
@@ -115,31 +116,45 @@ export default function ResourcesPage() {
   const [communitySource, setCommunitySource] = useState<string>('');
   const [savedLocalMap, setSavedLocalMap] = useState<Record<string, boolean>>({});
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
+  const [cachedZipData, setCachedZipData] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     fetchResources();
     if (typeof window !== 'undefined') {
       const savedZip = localStorage.getItem('shepherds_community_zip');
       if (savedZip) setZipCode(savedZip);
+      const savedRadius = localStorage.getItem('shepherds_community_radius');
+      if (savedRadius) setRadius(savedRadius);
     }
   }, []);
 
-  const fetchCommunityResources = async (targetZip = zipCode, targetCat = selectedCategory) => {
-    if (!targetZip.trim()) return;
+  const fetchCommunityResources = async (targetZip = zipCode, targetRadius = radius, forceRefresh = false) => {
+    const cleanZip = targetZip.trim();
+    if (!cleanZip) return;
+
+    const cacheKey = `${cleanZip}_${targetRadius}`;
+    if (!forceRefresh && cachedZipData[cacheKey]) {
+      setDiscoveredCommunity(cachedZipData[cacheKey]);
+      setCommunitySearchedZip(cleanZip);
+      return;
+    }
+
     setIsSearchingCommunity(true);
     try {
-      const res = await fetch(`/api/resources/community?zip=${encodeURIComponent(targetZip.trim())}&category=${encodeURIComponent(targetCat)}`);
+      const res = await fetch(`/api/resources/community?zip=${encodeURIComponent(cleanZip)}&category=all&radius=${encodeURIComponent(targetRadius)}`);
       const data = await res.json();
       if (data.resources) {
         setDiscoveredCommunity(data.resources);
+        setCachedZipData(prev => ({ ...prev, [cacheKey]: data.resources }));
       }
       if (data.lifelines) {
         setLifelines(data.lifelines);
       }
-      setCommunitySearchedZip(data.zip || targetZip);
+      setCommunitySearchedZip(data.zip || cleanZip);
       setCommunitySource(data.source || 'google_grounded');
       if (typeof window !== 'undefined') {
-        localStorage.setItem('shepherds_community_zip', targetZip.trim());
+        localStorage.setItem('shepherds_community_zip', cleanZip);
+        localStorage.setItem('shepherds_community_radius', targetRadius);
       }
     } catch (err) {
       console.error('Failed to fetch community resources:', err);
@@ -151,7 +166,7 @@ export default function ResourcesPage() {
   useEffect(() => {
     if (activeSection === 'community' && discoveredCommunity.length === 0 && !isSearchingCommunity) {
       const activeZip = zipCode || '76018';
-      fetchCommunityResources(activeZip, selectedCategory);
+      fetchCommunityResources(activeZip, radius);
     }
   }, [activeSection]);
 
@@ -468,21 +483,38 @@ export default function ResourcesPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Input
                   value={zipCode}
                   onChange={(e) => setZipCode(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') fetchCommunityResources(zipCode, selectedCategory);
+                    if (e.key === 'Enter') fetchCommunityResources(zipCode, radius, true);
                   }}
                   placeholder="ZIP Code"
-                  className="w-32 bg-white font-semibold text-center h-10 border-gray-300"
+                  className="w-28 bg-white font-semibold text-center h-10 border-gray-300"
                   maxLength={10}
                 />
               </div>
+
+              <select
+                value={radius}
+                onChange={(e) => {
+                  const newRadius = e.target.value;
+                  setRadius(newRadius);
+                  fetchCommunityResources(zipCode, newRadius, true);
+                }}
+                className="h-10 px-2.5 bg-white border border-gray-300 rounded-md text-xs font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#022d5c]"
+                title="Search radius in miles"
+              >
+                <option value="5">Within 5 miles</option>
+                <option value="10">Within 10 miles (standard)</option>
+                <option value="15">Within 15 miles</option>
+                <option value="25">Within 25 miles</option>
+              </select>
+
               <Button
-                onClick={() => fetchCommunityResources(zipCode, selectedCategory)}
+                onClick={() => fetchCommunityResources(zipCode, radius, true)}
                 disabled={isSearchingCommunity || !zipCode.trim()}
                 className="bg-[#022d5c] hover:bg-[#011c3a] text-white h-10 px-4 flex items-center gap-2"
               >
@@ -603,12 +635,7 @@ export default function ResourcesPage() {
           {activeCats.map(cat => (
             <button
               key={cat.id}
-              onClick={() => {
-                setSelectedCategory(cat.id);
-                if (activeSection === 'community') {
-                  fetchCommunityResources(zipCode, cat.id);
-                }
-              }}
+              onClick={() => setSelectedCategory(cat.id)}
               className={cn(
                 "px-4 py-1.5 rounded-full text-sm whitespace-nowrap border transition-colors",
                 selectedCategory === cat.id 

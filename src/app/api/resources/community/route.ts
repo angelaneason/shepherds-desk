@@ -45,11 +45,26 @@ const NATIONAL_LIFELINES = [
   },
 ];
 
+// In-memory cache for fast sub-second repeat queries (7-day TTL)
+const communityCache = new Map<string, { timestamp: number; data: any }>();
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const zip = (searchParams.get('zip') || '76018').trim();
     const category = (searchParams.get('category') || 'all').trim();
+    const radius = (searchParams.get('radius') || '10').trim();
+
+    // Check cache
+    const cacheKey = `${zip}_${category}_${radius}`;
+    const cached = communityCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return NextResponse.json({
+        ...cached.data,
+        cached: true,
+      });
+    }
 
     // 1. If 211 National Data Platform API Key is configured, attempt 2-1-1 first
     const twoOneOneKey = process.env.TWO_ONE_ONE_API_KEY;
@@ -114,7 +129,7 @@ export async function GET(req: Request) {
       : category.replace(/_/g, ' ');
 
     const prompt = `You are a specialized community resource locator assisting pastors and church care teams.
-Task: Find 5 to 7 real, verified, currently operating non-profit community assistance organizations, food pantries, emergency shelters, or clinics physically located in or directly serving ZIP code ${zip}.
+Task: Find 6 to 8 real, verified, currently operating non-profit community assistance organizations, food pantries, emergency shelters, utility assistance charities, or free medical clinics physically located within a ${radius}-mile radius of ZIP code ${zip}.
 Service focus: ${categoryText}.
 
 Format your response as ONLY a valid raw JSON array of objects. Do not wrap in markdown code blocks, backticks, or write any conversational introduction or conclusion.
@@ -127,7 +142,13 @@ Each JSON object must have these exact keys:
 - "hours": operating, intake, or distribution hours if known
 - "content": 1-2 practical sentences explaining who they help (e.g. eligibility or distribution rules) and what services they offer to neighbors in need.`;
 
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+      },
+    });
     let rawText = result.response.text().trim();
 
     // Clean any accidental markdown backticks
@@ -163,12 +184,21 @@ Each JSON object must have these exact keys:
       isLocal: true,
     }));
 
-    return NextResponse.json({
+    const responsePayload = {
       zip,
+      radius: `${radius} miles`,
       source: 'google_grounded',
       lifelines: filterLifelines(category),
       resources: formatted,
+    };
+
+    // Cache the result for instant repeat queries
+    communityCache.set(cacheKey, {
+      timestamp: Date.now(),
+      data: responsePayload,
     });
+
+    return NextResponse.json(responsePayload);
   } catch (error: any) {
     console.error('Community resources API error:', error?.message || error);
     return NextResponse.json(
