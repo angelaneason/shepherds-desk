@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid tool' }, { status: 400 })
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' })
     
     const result = await model.generateContent({
       contents: [
