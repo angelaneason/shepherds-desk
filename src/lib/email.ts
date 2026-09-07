@@ -60,13 +60,10 @@ export async function sendReferralInvitationEmail({
         <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #E5E7EB;" cellspacing="0" cellpadding="0">
           
           <tr>
-            <td style="background-color: #022d5c; padding: 36px 32px; text-align: center;">
-              <h1 style="margin: 0; font-family: Georgia, serif; font-size: 26px; color: #ffffff; font-weight: 700; letter-spacing: 0.5px;">
-                The Shepherd's Desk
-              </h1>
-              <p style="margin: 8px 0 0 0; color: #D0A348; font-size: 14px; font-style: italic; letter-spacing: 0.3px;">
-                From Monday's ministry to Sunday's message
-              </p>
+            <td style="background-color: #011830; padding: 28px 24px; text-align: center; border-bottom: 3px solid #D0A348;">
+              <a href="${appUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                <img src="${appUrl}/shepherds-desk-banner-logo.png" alt="The Shepherd's Desk - From Monday's ministry to Sunday's message." width="360" style="max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;" />
+              </a>
             </td>
           </tr>
 
@@ -265,13 +262,10 @@ export async function sendPastorsWifeFollowUpEmail({
         <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #E5E7EB;" cellspacing="0" cellpadding="0">
           
           <tr>
-            <td style="background-color: #022d5c; padding: 32px; text-align: center;">
-              <h1 style="margin: 0; font-family: Georgia, serif; font-size: 24px; color: #ffffff; font-weight: 700;">
-                The Shepherd's Desk
-              </h1>
-              <p style="margin: 6px 0 0 0; color: #D0A348; font-size: 13px; font-style: italic;">
-                A personal sanctuary for the pastor's week
-              </p>
+            <td style="background-color: #011830; padding: 28px 24px; text-align: center; border-bottom: 3px solid #D0A348;">
+              <a href="${appUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                <img src="${appUrl}/shepherds-desk-banner-logo.png" alt="The Shepherd's Desk - From Monday's ministry to Sunday's message." width="360" style="max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;" />
+              </a>
             </td>
           </tr>
 
