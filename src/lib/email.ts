@@ -40,7 +40,7 @@ export async function sendReferralInvitationEmail({
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theshepherdsdesk.app'
   const inviteUrl = `${appUrl}/login?ref=${encodeURIComponent(referralCode)}`
-  const fromEmail = process.env.RESEND_FROM_EMAIL || "The Shepherd's Desk <onboarding@resend.dev>"
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "Angie & Pastor Tiny <invites@theshepherdsdesk.app>"
 
   const recipientGreeting = pastorName?.trim() ? `Pastor ${pastorName.trim()}` : 'Pastor'
   const subject = `${referrerName} invited you to try The Shepherd's Desk`
@@ -210,7 +210,7 @@ export async function sendPastorsWifeFollowUpEmail({
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theshepherdsdesk.app'
   const inviteUrl = `${appUrl}/login?ref=${encodeURIComponent(referralCode)}`
-  const fromEmail = process.env.RESEND_FROM_EMAIL || "The Shepherd's Desk <onboarding@resend.dev>"
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "Angie & Pastor Tiny <invites@theshepherdsdesk.app>"
 
   const recipientGreeting = pastorName?.trim() ? `Pastor ${pastorName.trim()}` : 'Pastor'
   const isPastorSender = senderRole === 'pastor' || senderName?.toLowerCase().includes('tiny')
