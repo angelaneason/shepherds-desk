@@ -89,6 +89,11 @@ export async function sendReferralInvitationEmail({
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
                         <td style="padding: 6px 0; font-size: 14px; color: #1F2937;">
+                          <strong style="color: #022d5c;">⚡ Smart Pastoral Reminders (Voice & Text):</strong> Just speak or type naturally—like <em>"Visit Sister Johnson at Mercy Hospital Thursday at 2 PM"</em>—and Shepherd's Desk automatically schedules it, links the church member, and logs your follow-up.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 14px; color: #1F2937;">
                           <strong style="color: #022d5c;">📖 Sermon Studio & Reference Library:</strong> 200+ curated sermon illustrations, biblical cross-references & commentaries.
                         </td>
                       </tr>
@@ -99,7 +104,7 @@ export async function sendReferralInvitationEmail({
                       </tr>
                       <tr>
                         <td style="padding: 6px 0; font-size: 14px; color: #1F2937;">
-                          <strong style="color: #022d5c;">⏱️ Sacred Study Time:</strong> Protect your preparation schedule with focus timers and study reminders.
+                          <strong style="color: #022d5c;">⏱️ Sacred Study Time:</strong> Protect your preparation schedule with focus timers and conflict detection.
                         </td>
                       </tr>
                       <tr>
