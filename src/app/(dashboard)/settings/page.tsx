@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { UploadCloud, Palette, User, Mail, Lock, LogOut, Bell } from 'lucide-react'
+import { CalendarSyncCard } from '@/components/calendar/CalendarSyncCard'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -338,6 +339,9 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Integrations / Calendar Sync */}
+      <CalendarSyncCard className="shadow-sm rounded-xl" />
 
       <Card>
         <CardHeader>
