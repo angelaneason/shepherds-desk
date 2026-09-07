@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { RefreshCw, CheckCircle2, AlertCircle, Calendar as CalendarIcon } from 'lucide-react'
+import { RefreshCw, CheckCircle2, AlertCircle, Calendar as CalendarIcon, ExternalLink, Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
@@ -91,6 +91,8 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
     }
   }
 
+  const [activeTab, setActiveTab] = useState<'google' | 'apple'>('google')
+
   return (
     <div className={`bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4 ${className}`}>
       <div>
@@ -106,15 +108,137 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
           type="url"
           value={feedUrl}
           onChange={(e) => setFeedUrl(e.target.value)}
-          placeholder="https://calendar.google.com/calendar/ical/sample.interpreter%40gmail.com/public/basic.ics"
+          placeholder="https://calendar.google.com/calendar/ical/yourname%40gmail.com/private-.../basic.ics"
           className="w-full text-sm font-mono border-gray-200 focus:border-teal-600 focus:ring-teal-600"
         />
       </div>
 
-      <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-3.5 text-xs text-gray-700 space-y-1.5">
-        <p className="font-semibold text-gray-800">How to get your secret iCal link:</p>
-        <p>• <span className="font-semibold">Google Calendar:</span> In Google Calendar Settings &gt; Click your calendar name under <span className="font-semibold text-teal-700">&quot;Settings for my calendars&quot;</span> in the left sidebar &gt; Scroll down to <span className="font-semibold">&quot;Integrate calendar&quot;</span> &gt; Copy the <span className="font-semibold">&quot;Secret address in iCal format&quot;</span>.</p>
-        <p>• <span className="font-semibold">Apple iCloud:</span> Apple Calendar &gt; Share Calendar &gt; Copy Public / Private Link (<code className="bg-white px-1 py-0.5 rounded border border-gray-200 font-mono text-[11px]">webcal://</code>).</p>
+      {/* Visual Step-by-Step Instructions */}
+      <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-4 text-xs text-gray-700 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2.5">
+          <div className="flex items-center gap-1.5 font-bold text-gray-900">
+            <Info className="w-4 h-4 text-teal-600 shrink-0" />
+            <span>How to get your secret iCal link:</span>
+          </div>
+          <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg text-[11px] font-medium self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab('google')}
+              className={`px-3 py-1 rounded-md transition-all ${
+                activeTab === 'google'
+                  ? 'bg-white text-gray-900 shadow-sm font-semibold'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Google Calendar
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('apple')}
+              className={`px-3 py-1 rounded-md transition-all ${
+                activeTab === 'apple'
+                  ? 'bg-white text-gray-900 shadow-sm font-semibold'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Apple iCloud
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'google' && (
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white border border-teal-200/80 rounded-lg px-3.5 py-2">
+              <span className="text-gray-700 font-medium">Quick link to Google Calendar settings:</span>
+              <a
+                href="https://calendar.google.com/calendar/u/0/r/settings"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-teal-700 font-semibold hover:text-teal-800 hover:underline text-xs"
+              >
+                Open Google Calendar Settings <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+
+            <ol className="space-y-2.5 pl-0 list-none">
+              <li className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px] mt-0.5">
+                  1
+                </span>
+                <span>
+                  In Google Calendar, click the <strong>Gear icon ⚙️ &gt; Settings</strong> (or click the quick link above).
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px] mt-0.5">
+                  2
+                </span>
+                <span>
+                  In the left sidebar, look down under <strong className="text-teal-800">&quot;Settings for my calendars&quot;</strong> and <strong>click your calendar name</strong> (e.g. 🟢 your name).
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px] mt-0.5">
+                  3
+                </span>
+                <span>
+                  Click <strong className="text-teal-800">&quot;Integrate calendar&quot;</strong> in the left submenu (or scroll down the page to that section).
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px] mt-0.5">
+                  4
+                </span>
+                <span>
+                  Find <strong className="text-gray-900">&quot;Secret address in iCal format&quot;</strong> and click the <strong>Copy button</strong> (the two overlapping squares 📋 next to the eye icon).
+                </span>
+              </li>
+            </ol>
+
+            <div className="bg-amber-50 border border-amber-200/80 text-amber-900 rounded-lg p-2.5 text-[11px] leading-relaxed">
+              ⚠️ <strong>Note:</strong> Do <em>not</em> copy the &quot;Public address in iCal format&quot;. Make sure to copy the <strong>&quot;Secret address in iCal format&quot;</strong> so your private schedule and appointments sync properly.
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'apple' && (
+          <div className="space-y-3">
+            <ol className="space-y-2.5 pl-0 list-none">
+              <li className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px] mt-0.5">
+                  1
+                </span>
+                <span>
+                  Open the <strong>Calendar</strong> app on your Mac, iPad, or iPhone.
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px] mt-0.5">
+                  2
+                </span>
+                <span>
+                  In the calendar list sidebar, click the <strong>broadcast/share icon</strong> (or right-click your calendar).
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px] mt-0.5">
+                  3
+                </span>
+                <span>
+                  Turn on <strong>&quot;Public Calendar&quot;</strong> to generate your link.
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px] mt-0.5">
+                  4
+                </span>
+                <span>
+                  Click <strong>&quot;Copy Link&quot;</strong> (starts with <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200 font-mono text-[11px]">webcal://</code>) and paste it into the field above.
+                </span>
+              </li>
+            </ol>
+          </div>
+        )}
       </div>
 
       {result && (
