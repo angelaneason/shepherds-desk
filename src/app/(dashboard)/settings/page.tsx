@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { UploadCloud, Palette, User, Mail, Lock, LogOut, Bell } from 'lucide-react'
+import { UploadCloud, Palette, User, Mail, Lock, LogOut, Bell, Image as ImageIcon, Loader2 } from 'lucide-react'
 import { CalendarSyncCard } from '@/components/calendar/CalendarSyncCard'
 
 export default function SettingsPage() {
@@ -25,6 +25,9 @@ export default function SettingsPage() {
   const TITLE_OPTIONS = ['Pastor', 'Minister', 'Teacher', 'Preacher', 'Reverend', 'Bishop', 'Elder', 'Evangelist', 'Deacon', 'Chaplain', 'Other']
 
   // Branding State
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [primaryColor, setPrimaryColor] = useState("#022d5c")
   const [secondaryColor, setSecondaryColor] = useState("#D0A348")
   const [accentColor, setAccentColor] = useState("#F8F5EE")
@@ -77,12 +80,13 @@ export default function SettingsPage() {
             if (profile.church_id) {
               const { data: church } = await supabase
                 .from('churches')
-                .select('name, primary_color, secondary_color, accent_color')
+                .select('name, logo_url, primary_color, secondary_color, accent_color')
                 .eq('id', profile.church_id)
                 .single() as any
 
               if (church) {
                 setChurchName(church.name || '')
+                setLogoUrl(church.logo_url || null)
                 setPrimaryColor(church.primary_color || '#022d5c')
                 setSecondaryColor(church.secondary_color || '#D0A348')
                 setAccentColor(church.accent_color || '#F8F5EE')
@@ -147,24 +151,118 @@ export default function SettingsPage() {
     }
   }
 
+  const handleLogoUpload = async (file: File) => {
+    if (!file) return
+    setUploadingLogo(true)
+    try {
+      const formData = new FormData()
+      formData.append('logo', file)
+
+      const res = await fetch('/api/church/logo', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to upload logo')
+      }
+
+      setLogoUrl(data.logoUrl)
+      window.dispatchEvent(
+        new CustomEvent('church_branding_updated', {
+          detail: { logoUrl: data.logoUrl, primaryColor, secondaryColor, accentColor, name: churchName },
+        })
+      )
+      alert('Church logo uploaded and applied!')
+    } catch (err: any) {
+      console.error('Logo upload error:', err)
+      alert(err.message || 'Error uploading logo')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const handleRemoveLogo = async () => {
+    if (!confirm('Are you sure you want to remove your church logo?')) return
+    setUploadingLogo(true)
+    try {
+      const res = await fetch('/api/church/logo', { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to remove logo')
+      }
+      setLogoUrl(null)
+      window.dispatchEvent(
+        new CustomEvent('church_branding_updated', {
+          detail: { logoUrl: null, primaryColor, secondaryColor, accentColor, name: churchName },
+        })
+      )
+      alert('Logo removed.')
+    } catch (err: any) {
+      console.error('Logo delete error:', err)
+      alert(err.message || 'Error removing logo')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
   const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!churchId) return
 
     try {
-      await supabase
-        .from('churches')
-        .update({
-          primary_color: primaryColor,
-          secondary_color: secondaryColor,
-          accent_color: accentColor
-        })
-        .eq('id', churchId)
+      let activeChurchId = churchId
 
-      alert('Branding saved successfully!')
-    } catch (error) {
+      if (!activeChurchId) {
+        const { data: newChurch, error: createError } = await supabase
+          .from('churches')
+          .insert({
+            name: churchName.trim() || 'My Church',
+            primary_color: primaryColor,
+            secondary_color: secondaryColor,
+            accent_color: accentColor,
+          })
+          .select()
+          .single() as any
+
+        if (createError) throw createError
+        if (newChurch) {
+          activeChurchId = newChurch.id
+          setChurchId(newChurch.id)
+          if (profileId) {
+            await supabase.from('profiles').update({ church_id: newChurch.id } as any).eq('id', profileId)
+          }
+        }
+      } else {
+        const { error: updateError } = await supabase
+          .from('churches')
+          .update({
+            primary_color: primaryColor,
+            secondary_color: secondaryColor,
+            accent_color: accentColor
+          })
+          .eq('id', activeChurchId)
+
+        if (updateError) throw updateError
+      }
+
+      // Live update dashboard layout
+      window.dispatchEvent(
+        new CustomEvent('church_branding_updated', {
+          detail: {
+            primaryColor,
+            secondaryColor,
+            accentColor,
+            logoUrl,
+            name: churchName
+          }
+        })
+      )
+
+      alert('Branding saved successfully! Your theme colors are now active.')
+    } catch (error: any) {
       console.error(error)
-      alert('Error saving branding.')
+      alert(`Error saving branding: ${error.message || 'Please try again'}`)
     }
   }
 
@@ -263,12 +361,91 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSaveBranding} className="space-y-6">
-            <div className="space-y-2">
-              <Label>Logo Upload</Label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-gray-400 transition-colors cursor-pointer">
-                <UploadCloud className="w-8 h-8 mb-2" />
-                <p className="text-sm">Drag & drop your logo here or click to browse</p>
-              </div>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-gray-900">Church Logo</Label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleLogoUpload(file)
+                }}
+              />
+
+              {logoUrl ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                  <div className="bg-white p-2.5 rounded-lg border border-gray-200 shadow-sm flex items-center justify-center min-w-[120px] h-20">
+                    <img
+                      src={logoUrl}
+                      alt="Church Logo"
+                      className="max-h-16 max-w-[180px] object-contain"
+                    />
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">Your Church Logo is Active</p>
+                      <p className="text-xs text-gray-500">Displayed in your desktop sidebar and mobile navigation drawer.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingLogo}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-xs"
+                      >
+                        {uploadingLogo ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          'Replace Logo'
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={uploadingLogo}
+                        onClick={handleRemoveLogo}
+                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Remove Logo
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const file = e.dataTransfer.files?.[0]
+                    if (file) handleLogoUpload(file)
+                  }}
+                  className="border-2 border-dashed border-gray-300 hover:border-teal-500 rounded-xl p-8 flex flex-col items-center justify-center text-gray-500 hover:bg-teal-50/20 transition-all cursor-pointer group"
+                >
+                  {uploadingLogo ? (
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="w-8 h-8 mb-2 text-teal-600 animate-spin" />
+                      <p className="text-sm font-medium text-gray-700">Uploading your logo to cloud storage...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-9 h-9 mb-2 text-gray-400 group-hover:text-teal-600 transition-colors" />
+                      <p className="text-sm font-medium text-gray-700">
+                        Click to browse or drag &amp; drop your church logo
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, SVG, or WebP up to 5MB</p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
