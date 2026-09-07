@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -13,8 +13,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { 
   Search, Plus, CheckCircle, Trash2, Hospital, Phone, 
   Home, Car, Church, HelpCircle, Mail, Clock, 
-  ChevronDown, ChevronUp, AlertCircle, Calendar as CalendarIcon
+  ChevronDown, ChevronUp, AlertCircle, Calendar as CalendarIcon,
+  Download, Smartphone, MessageSquare
 } from 'lucide-react'
+import { downloadVCard, parseVCardText, parseCSVContacts } from '@/lib/vcard'
 import { format, isPast, parseISO, addHours } from 'date-fns'
 
 type Member = {
@@ -136,6 +138,86 @@ export default function CarePage() {
       setMembers([...members, data[0] as any].sort((a, b) => a.full_name.localeCompare(b.full_name)))
       setIsAddMemberOpen(false)
       setNewMember({ status: 'active' })
+    }
+  }
+
+  const contactFileInputRef = useRef<HTMLInputElement>(null)
+  const [importingContacts, setImportingContacts] = useState(false)
+
+  const handleImportContactsFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !userProfileId) return
+    setImportingContacts(true)
+    try {
+      const text = await file.text()
+      let parsed = []
+      if (file.name.toLowerCase().endsWith('.vcf') || file.type.includes('vcard')) {
+        parsed = parseVCardText(text)
+      } else if (file.name.toLowerCase().endsWith('.csv') || file.type.includes('csv')) {
+        parsed = parseCSVContacts(text)
+      } else {
+        parsed = parseVCardText(text)
+        if (parsed.length === 0) parsed = parseCSVContacts(text)
+      }
+
+      if (parsed.length === 0) {
+        alert('Could not find any contacts in this file. Please make sure it is a valid .vcf or .csv file.')
+        return
+      }
+
+      const rows = parsed.map(c => ({
+        profile_id: userProfileId,
+        full_name: c.full_name,
+        phone: c.phone || null,
+        email: c.email || null,
+        address: c.address || null,
+        notes: c.notes || null,
+        status: 'active' as const
+      }))
+
+      const { data, error } = await supabase.from('members').insert(rows).select()
+      if (error) throw error
+
+      if (data) {
+        setMembers(prev => [...prev, ...(data as any)].sort((a, b) => a.full_name.localeCompare(b.full_name)))
+        alert(`Successfully imported ${data.length} contacts into your church directory!`)
+      }
+    } catch (err: any) {
+      console.error(err)
+      alert(`Error importing contacts: ${err.message || 'Failed to parse file'}`)
+    } finally {
+      setImportingContacts(false)
+      if (contactFileInputRef.current) contactFileInputRef.current.value = ''
+    }
+  }
+
+  const handleNativeContactPicker = async () => {
+    if (typeof window !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window) {
+      try {
+        const props = ['name', 'tel', 'email', 'address']
+        const opts = { multiple: true }
+        const picked = await (navigator as any).contacts.select(props, opts)
+        if (picked && picked.length > 0 && userProfileId) {
+          const rows = picked.map((c: any) => ({
+            profile_id: userProfileId,
+            full_name: Array.isArray(c.name) ? c.name[0] : (c.name || 'Unknown Contact'),
+            phone: Array.isArray(c.tel) ? c.tel[0] : (c.tel || null),
+            email: Array.isArray(c.email) ? c.email[0] : (c.email || null),
+            address: Array.isArray(c.address) ? c.address[0] : (c.address || null),
+            status: 'active' as const
+          }))
+          const { data, error } = await supabase.from('members').insert(rows).select()
+          if (error) throw error
+          if (data) {
+            setMembers(prev => [...prev, ...(data as any)].sort((a, b) => a.full_name.localeCompare(b.full_name)))
+            alert(`Successfully imported ${data.length} contacts directly from your phone!`)
+          }
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    } else {
+      contactFileInputRef.current?.click()
     }
   }
 
@@ -555,24 +637,57 @@ export default function CarePage() {
         </TabsContent>
         
         <TabsContent value="members" className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="relative flex-1 w-full max-w-md">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
               <Input
                 placeholder="Search members..."
-                className="pl-9"
+                className="pl-9 bg-white"
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
               />
             </div>
             
-            <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
-              <DialogTrigger>
-                <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Member
-                </Button>
-              </DialogTrigger>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start md:justify-end">
+              <input
+                type="file"
+                ref={contactFileInputRef}
+                className="hidden"
+                accept=".vcf,.csv,text/vcard,text/csv"
+                onChange={handleImportContactsFile}
+              />
+              
+              <Button
+                type="button"
+                variant="outline"
+                className="border-[#D0A348] text-[#022d5c] hover:bg-[#F8F5EE] text-xs sm:text-sm font-medium"
+                onClick={handleNativeContactPicker}
+                disabled={importingContacts}
+                title="Import contacts from your phone via .vcf, .csv or mobile picker"
+              >
+                <Smartphone className="w-4 h-4 mr-1.5 text-[#D0A348]" />
+                {importingContacts ? 'Importing...' : 'Import Phone Contacts'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="border-gray-300 text-gray-700 hover:bg-gray-50 text-xs sm:text-sm"
+                onClick={() => downloadVCard(members, 'church-directory.vcf')}
+                disabled={members.length === 0}
+                title="Export all members to a universal .vcf file to import into your iPhone or Android contacts with 1 tap"
+              >
+                <Download className="w-4 h-4 mr-1.5 text-gray-500" />
+                Export to Phone (.vcf)
+              </Button>
+
+              <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs sm:text-sm">
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Add Member
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle>Add New Member</DialogTitle>
@@ -644,6 +759,7 @@ export default function CarePage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
 
           {!loading && filteredMembers.length === 0 ? (
@@ -685,11 +801,36 @@ export default function CarePage() {
                         </div>
                       </div>
                       
-                      <div className="flex flex-col gap-2 text-sm text-gray-600">
+                      <div className="flex flex-col gap-2.5 text-sm text-gray-600">
                         {member.phone && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <a href={`tel:${member.phone}`} className="hover:text-[#022d5c] hover:underline" onClick={(e) => e.stopPropagation()}>{member.phone}</a>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Phone className="w-4 h-4 text-gray-400" />
+                              <a href={`tel:${member.phone}`} className="hover:text-[#022d5c] hover:underline font-medium" onClick={(e) => e.stopPropagation()}>{member.phone}</a>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={`sms:${member.phone}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-[#F8F5EE] text-[#022d5c] hover:bg-[#D0A348]/20 font-medium transition-colors"
+                                title="Send SMS message"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 text-[#D0A348]" />
+                                Text
+                              </a>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  downloadVCard([member], `${member.full_name.replace(/\s+/g, '_')}.vcf`)
+                                }}
+                                className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-100 font-medium transition-colors"
+                                title="Download .vcf to add to phone contacts"
+                              >
+                                <Smartphone className="w-3.5 h-3.5 text-gray-500" />
+                                Add to Phone
+                              </button>
+                            </div>
                           </div>
                         )}
                         {member.email && (
