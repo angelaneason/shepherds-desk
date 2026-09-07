@@ -12,6 +12,8 @@ interface CalendarSyncCardProps {
 
 export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyncCardProps) {
   const [feedUrl, setFeedUrl] = useState('')
+  const [autoSync, setAutoSync] = useState(true)
+  const [lastSyncedText, setLastSyncedText] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
 
@@ -21,7 +23,25 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
     if (saved) {
       setFeedUrl(saved)
     }
+
+    const savedAutoSync = localStorage.getItem('shepherds_calendar_auto_sync')
+    if (savedAutoSync !== null) {
+      setAutoSync(savedAutoSync !== 'false')
+    }
+
+    const savedLastSyncTime = localStorage.getItem('shepherds_calendar_last_sync_time')
+    if (savedLastSyncTime) {
+      try {
+        const date = new Date(parseInt(savedLastSyncTime, 10))
+        setLastSyncedText(date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
+      } catch {}
+    }
   }, [])
+
+  const handleToggleAutoSync = (enabled: boolean) => {
+    setAutoSync(enabled)
+    localStorage.setItem('shepherds_calendar_auto_sync', enabled ? 'true' : 'false')
+  }
 
   const handleSync = async () => {
     const trimmed = feedUrl.trim()
@@ -35,6 +55,9 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
 
     try {
       localStorage.setItem('shepherds_calendar_ical_url', trimmed)
+      const now = Date.now()
+      localStorage.setItem('shepherds_calendar_last_sync_time', now.toString())
+      setLastSyncedText(new Date(now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
 
       const response = await fetch('/api/calendar/sync', {
         method: 'POST',
@@ -115,6 +138,26 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
         <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
         {syncing ? 'Syncing Live Feed...' : 'Sync Live Google & Apple Feed'}
       </Button>
+
+      {/* Auto-Sync Setting & Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-gray-100">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={autoSync}
+            onChange={(e) => handleToggleAutoSync(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+          />
+          <span className="text-xs font-medium text-gray-700">
+            Automatically sync when opening calendar
+          </span>
+        </label>
+        {lastSyncedText && (
+          <span className="text-[11px] text-gray-400 font-medium">
+            Last synced today at {lastSyncedText}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

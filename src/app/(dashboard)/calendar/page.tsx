@@ -158,6 +158,39 @@ export default function CalendarPage() {
 
   useEffect(() => {
     fetchEvents()
+
+    // Seamless background auto-sync for Google & Apple Calendars
+    const checkAutoSync = async () => {
+      try {
+        const savedUrl = localStorage.getItem('shepherds_calendar_ical_url')
+        const autoSyncEnabled = localStorage.getItem('shepherds_calendar_auto_sync') !== 'false'
+        if (!savedUrl || !autoSyncEnabled) return
+
+        const lastSyncTime = localStorage.getItem('shepherds_calendar_last_sync_time')
+        const now = Date.now()
+        // Auto-sync if last sync was > 5 minutes ago or never
+        if (!lastSyncTime || now - parseInt(lastSyncTime, 10) > 5 * 60 * 1000) {
+          localStorage.setItem('shepherds_calendar_last_sync_time', now.toString())
+          const res = await fetch('/api/calendar/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ feedUrl: savedUrl, icalUrl: savedUrl }),
+          })
+          if (res.ok) {
+            const data = await res.json()
+            if (data?.synced > 0) {
+              fetchEvents()
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Background calendar auto-sync failed:', err)
+      }
+    }
+
+    checkAutoSync()
+    const interval = setInterval(checkAutoSync, 10 * 60 * 1000) // periodic check every 10 min
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
