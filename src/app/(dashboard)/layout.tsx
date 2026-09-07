@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, BookOpen, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library } from 'lucide-react'
+import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 import { SupportChat } from '@/components/support/SupportChat'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
@@ -67,6 +67,7 @@ export default function DashboardLayout({
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Sermons', href: '/sermons', icon: BookOpen },
+    { name: 'Reference Library', href: '/library', icon: BookMarked },
     { name: 'Ideas', href: '/ideas', icon: Lightbulb },
     { name: 'Calendar', href: '/calendar', icon: CalendarDays },
     { name: 'Ministry Care', href: '/care', icon: Heart },

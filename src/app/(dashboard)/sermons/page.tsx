@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Calendar, Clock, Edit, ScanLine, LayoutGrid, Layers, Filter, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Search, Calendar, Clock, Edit, ScanLine, LayoutGrid, Layers, Filter, BookOpen, BookMarked, ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -217,7 +217,16 @@ export default function SermonsPage() {
           <h1 className="text-3xl font-bold text-[#022d5c] font-playfair">Sermons</h1>
           <p className="text-slate-500 mt-1">Manage and write your messages.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/library">
+            <Button 
+              variant="outline"
+              className="border-[#D0A348] text-[#977323] hover:bg-[#D0A348]/10 font-medium"
+            >
+              <BookMarked className="h-4 w-4 mr-2 text-[#D0A348]" />
+              Reference Library
+            </Button>
+          </Link>
           <Button 
             onClick={() => setIsScanModalOpen(true)}
             variant="outline"
