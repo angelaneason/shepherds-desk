@@ -36,14 +36,27 @@ export async function POST(req: Request) {
 
     // Parse request body
     const body = await req.json().catch(() => ({}));
-    let feedUrl = (body.feedUrl || '').trim();
+    let feedUrl = (body.feedUrl || body.icalUrl || body.url || '').trim();
 
     if (!feedUrl) {
       return NextResponse.json({ error: 'Calendar iCal URL is required.' }, { status: 400 });
     }
 
     // Convert webcal:// to https://
-    const normalizedUrl = feedUrl.replace(/^webcal:\/\//i, 'https://');
+    let normalizedUrl = feedUrl.replace(/^webcal:\/\//i, 'https://');
+
+    // Auto-heal Google Calendar URLs if truncated at the end (e.g. basic.i, basic.ic, basic)
+    if (normalizedUrl.includes('calendar.google.com/calendar/ical/')) {
+      if (normalizedUrl.endsWith('/basic')) {
+        normalizedUrl += '.ics';
+      } else if (normalizedUrl.endsWith('/basic.')) {
+        normalizedUrl += 'ics';
+      } else if (normalizedUrl.endsWith('/basic.i')) {
+        normalizedUrl += 'cs';
+      } else if (normalizedUrl.endsWith('/basic.ic')) {
+        normalizedUrl += 's';
+      }
+    }
 
     // Security check: only allow http/https
     if (!normalizedUrl.startsWith('https://') && !normalizedUrl.startsWith('http://')) {

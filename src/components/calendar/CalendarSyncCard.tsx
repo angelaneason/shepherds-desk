@@ -41,7 +41,7 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ icalUrl: trimmed }),
+        body: JSON.stringify({ feedUrl: trimmed, icalUrl: trimmed }),
       })
 
       const data = await response.json()
