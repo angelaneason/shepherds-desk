@@ -90,7 +90,7 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
 
       <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-3.5 text-xs text-gray-700 space-y-1.5">
         <p className="font-semibold text-gray-800">How to get your secret iCal link:</p>
-        <p>• <span className="font-semibold">Google Calendar:</span> Settings &gt; Integrate Calendar &gt; Copy &quot;Secret address in iCal format&quot;.</p>
+        <p>• <span className="font-semibold">Google Calendar:</span> In Google Calendar Settings &gt; Click your calendar name under <span className="font-semibold text-teal-700">&quot;Settings for my calendars&quot;</span> in the left sidebar &gt; Scroll down to <span className="font-semibold">&quot;Integrate calendar&quot;</span> &gt; Copy the <span className="font-semibold">&quot;Secret address in iCal format&quot;</span>.</p>
         <p>• <span className="font-semibold">Apple iCloud:</span> Apple Calendar &gt; Share Calendar &gt; Copy Public / Private Link (<code className="bg-white px-1 py-0.5 rounded border border-gray-200 font-mono text-[11px]">webcal://</code>).</p>
       </div>
 
