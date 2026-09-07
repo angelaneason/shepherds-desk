@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { sendReferralInvitationEmail } from '@/lib/email'
 
 function getServiceClient() {
   return createServiceClient(
@@ -9,7 +10,7 @@ function getServiceClient() {
   )
 }
 
-// POST - Log who the pastor shared their link with
+// POST - Log who the pastor shared their link with and send invitation email
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
@@ -19,27 +20,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, email } = await request.json()
+    const { name, email, personalNote } = await request.json()
     if (!name && !email) {
       return NextResponse.json({ error: 'Name or email is required' }, { status: 400 })
     }
 
     const admin = getServiceClient()
 
-    // Get the pastor's referral code
-    const { data: existing } = await admin
-      .from('referrals')
-      .select('referral_code')
-      .eq('referrer_id', user.id)
-      .limit(1)
-      .single() as any
+    // Get the pastor's referral code and profile details
+    const [referralRes, profileRes] = await Promise.all([
+      admin
+        .from('referrals')
+        .select('referral_code')
+        .eq('referrer_id', user.id)
+        .limit(1)
+        .single() as any,
+      admin
+        .from('profiles')
+        .select('full_name, church_name')
+        .eq('id', user.id)
+        .single() as any
+    ])
 
+    const existing = referralRes.data
     if (!existing) {
       return NextResponse.json({ error: 'Generate your invite link first' }, { status: 400 })
     }
 
+    const profile = profileRes.data
+    const referrerName = profile?.full_name ? `Pastor ${profile.full_name}` : 'A fellow pastor'
+
     // Create a tracked share record
     const displayEmail = email || name
+    let finalCode = existing.referral_code
+    let savedRecord = null
+
     const { data: referral, error } = await admin
       .from('referrals')
       .insert({
@@ -54,12 +69,12 @@ export async function POST(request: Request) {
     if (error) {
       // If unique constraint on referral_code, generate a variant
       if (error.code === '23505') {
-        const variant = existing.referral_code + Math.random().toString(36).substring(2, 4).toUpperCase()
+        finalCode = existing.referral_code + Math.random().toString(36).substring(2, 4).toUpperCase()
         const { data: r2, error: e2 } = await admin
           .from('referrals')
           .insert({
             referrer_id: user.id,
-            referral_code: variant,
+            referral_code: finalCode,
             referred_email: displayEmail,
             status: 'pending'
           } as any)
@@ -70,14 +85,32 @@ export async function POST(request: Request) {
           console.error('Error logging share:', e2.message)
           return NextResponse.json({ error: 'Failed to log share' }, { status: 500 })
         }
-        return NextResponse.json(r2)
+        savedRecord = r2
+      } else {
+        console.error('Error logging share:', error.message)
+        return NextResponse.json({ error: 'Failed to log share' }, { status: 500 })
       }
-      
-      console.error('Error logging share:', error.message)
-      return NextResponse.json({ error: 'Failed to log share' }, { status: 500 })
+    } else {
+      savedRecord = referral
     }
 
-    return NextResponse.json(referral)
+    // Dispatch invitation email via Resend if email is provided
+    let emailStatus: { success: boolean; id?: string; error?: string } = { success: false }
+    if (email && email.includes('@')) {
+      emailStatus = await sendReferralInvitationEmail({
+        to: email.trim(),
+        pastorName: name,
+        referrerName,
+        referralCode: finalCode,
+        personalNote
+      })
+    }
+
+    return NextResponse.json({
+      ...savedRecord,
+      emailSent: emailStatus.success,
+      emailError: emailStatus.error
+    })
   } catch (error: any) {
     console.error('Unexpected error logging share:', error?.message || error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

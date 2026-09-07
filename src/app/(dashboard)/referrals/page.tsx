@@ -22,9 +22,11 @@ export default function ReferralsPage() {
   const [copied, setCopied] = useState(false)
   const [myCode, setMyCode] = useState<string | null>(null)
 
-  // Log a Share form
+  // Log a Share / Send Invite form
   const [shareName, setShareName] = useState('')
   const [shareEmail, setShareEmail] = useState('')
+  const [personalNote, setPersonalNote] = useState('')
+  const [inviteSuccessMsg, setInviteSuccessMsg] = useState<string | null>(null)
   const [logging, setLogging] = useState(false)
 
   useEffect(() => {
@@ -75,16 +77,31 @@ export default function ReferralsPage() {
   const logShare = async () => {
     if (!shareName.trim() && !shareEmail.trim()) return
     setLogging(true)
+    setInviteSuccessMsg(null)
     try {
       const response = await fetch('/api/referrals/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: shareName.trim(), email: shareEmail.trim() })
+        body: JSON.stringify({ 
+          name: shareName.trim(), 
+          email: shareEmail.trim(),
+          personalNote: personalNote.trim()
+        })
       })
       if (response.ok) {
+        const result = await response.json()
         await fetchReferrals()
+        if (result.emailSent) {
+          setInviteSuccessMsg(`✅ Personal invitation email sent to ${shareEmail.trim()}!`)
+        } else if (shareEmail.trim()) {
+          setInviteSuccessMsg(`Share logged! Note: ${result.emailError || 'Email could not be delivered yet'}`)
+        } else {
+          setInviteSuccessMsg(`✅ In-person share logged for ${shareName.trim()}!`)
+        }
         setShareName('')
         setShareEmail('')
+        setPersonalNote('')
+        setTimeout(() => setInviteSuccessMsg(null), 7000)
       }
     } catch (error) {
       console.error('Error logging share:', error)
@@ -198,38 +215,50 @@ export default function ReferralsPage() {
         </CardContent>
       </Card>
 
-      {/* Log a Share Card */}
+      {/* Send an Official Invitation Email Card */}
       {myCode && (
-        <Card className="border-blue-100">
+        <Card className="border-[#D0A348]/40 shadow-sm bg-white">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-[#022d5c]" />
-              Log a Share
+            <CardTitle className="text-lg flex items-center gap-2 text-[#022d5c]">
+              <Mail className="w-5 h-5 text-[#D0A348]" />
+              Send an Invitation Email to a Fellow Pastor
             </CardTitle>
-            <CardDescription>Track who you've sent your invite link to so you can follow up.</CardDescription>
+            <CardDescription>
+              Enter their details to send a personalized invitation email with your referral link and ministry highlights.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-3">
+          <CardContent className="space-y-3">
+            {inviteSuccessMsg && (
+              <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg font-medium">
+                {inviteSuccessMsg}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
-                placeholder="Pastor's name"
+                placeholder="Pastor's name (e.g. Pastor David)"
                 value={shareName}
                 onChange={e => setShareName(e.target.value)}
-                className="flex-1"
               />
               <Input
-                placeholder="Email (optional)"
+                placeholder="Pastor's email address *"
                 type="email"
                 value={shareEmail}
                 onChange={e => setShareEmail(e.target.value)}
-                className="flex-1"
               />
+            </div>
+            <Input
+              placeholder="Optional personal note (e.g. 'Thought of you when I started using this for Sunday prep!')"
+              value={personalNote}
+              onChange={e => setPersonalNote(e.target.value)}
+            />
+            <div className="flex justify-end pt-1">
               <Button
                 onClick={logShare}
                 disabled={logging || (!shareName.trim() && !shareEmail.trim())}
-                className="bg-[#022d5c] hover:bg-[#011c3a] text-white gap-2 shrink-0"
+                className="bg-[#022d5c] hover:bg-[#011c3a] text-white gap-2 font-medium"
               >
-                <Send className="w-4 h-4" />
-                {logging ? 'Saving...' : 'Log Share'}
+                <Send className="w-4 h-4 text-[#D0A348]" />
+                {logging ? 'Sending Invitation...' : (shareEmail.trim() ? 'Send Official Invitation Email' : 'Log Share')}
               </Button>
             </div>
           </CardContent>
