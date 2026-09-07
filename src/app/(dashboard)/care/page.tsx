@@ -14,7 +14,7 @@ import {
   Search, Plus, CheckCircle, Trash2, Hospital, Phone, 
   Home, Car, Church, HelpCircle, Mail, Clock, 
   ChevronDown, ChevronUp, AlertCircle, Calendar as CalendarIcon,
-  Download, Smartphone, MessageSquare
+  Download, Smartphone, MessageSquare, Upload
 } from 'lucide-react'
 import { downloadVCard, parseVCardText, parseCSVContacts } from '@/lib/vcard'
 import { format, isPast, parseISO, addHours } from 'date-fns'
@@ -86,6 +86,8 @@ export default function CarePage() {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
   const [isAddPrayerOpen, setIsAddPrayerOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [hasNativeContactPicker, setHasNativeContactPicker] = useState(false)
   const [isAnswerDialogOpen, setIsAnswerDialogOpen] = useState<{isOpen: boolean, prayerId: string | null}>({isOpen: false, prayerId: null})
   
   // Forms state
@@ -104,6 +106,9 @@ export default function CarePage() {
 
   useEffect(() => {
     fetchData()
+    if (typeof window !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window) {
+      setHasNativeContactPicker(true)
+    }
   }, [])
 
   const fetchData = async () => {
@@ -654,20 +659,126 @@ export default function CarePage() {
                 ref={contactFileInputRef}
                 className="hidden"
                 accept=".vcf,.csv,text/vcard,text/csv"
-                onChange={handleImportContactsFile}
+                onChange={async (e) => {
+                  setIsImportModalOpen(false)
+                  await handleImportContactsFile(e)
+                }}
               />
               
               <Button
                 type="button"
                 variant="outline"
                 className="border-[#D0A348] text-[#022d5c] hover:bg-[#F8F5EE] text-xs sm:text-sm font-medium"
-                onClick={handleNativeContactPicker}
+                onClick={() => setIsImportModalOpen(true)}
                 disabled={importingContacts}
                 title="Import contacts from your phone via .vcf, .csv or mobile picker"
               >
                 <Smartphone className="w-4 h-4 mr-1.5 text-[#D0A348]" />
                 {importingContacts ? 'Importing...' : 'Import Phone Contacts'}
               </Button>
+
+              {/* Import Contacts Modal */}
+              <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+                <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-bold text-[#022d5c] flex items-center gap-2">
+                      <Smartphone className="w-5 h-5 text-[#D0A348]" />
+                      Import Contacts into Church Directory
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-2">
+                    <p className="text-sm text-gray-600">
+                      Easily bring your contacts into your directory—completely free, private, and with no Google API setup required.
+                    </p>
+
+                    {/* Method 2: Mobile Browser 1-Tap Picker (Only on Android Chrome) */}
+                    {hasNativeContactPicker ? (
+                      <div className="p-4 bg-amber-50 border border-[#D0A348]/40 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider bg-[#D0A348] text-white px-2 py-0.5 rounded">Method 2 (1-Tap Mobile)</span>
+                          <span className="text-sm font-bold text-gray-900">Direct Phone Picker</span>
+                        </div>
+                        <p className="text-xs text-gray-700">
+                          Your mobile browser supports selecting contacts directly from your phone address book!
+                        </p>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setIsImportModalOpen(false)
+                            handleNativeContactPicker()
+                          }}
+                          className="w-full bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-sm mt-1"
+                        >
+                          <Smartphone className="w-4 h-4 mr-2 text-[#D0A348]" />
+                          Open Phone Contacts
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-lg text-xs text-blue-900 flex items-start gap-2">
+                        <Smartphone className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-semibold">Looking for Method 2 (1-Tap Phone Picker)?</span>
+                          <p className="mt-0.5 text-blue-800">
+                            The 1-tap browser contact picker is a mobile-only feature available when you open <strong>theshepherdsdesk.app/care</strong> on an Android phone using Chrome. On desktop computers (or iPhones), please use the file upload below!
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* File Upload Box */}
+                    <div 
+                      onClick={() => contactFileInputRef.current?.click()}
+                      className="p-5 bg-[#F8F5EE] border-2 border-dashed border-[#D0A348]/40 hover:border-[#D0A348] rounded-xl text-center cursor-pointer transition-colors group"
+                    >
+                      <Upload className="w-8 h-8 text-[#D0A348] mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                      <h4 className="font-semibold text-gray-900 text-sm">
+                        Upload Contacts File (.vcf or .csv)
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                        Works with iPhone vCards, Android .vcf exports, Google Contacts, Breeze, Planning Center, and Excel spreadsheets.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-3 bg-white border-[#022d5c] text-[#022d5c] hover:bg-[#022d5c] hover:text-white text-xs font-semibold"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          contactFileInputRef.current?.click()
+                        }}
+                      >
+                        Choose .vcf or .csv File
+                      </Button>
+                    </div>
+
+                    {/* Quick Step-by-Step Instructions */}
+                    <div className="space-y-2 pt-1">
+                      <p className="text-xs font-bold uppercase tracking-wider text-gray-500">How to get your contacts file in 10 seconds:</p>
+                      
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-1">
+                        <span className="font-bold text-[#022d5c]">📱 iPhone:</span>
+                        <p className="text-gray-600">Open <strong>Contacts</strong> app &rarr; tap <strong>Lists</strong> (top-left) &rarr; touch & hold <strong>All Contacts</strong> &rarr; tap <strong>Export</strong> &rarr; Save to Files or AirDrop/email to this computer.</p>
+                      </div>
+
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-1">
+                        <span className="font-bold text-[#022d5c]">🤖 Android:</span>
+                        <p className="text-gray-600">Open <strong>Contacts</strong> app &rarr; tap <strong>Fix & manage</strong> (or Settings) &rarr; tap <strong>Export to file</strong> (.vcf) &rarr; upload here.</p>
+                      </div>
+
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-1">
+                        <span className="font-bold text-[#022d5c]">📊 Google Contacts / Church Software:</span>
+                        <p className="text-gray-600">Go to contacts.google.com or your church database &rarr; click <strong>Export</strong> &rarr; select <strong>vCard</strong> or <strong>CSV</strong> &rarr; upload here.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsImportModalOpen(false)}>
+                      Cancel
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               <Button
                 type="button"

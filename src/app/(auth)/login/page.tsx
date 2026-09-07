@@ -218,10 +218,19 @@ function LoginContent() {
       </p>
 
       {/* Powered by Tiny Tech */}
-      <div className="pt-6 flex flex-col items-center justify-center gap-1.5 opacity-80">
-        <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">POWERED BY</span>
-        <img src="/tiny-tech-logo.png" alt="Tiny Tech" className="h-6 w-auto object-contain" />
-      </div>
+      <a 
+        href="https://tinytechcompany.com" 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        className="pt-6 flex flex-col items-center justify-center gap-2 group opacity-85 hover:opacity-100 transition-opacity"
+      >
+        <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold group-hover:text-[#022d5c] transition-colors">POWERED BY</span>
+        <img 
+          src="/tiny-tech-logo.png" 
+          alt="Tiny Tech" 
+          className="h-9 w-auto max-w-[180px] object-contain transition-transform group-hover:scale-105" 
+        />
+      </a>
     </div>
   )
 }

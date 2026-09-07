@@ -210,10 +210,19 @@ export default function DashboardLayout({
         </nav>
 
         {/* Powered by Tiny Tech */}
-        <div className="p-4 border-t border-white/10 flex flex-col items-center justify-center gap-1.5 opacity-85 hover:opacity-100 transition-opacity">
-          <span className="text-[10px] uppercase tracking-widest text-white/60 font-semibold">Powered by</span>
-          <img src="/tiny-tech-logo.png" alt="Tiny Tech" className="h-6 w-auto object-contain" />
-        </div>
+        <a 
+          href="https://tinytechcompany.com" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="p-4 border-t border-white/10 flex flex-col items-center justify-center gap-2 group opacity-90 hover:opacity-100 transition-all"
+        >
+          <span className="text-[10px] uppercase tracking-widest text-white/60 font-semibold group-hover:text-[#D0A348] transition-colors">Powered by</span>
+          <img 
+            src="/tiny-tech-logo.png" 
+            alt="Tiny Tech" 
+            className="h-9 w-auto max-w-[180px] object-contain drop-shadow transition-transform group-hover:scale-105" 
+          />
+        </a>
 
       </aside>
 
@@ -296,10 +305,15 @@ export default function DashboardLayout({
             </div>
 
             {/* Powered by Tiny Tech Mobile */}
-            <div className="p-3 border-t border-white/10 flex flex-col items-center justify-center gap-1 opacity-85">
+            <a 
+              href="https://tinytechcompany.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="p-3 border-t border-white/10 flex flex-col items-center justify-center gap-1.5 opacity-90 hover:opacity-100 transition-all"
+            >
               <span className="text-[10px] uppercase tracking-widest text-white/60 font-semibold">Powered by</span>
-              <img src="/tiny-tech-logo.png" alt="Tiny Tech" className="h-5 w-auto object-contain" />
-            </div>
+              <img src="/tiny-tech-logo.png" alt="Tiny Tech" className="h-8 w-auto object-contain" />
+            </a>
           </div>
         </div>
       )}
