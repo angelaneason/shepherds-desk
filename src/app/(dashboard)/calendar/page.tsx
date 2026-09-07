@@ -27,7 +27,9 @@ import {
   addDays,
   areIntervalsOverlapping
 } from 'date-fns'
-import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, Clock, Trash2, Pencil, MapPin, BookOpen, Heart } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, Clock, Trash2, Pencil, MapPin, BookOpen, Heart, RefreshCw } from 'lucide-react'
+import { CalendarSyncCard } from '@/components/calendar/CalendarSyncCard'
+import { AddToGoogleCalendarButton } from '@/components/calendar/AddToGoogleCalendar'
 
 const EVENT_TYPES = {
   sermon_study: { label: 'Sermon Study', color: 'bg-[#022d5c] text-white', defaultHex: '#022d5c' },
@@ -114,6 +116,7 @@ export default function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Form state
@@ -566,10 +569,20 @@ export default function CalendarPage() {
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Ministry Calendar</h1>
-        <Button onClick={() => openAddModal()} className="bg-[#022d5c] hover:bg-[#D0A348] text-white">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Event
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsSyncModalOpen(true)}
+            className="border-teal-600 text-teal-700 hover:bg-teal-50"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Sync Google &amp; Apple
+          </Button>
+          <Button onClick={() => openAddModal()} className="bg-[#022d5c] hover:bg-[#D0A348] text-white">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Event
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-1 gap-6 min-h-0">
@@ -751,6 +764,18 @@ export default function CalendarPage() {
                           {event.description}
                         </p>
                       )}
+
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-1">
+                        <AddToGoogleCalendarButton
+                          title={event.title}
+                          startTime={event.start_time}
+                          endTime={event.end_time}
+                          allDay={event.all_day}
+                          description={event.description}
+                          location={event.location}
+                          variant="badge"
+                        />
+                      </div>
                     </div>
                   ))}
                   
@@ -1000,6 +1025,17 @@ export default function CalendarPage() {
               Cancel
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Live Calendar Auto-Sync (Google & Apple) Dialog */}
+      <Dialog open={isSyncModalOpen} onOpenChange={setIsSyncModalOpen}>
+        <DialogContent className="sm:max-w-[560px] p-0 border-0 bg-transparent overflow-hidden shadow-2xl">
+          <CalendarSyncCard 
+            onSyncComplete={() => {
+              fetchEvents()
+            }} 
+          />
         </DialogContent>
       </Dialog>
     </div>
