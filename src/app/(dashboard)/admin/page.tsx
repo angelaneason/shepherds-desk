@@ -74,6 +74,9 @@ export default function AdminPage() {
   const [sendingVip, setSendingVip] = useState(false)
   const [vipSuccess, setVipSuccess] = useState<string | null>(null)
 
+  const [currentAdminEmail, setCurrentAdminEmail] = useState('')
+  const isPastorTiny = currentAdminEmail.toLowerCase().includes('tinyneason')
+
   const fetchUsers = async () => {
     try {
       setIsLoading(true)
@@ -106,6 +109,10 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user?.email) setCurrentAdminEmail(data.user.email)
+    })
     fetchUsers()
     fetchReferrals()
   }, [])
@@ -372,7 +379,7 @@ export default function AdminPage() {
               <div>
                 <CardTitle className="text-xl text-[#022d5c]">Pastoral Outreach Funnel</CardTitle>
                 <CardDescription>
-                  Track all pastors invited by their peers, and send personal follow-up notes from Angie (Founder & Pastor's Wife).
+                  Track all pastors invited by their peers, and send personal follow-up notes from {isPastorTiny ? 'Pastor Tiny' : "Angie (Founder & Pastor's Wife)"}.
                 </CardDescription>
               </div>
 
@@ -391,7 +398,7 @@ export default function AdminPage() {
                       Invite Pastor as VIP Guest
                     </DialogTitle>
                     <CardDescription>
-                      Sends a warm, personal invitation directly from Angie (Founder, Tiny Tech & Pastor's Wife).
+                      Sends a warm, personal invitation directly from {isPastorTiny ? 'Pastor Tiny' : "Angie (Founder, Tiny Tech & Pastor's Wife)"}.
                     </CardDescription>
                   </DialogHeader>
                   {vipSuccess ? (
@@ -419,10 +426,10 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-700">Personal Note from Angie</label>
+                        <label className="text-sm font-medium text-gray-700">Personal Note from {isPastorTiny ? 'Pastor Tiny' : 'Angie'}</label>
                         <Textarea
                           rows={3}
-                          placeholder="I would love to personally welcome you to The Shepherd's Desk as our VIP guest!"
+                          placeholder={isPastorTiny ? "I would love to personally invite you to The Shepherd's Desk as my VIP fellow pastor and guest!" : "I would love to personally welcome you to The Shepherd's Desk as our VIP guest!"}
                           value={vipNote}
                           onChange={e => setVipNote(e.target.value)}
                         />
@@ -499,7 +506,7 @@ export default function AdminPage() {
                                 onClick={() => handleOpenFollowUp(ref)}
                               >
                                 <Heart className="w-3.5 h-3.5 mr-1 text-[#D0A348]" />
-                                Send Pastor's Wife Note
+                                {isPastorTiny ? 'Send Pastor Follow-Up' : "Send Pastor's Wife Note"}
                               </Button>
                             ) : (
                               <span className="text-xs text-green-700 font-medium">Activated</span>
@@ -523,16 +530,16 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          {/* Follow-Up Modal from Pastor's Wife */}
+          {/* Follow-Up Modal */}
           <Dialog open={followUpModalOpen} onOpenChange={setFollowUpModalOpen}>
             <DialogContent className="sm:max-w-[550px]">
               <DialogHeader>
                 <DialogTitle className="text-xl text-[#022d5c] flex items-center gap-2">
                   <Heart className="w-5 h-5 text-[#D0A348]" />
-                  Send Personal Note from Angie (Pastor's Wife)
+                  Send Personal Note from {isPastorTiny ? 'Pastor Tiny' : "Angie (Pastor's Wife)"}
                 </DialogTitle>
                 <CardDescription>
-                  Reaches out to <strong>{targetReferral?.referred_email}</strong> with your personal story as a pastor's wife and highlights why you created The Shepherd's Desk.
+                  Reaches out to <strong>{targetReferral?.referred_email}</strong> with {isPastorTiny ? 'a personal message from fellow Pastor Tiny' : "your personal story as a pastor's wife"} and highlights the tools of The Shepherd's Desk.
                 </CardDescription>
               </DialogHeader>
 
@@ -544,7 +551,11 @@ export default function AdminPage() {
                 <div className="space-y-4 py-2">
                   <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
                     <strong>Preview of your letter:</strong><br />
-                    <em>"As a pastor's wife, I have watched firsthand the heavy load my husband and fellow pastors carry every single day—the hospital waiting rooms, the crisis calls, and late Saturday night sermon prep. That's why I created The Shepherd's Desk..."</em>
+                    {isPastorTiny ? (
+                      <em>"As a pastor, I know firsthand the immense weight and responsibility we carry every single week. Between crisis visits, hospital calls, counseling, and sermon prep, finding dedicated time can feel impossible. That's why we built The Shepherd's Desk..."</em>
+                    ) : (
+                      <em>"As a pastor's wife, I have watched firsthand the heavy load my husband and fellow pastors carry every single day—the hospital waiting rooms, the crisis calls, and late Saturday night sermon prep. That's why I created The Shepherd's Desk..."</em>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -565,7 +576,7 @@ export default function AdminPage() {
                       className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 gap-2"
                     >
                       <Send className="w-4 h-4 text-[#D0A348]" />
-                      {sendingFollowUp ? 'Sending Follow-up...' : 'Send Pastor\'s Wife Note'}
+                      {sendingFollowUp ? 'Sending Follow-up...' : (isPastorTiny ? 'Send Pastor Follow-Up' : "Send Pastor's Wife Note")}
                     </Button>
                   </DialogFooter>
                 </div>

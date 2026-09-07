@@ -22,7 +22,11 @@ async function verifyAdmin() {
     .eq('id', user.id)
     .single() as any
 
-  if (!profile || profile.role !== 'admin') return null
+  const adminEmails = ['angelaneason@gmail.com', 'tinyneason@gmail.com']
+  const userEmail = (user.email || '').toLowerCase()
+  const isAdminUser = profile?.role === 'admin' || adminEmails.includes(userEmail)
+
+  if (!isAdminUser) return null
   return { user, profile }
 }
 
@@ -115,12 +119,18 @@ export async function POST(request: Request) {
 
       const referrerName = referrerProfile?.full_name ? `Pastor ${referrerProfile.full_name}` : undefined
 
+      const isPastorTiny = (auth.user.email || '').toLowerCase().includes('tinyneason')
+      const senderName = isPastorTiny ? 'Pastor Tiny Neason' : 'Angie'
+      const senderRole = isPastorTiny ? 'pastor' as const : 'pastors_wife' as const
+
       const emailResult = await sendPastorsWifeFollowUpEmail({
         to: referral.referred_email.trim(),
         pastorName: name || undefined,
         referrerName,
         referralCode: referral.referral_code,
-        customNote
+        customNote,
+        senderName,
+        senderRole
       })
 
       if (!emailResult.success) {
@@ -130,7 +140,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, emailId: emailResult.id })
     }
 
-    // 2. Create and Send VIP Invitation Directly from Angie (Founder & Pastor's Wife)
+    // 2. Create and Send VIP Invitation
     if (action === 'create_vip_invite') {
       if (!email || !email.includes('@')) {
         return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
@@ -153,13 +163,22 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: createErr.message }, { status: 500 })
       }
 
-      // Send the personal Founder / Pastor's Wife invitation
+      const isPastorTiny = (auth.user.email || '').toLowerCase().includes('tinyneason')
+      const senderName = isPastorTiny ? 'Pastor Tiny Neason' : 'Angie'
+      const senderRole = isPastorTiny ? 'pastor' as const : 'pastors_wife' as const
+      const defaultNote = isPastorTiny
+        ? 'I would love to personally invite you to The Shepherd\'s Desk as my VIP fellow pastor and guest!'
+        : 'I would love to personally welcome you to The Shepherd\'s Desk as our VIP guest!'
+
+      // Send the personal Founder / Pastor invitation
       const emailResult = await sendPastorsWifeFollowUpEmail({
         to: email.trim(),
         pastorName: name?.trim() || undefined,
-        referrerName: 'Angie (Founder & Pastor\'s Wife)',
+        referrerName: isPastorTiny ? 'Pastor Tiny Neason' : 'Angie (Founder & Pastor\'s Wife)',
         referralCode: randomCode,
-        customNote: customNote?.trim() || 'I would love to personally welcome you to The Shepherd\'s Desk as our VIP guest!'
+        customNote: customNote?.trim() || defaultNote,
+        senderName,
+        senderRole
       })
 
       return NextResponse.json({

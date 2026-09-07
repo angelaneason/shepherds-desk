@@ -22,7 +22,9 @@ export async function DELETE(
       .eq('id', user.id)
       .single() as any
 
-    if (!profile || profile.role !== 'admin') {
+    const adminEmails = ['angelaneason@gmail.com', 'tinyneason@gmail.com']
+    const userEmail = (user.email || '').toLowerCase()
+    if (!profile?.role || (profile.role !== 'admin' && !adminEmails.includes(userEmail))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

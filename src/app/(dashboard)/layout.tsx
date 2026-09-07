@@ -92,7 +92,7 @@ export default function DashboardLayout({
         }
         
         // Email-based admin fallback
-        if (email === 'angelaneason@gmail.com') {
+        if (email === 'angelaneason@gmail.com' || email === 'tinyneason@gmail.com') {
           setIsAdmin(true)
         }
       } catch (err) {

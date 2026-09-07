@@ -14,6 +14,8 @@ interface SendPastorsWifeParams {
   referrerName?: string
   referralCode: string
   customNote?: string
+  senderName?: string
+  senderRole?: 'pastor' | 'pastors_wife'
 }
 
 interface SendVipInviteParams {
@@ -199,7 +201,9 @@ export async function sendPastorsWifeFollowUpEmail({
   pastorName,
   referrerName,
   referralCode,
-  customNote
+  customNote,
+  senderName,
+  senderRole = 'pastors_wife'
 }: SendPastorsWifeParams) {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return { success: false, error: 'RESEND_API_KEY missing' }
@@ -209,7 +213,42 @@ export async function sendPastorsWifeFollowUpEmail({
   const fromEmail = process.env.RESEND_FROM_EMAIL || "The Shepherd's Desk <onboarding@resend.dev>"
 
   const recipientGreeting = pastorName?.trim() ? `Pastor ${pastorName.trim()}` : 'Pastor'
-  const subject = `${recipientGreeting}, a quick personal note from a pastor's wife`
+  const isPastorSender = senderRole === 'pastor' || senderName?.toLowerCase().includes('tiny')
+
+  const subject = isPastorSender
+    ? `${recipientGreeting}, a personal VIP invitation from Pastor Tiny`
+    : `${recipientGreeting}, a quick personal note from a pastor's wife`
+
+  const signatoryName = isPastorSender ? (senderName || 'Pastor Tiny Neason') : (senderName || 'Angie')
+  const signatoryTitle = isPastorSender ? 'Pastor & Co-Founder, The Shepherd\'s Desk' : 'Founder, Tiny Tech & Pastor\'s Wife'
+
+  const openingStory = isPastorSender
+    ? `
+      <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
+        ${referrerName ? `A few days ago, <strong>${referrerName}</strong> recommended The Shepherd's Desk to you. ` : ''}I wanted to reach out to you personally brother to brother and pastor to pastor.
+      </p>
+
+      <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
+        <strong>As a pastor</strong>, I know firsthand the immense weight and responsibility we carry every single week. Between crisis visits, hospital calls, counseling, and church administration, finding dedicated, uninterrupted time to study and prepare a life-giving Sunday message can feel almost impossible.
+      </p>
+
+      <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 18px;">
+        My wife Angie and our team at Tiny Tech built <strong>The Shepherd's Desk</strong> specifically to help pastors protect their sacred study time, stay on top of care visits, and step into the pulpit fully prepared without burning out.
+      </p>
+    `
+    : `
+      <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
+        ${referrerName ? `A few days ago, <strong>${referrerName}</strong> invited you to check out The Shepherd's Desk. ` : ''}I wanted to reach out to you personally.
+      </p>
+
+      <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
+        <strong>As a pastor's wife</strong>, I have watched firsthand the immense weight that pastors carry every single day. I've seen the late-night phone calls, the emergency visits to hospital waiting rooms, the emotional exhaustion of crisis counseling, and the familiar pressure of staring down late Saturday night trying to prepare a sermon for Sunday.
+      </p>
+
+      <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 18px;">
+        That is why I created <strong>The Shepherd's Desk</strong> with Tiny Tech. Not as a big software company trying to sell another administrative program, but as a pastor's wife who wanted to give pastors their peace of mind, their sacred study hours, and their Saturdays back.
+      </p>
+    `
 
   const html = `
 <!DOCTYPE html>
@@ -242,17 +281,7 @@ export async function sendPastorsWifeFollowUpEmail({
                 Dear ${recipientGreeting},
               </p>
 
-              <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
-                ${referrerName ? `A few days ago, <strong>${referrerName}</strong> invited you to check out The Shepherd's Desk. ` : ''}I wanted to reach out to you personally.
-              </p>
-
-              <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
-                <strong>As a pastor's wife</strong>, I have watched firsthand the immense weight that pastors carry every single day. I've seen the late-night phone calls, the emergency visits to hospital waiting rooms, the emotional exhaustion of crisis counseling, and the familiar pressure of staring down late Saturday night trying to prepare a sermon for Sunday.
-              </p>
-
-              <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 18px;">
-                That is why I created <strong>The Shepherd's Desk</strong> with Tiny Tech. Not as a big software company trying to sell another administrative program, but as a pastor's wife who wanted to give pastors their peace of mind, their sacred study hours, and their Saturdays back.
-              </p>
+              ${openingStory}
 
               ${customNote?.trim() ? `
               <div style="background-color: #F8F5EE; border-left: 4px solid #D0A348; padding: 14px 18px; border-radius: 6px; margin-bottom: 22px;">
@@ -288,10 +317,10 @@ export async function sendPastorsWifeFollowUpEmail({
                 May the Lord richly bless your ministry and your family,
               </p>
               <p style="font-size: 15px; font-weight: 700; color: #022d5c; margin: 0;">
-                Angie
+                ${signatoryName}
               </p>
               <p style="font-size: 13px; color: #6B7280; margin: 2px 0 0 0;">
-                Founder, Tiny Tech & Pastor's Wife
+                ${signatoryTitle}
               </p>
             </td>
           </tr>
