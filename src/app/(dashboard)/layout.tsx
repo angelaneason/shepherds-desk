@@ -209,6 +209,12 @@ export default function DashboardLayout({
           )}
         </nav>
 
+        {/* Powered by Tiny Tech */}
+        <div className="p-4 border-t border-white/10 flex flex-col items-center justify-center gap-1.5 opacity-85 hover:opacity-100 transition-opacity">
+          <span className="text-[10px] uppercase tracking-widest text-white/60 font-semibold">Powered by</span>
+          <img src="/tiny-tech-logo.png" alt="Tiny Tech" className="h-6 w-auto object-contain" />
+        </div>
+
       </aside>
 
       {/* Mobile Side Drawer */}
@@ -287,6 +293,12 @@ export default function DashboardLayout({
                 <Camera className="w-5 h-5" />
                 <span className="text-sm font-medium">Quick Capture</span>
               </button>
+            </div>
+
+            {/* Powered by Tiny Tech Mobile */}
+            <div className="p-3 border-t border-white/10 flex flex-col items-center justify-center gap-1 opacity-85">
+              <span className="text-[10px] uppercase tracking-widest text-white/60 font-semibold">Powered by</span>
+              <img src="/tiny-tech-logo.png" alt="Tiny Tech" className="h-5 w-auto object-contain" />
             </div>
           </div>
         </div>

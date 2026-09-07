@@ -216,6 +216,12 @@ function LoginContent() {
           {isSignUp ? 'Sign In' : 'Create Account'}
         </button>
       </p>
+
+      {/* Powered by Tiny Tech */}
+      <div className="pt-6 flex flex-col items-center justify-center gap-1.5 opacity-80">
+        <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">POWERED BY</span>
+        <img src="/tiny-tech-logo.png" alt="Tiny Tech" className="h-6 w-auto object-contain" />
+      </div>
     </div>
   )
 }

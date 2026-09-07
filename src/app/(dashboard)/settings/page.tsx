@@ -641,6 +641,12 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Powered by Tiny Tech Footer */}
+      <div className="pt-8 pb-4 flex flex-col items-center justify-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
+        <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">POWERED BY</span>
+        <img src="/tiny-tech-logo.png" alt="Tiny Tech" className="h-6 w-auto object-contain" />
+      </div>
     </div>
   )
 }
