@@ -26,11 +26,11 @@ export default function WelcomePage() {
         <div className="container mx-auto px-6 relative z-10 flex flex-col items-center text-center">
           <div className="mb-8">
             <Image 
-              src="/shepherds-desk-banner-logo.png" 
+              src="/the_shepherds_desk_logo_transparent.png" 
               alt="The Shepherd's Desk" 
               width={500} 
               height={150} 
-              className="h-32 md:h-44 w-auto object-contain bg-white/95 rounded-2xl p-3 shadow-xl backdrop-blur-sm"
+              className="h-32 md:h-48 w-auto object-contain"
               priority
             />
           </div>
