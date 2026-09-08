@@ -166,7 +166,7 @@ export async function GET(req: Request) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: 'gemini-3.5-flash-lite',
-      tools: [{ googleSearch: {} }]
+      tools: [{ googleSearch: {} } as any]
     });
 
     const categoryText = category === 'all' 

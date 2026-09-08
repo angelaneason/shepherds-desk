@@ -451,7 +451,7 @@ export default function AdminPage() {
 
               {/* VIP Invite Dialog */}
               <Dialog open={isVipOpen} onOpenChange={setIsVipOpen}>
-                <DialogTrigger asChild>
+                <DialogTrigger {...({ asChild: true } as any)}>
                   <Button className="bg-[#022d5c] hover:bg-[#022d5c]/90 text-white font-medium gap-2">
                     <Sparkles className="w-4 h-4 text-[#D0A348]" />
                     Send VIP Founder Invite
@@ -697,7 +697,7 @@ export default function AdminPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Users</CardTitle>
               <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-                <DialogTrigger asChild>
+                <DialogTrigger {...({ asChild: true } as any)}>
                   <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90">
                     <UserPlus className="mr-2 h-4 w-4" />
                     Invite New Pastor

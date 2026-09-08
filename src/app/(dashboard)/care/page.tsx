@@ -849,7 +849,7 @@ export default function CarePage() {
               </Button>
 
               <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
-                <DialogTrigger asChild>
+                <DialogTrigger {...({ asChild: true } as any)}>
                   <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs sm:text-sm">
                     <Plus className="w-4 h-4 mr-1.5" />
                     Add Member

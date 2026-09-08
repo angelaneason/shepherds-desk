@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   UploadCloud, Palette, User, Mail, Lock, LogOut, Bell, Image as ImageIcon, Loader2,
   Calendar, BookOpen, Clock, Moon, Volume2, Sparkles, Send, CheckCircle2, ShieldCheck, Sun, HeartHandshake, Megaphone, Smartphone, Check
