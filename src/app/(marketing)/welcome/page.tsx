@@ -9,7 +9,8 @@ import {
   Monitor,
   Sparkles,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  Gift
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -42,9 +43,12 @@ export default function WelcomePage() {
             The all-in-one sermon preparation and ministry management platform built for Pastors, Preachers, Teachers, and Ministers.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center">
             <Link href="/login" className="inline-flex items-center justify-center bg-gold hover:bg-gold/90 text-navy font-semibold text-base h-14 px-8 rounded-full shadow-lg shadow-gold/20">
               Start Free Trial <ChevronRight className="ml-2 h-5 w-5" />
+            </Link>
+            <Link href="/gift" className="inline-flex items-center justify-center bg-white/15 hover:bg-white/25 border border-gold/60 text-white font-semibold text-base h-14 px-8 rounded-full transition-all">
+              <Gift className="mr-2 h-5 w-5 text-gold" /> Gift a Pastor
             </Link>
             <a href="#features" className="inline-flex items-center justify-center border border-white/30 hover:bg-white/10 text-white font-semibold text-base h-14 px-8 rounded-full bg-transparent">
               See Features
@@ -239,6 +243,39 @@ export default function WelcomePage() {
         </div>
       </section>
 
+      {/* Bless Your Pastor Section (Pastor Appreciation & Christmas) */}
+      <section className="py-16 px-6 bg-[#FAF7F0] border-y border-[#D0A348]/40">
+        <div className="container mx-auto max-w-5xl">
+          <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-[#D0A348]/30 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="space-y-3 max-w-xl text-center md:text-left">
+              <div className="inline-flex items-center gap-1.5 bg-[#D0A348]/20 text-[#022d5c] text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                <Gift className="w-3.5 h-3.5 text-[#D0A348]" /> Pastor Appreciation &bull; Christmas &bull; Ordinations
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold font-[family-name:var(--font-playfair)] text-[#022d5c]">
+                Looking for a Meaningful Gift for Your Pastor?
+              </h3>
+              <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+                Give your pastor something they will actually use every single week. Gift a prepaid 6-month or 1-year subscription—complete with a personalized note and high-resolution printable certificate.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row md:flex-col gap-3 w-full md:w-auto">
+              <Link
+                href="/gift"
+                className="inline-flex items-center justify-center gap-2 bg-[#022d5c] hover:bg-[#033b78] text-white font-bold px-7 py-4 rounded-xl text-sm shadow-md border border-[#D0A348] transition-all text-center"
+              >
+                <Gift className="w-4 h-4 text-[#D0A348]" /> Gift The Shepherd's Desk &rarr;
+              </Link>
+              <Link
+                href="/gift/redeem"
+                className="inline-flex items-center justify-center text-xs font-semibold text-gray-500 hover:text-[#022d5c] transition-colors py-1 text-center"
+              >
+                Have a gift code? Redeem here
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Testimonial/Quote */}
       <section className="py-24 px-6 bg-white border-y border-gray text-center">
         <div className="container mx-auto max-w-3xl">
@@ -280,9 +317,10 @@ export default function WelcomePage() {
               <span className="font-[family-name:var(--font-playfair)] font-bold text-xl text-white/90">The Shepherd's Desk</span>
             </div>
             
-            <nav className="flex gap-6 text-sm text-white/60">
+            <nav className="flex flex-wrap gap-6 text-sm text-white/60">
               <a href="#features" className="hover:text-gold transition-colors">Features</a>
               <a href="#" className="hover:text-gold transition-colors">Pricing</a>
+              <Link href="/gift" className="hover:text-gold transition-colors font-medium text-gold/90">Gift a Pastor</Link>
               <Link href="/download" className="hover:text-gold transition-colors">Download App</Link>
               <Link href="/login" className="hover:text-gold transition-colors">Login</Link>
               <Link href="/privacy" className="hover:text-gold transition-colors">Privacy Policy</Link>

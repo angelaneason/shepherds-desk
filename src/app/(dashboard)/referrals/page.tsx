@@ -340,6 +340,31 @@ export default function ReferralsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Gift Sponsorship Section */}
+      <Card className="bg-[#FAF7F0] border-[#D0A348]/40 shadow-sm">
+        <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="space-y-2 text-center sm:text-left">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#022d5c] flex items-center justify-center sm:justify-start gap-1.5">
+              <Gift className="w-4 h-4 text-[#D0A348]" /> Church or Family Sponsorship
+            </span>
+            <h3 className="text-lg font-bold text-[#022d5c]">
+              Would your church, deacon board, or family like to gift your subscription?
+            </h3>
+            <p className="text-sm text-gray-600 max-w-xl leading-relaxed">
+              Anyone can gift you a 6-month or 1-year prepaid subscription for Pastor Appreciation Month, Christmas, or your church anniversary—with no recurring fees for them.
+            </p>
+          </div>
+          <a
+            href="/gift"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="whitespace-nowrap inline-flex items-center gap-2 bg-[#022d5c] hover:bg-[#033b78] text-white font-bold px-6 py-3 rounded-xl text-sm border border-[#D0A348] shadow-sm transition"
+          >
+            <Gift className="w-4 h-4 text-[#D0A348]" /> Share Gift Page &rarr;
+          </a>
+        </CardContent>
+      </Card>
     </div>
   )
 }

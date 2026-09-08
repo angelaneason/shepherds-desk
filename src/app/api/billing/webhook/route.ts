@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { sendGiftPastorNotificationEmail, sendGiftGiverReceiptEmail } from '@/lib/email';
 
 function getAdminClient() {
   return createSupabaseClient(
@@ -38,6 +39,73 @@ export async function POST(req: Request) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as any;
+
+      // Handle Gift Subscriptions
+      if (session.metadata?.is_gift === 'true') {
+        const giftId = session.metadata.gift_id;
+        const giftCode = session.metadata.gift_code;
+        const giverName = session.metadata.giver_name;
+        const giverEmail = session.metadata.giver_email;
+        const recipientName = session.metadata.recipient_name;
+        const recipientEmail = session.metadata.recipient_email;
+        const planDurationMonths = Number(session.metadata.plan_duration) || 12;
+        const deliveryMethod = session.metadata.delivery_method || 'email';
+
+        console.log(`[Gift Webhook] Processing gift ${giftId} (${giftCode}) from ${giverName} to Pastor ${recipientName}`);
+
+        // Update gift subscription to 'paid'
+        const { data: updatedGift, error: giftUpdateErr } = await admin
+          .from('gift_subscriptions')
+          .update({
+            status: 'paid',
+            stripe_payment_intent: session.payment_intent || null,
+          } as any)
+          .eq('id', giftId)
+          .select()
+          .single();
+
+        if (giftUpdateErr) {
+          console.error('[Gift Webhook] Error updating gift subscription status to paid:', giftUpdateErr);
+        }
+
+        // 1. Send receipt email to the giver with link to their certificate
+        if (giverEmail) {
+          try {
+            await sendGiftGiverReceiptEmail({
+              to: giverEmail,
+              giverName,
+              recipientName,
+              planDurationMonths,
+              redemptionCode: giftCode,
+              deliveryMethod,
+            });
+            console.log(`[Gift Webhook] Sent giver receipt email to ${giverEmail}`);
+          } catch (e) {
+            console.error('[Gift Webhook] Error sending giver receipt email:', e);
+          }
+        }
+
+        // 2. If delivery method is email and recipient email is provided, send email directly to pastor
+        if (deliveryMethod === 'email' && recipientEmail) {
+          try {
+            await sendGiftPastorNotificationEmail({
+              to: recipientEmail,
+              recipientName,
+              giverName,
+              personalMessage: updatedGift?.personal_message || '',
+              planDurationMonths,
+              redemptionCode: giftCode,
+            });
+            console.log(`[Gift Webhook] Sent pastor notification email to ${recipientEmail}`);
+          } catch (e) {
+            console.error('[Gift Webhook] Error sending pastor gift email:', e);
+          }
+        }
+
+        break;
+      }
+
+      // Standard user subscription checkout
       const userId = session.metadata?.supabase_user_id;
       const customerId = session.customer;
 

@@ -362,3 +362,281 @@ export async function sendPastorsWifeFollowUpEmail({
     return { success: false, error: err.message || 'Network error' }
   }
 }
+
+interface SendGiftPastorNotificationParams {
+  to: string
+  recipientName: string
+  giverName: string
+  personalMessage?: string
+  planDurationMonths: number
+  redemptionCode: string
+}
+
+export async function sendGiftPastorNotificationEmail({
+  to,
+  recipientName,
+  giverName,
+  personalMessage,
+  planDurationMonths,
+  redemptionCode
+}: SendGiftPastorNotificationParams) {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn('RESEND_API_KEY is not set. Skipping email dispatch.')
+    return { success: false, error: 'RESEND_API_KEY missing' }
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theshepherdsdesk.app'
+  const redeemUrl = `${appUrl}/gift/redeem?code=${encodeURIComponent(redemptionCode)}`
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "The Shepherd's Desk <invites@theshepherdsdesk.app>"
+
+  const durationText = planDurationMonths >= 12 ? '1 Full Year' : `${planDurationMonths} Months`
+  const subject = `🎁 A Special Ministry Gift from ${giverName}: ${durationText} of The Shepherd's Desk`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8F5EE; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1F2937;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #F8F5EE; padding: 30px 15px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #E5E7EB;" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="background-color: #011830; padding: 32px 24px; text-align: center; border-bottom: 3px solid #D0A348;">
+              <a href="${appUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                <img src="${appUrl}/shepherds-desk-banner-logo.png" alt="The Shepherd's Desk" width="340" style="max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;" />
+              </a>
+              <p style="margin: 12px 0 0 0; font-size: 13px; color: #D0A348; letter-spacing: 1px; text-transform: uppercase; font-weight: 600;">
+                A Ministry Blessing Dedicated to You
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 36px 32px;">
+              <p style="font-size: 20px; font-weight: 700; color: #022d5c; margin-top: 0; margin-bottom: 12px;">
+                Pastor ${recipientName},
+              </p>
+              <p style="font-size: 15px; line-height: 1.6; color: #374151; margin-bottom: 20px;">
+                We are delighted to share that <strong>${giverName}</strong> has gifted you <strong>${durationText} of The Shepherd's Desk Pro</strong> in gratitude for your faithful service to God's flock.
+              </p>
+
+              ${personalMessage?.trim() ? `
+              <div style="background-color: #F8F5EE; border-left: 4px solid #D0A348; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px;">
+                <p style="margin: 0; font-size: 14px; font-style: italic; color: #022d5c; line-height: 1.6;">
+                  "${personalMessage.trim()}"
+                </p>
+                <p style="margin: 10px 0 0 0; font-size: 13px; font-weight: 700; color: #D0A348;">
+                  — With appreciation, ${giverName}
+                </p>
+              </div>
+              ` : ''}
+
+              <!-- Scripture Card -->
+              <div style="background-color: #F4F6F9; border-radius: 10px; padding: 18px 22px; margin-bottom: 24px; text-align: center; border: 1px dashed #CBD5E1;">
+                <p style="margin: 0; font-size: 14px; font-style: italic; color: #334155; line-height: 1.5;">
+                  "How beautiful are the feet of those who bring good news!"
+                </p>
+                <p style="margin: 6px 0 0 0; font-size: 12px; font-weight: 700; color: #022d5c;">
+                  — Romans 10:15
+                </p>
+              </div>
+
+              <div style="text-align: center; margin: 32px 0 24px 0;">
+                <a href="${redeemUrl}" target="_blank" style="display: inline-block; background-color: #022d5c; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 700; padding: 16px 36px; border-radius: 10px; border: 2px solid #D0A348; box-shadow: 0 4px 10px rgba(2,45,92,0.25);">
+                  Claim Your Gift Subscription &rarr;
+                </a>
+              </div>
+
+              <p style="font-size: 13px; text-align: center; color: #6B7280; margin-bottom: 24px;">
+                Or redeem manually with code: <strong style="color: #022d5c; font-size: 14px;">${redemptionCode}</strong> at <a href="${appUrl}/gift/redeem" style="color: #D0A348;">theshepherdsdesk.app/gift/redeem</a>
+              </p>
+
+              <div style="background-color: #FAFAFA; border-radius: 10px; border: 1px solid #EEEEEE; padding: 20px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: #022d5c; text-transform: uppercase;">
+                  Your Gift Subscription Includes:
+                </h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #4B5563; line-height: 1.6;">
+                  <li>Full <strong>Sermon Studio</strong> with Pulpit Mode &amp; Preaching Clock</li>
+                  <li><strong>AI Pastoral Care &amp; Text Assistant</strong> for hospital visits &amp; crisis check-ins</li>
+                  <li><strong>Sacred Study Time Scheduler</strong> with Biblical Illustrations library</li>
+                  <li>Complete Ministry Calendar &amp; Member Care Directory</li>
+                </ul>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #F8F5EE; padding: 20px; text-align: center; border-top: 1px solid #E5E7EB;">
+              <p style="margin: 0; font-size: 11px; color: #9CA3AF;">
+                The Shepherd's Desk &bull; Built with love for those who shepherd God's people.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [to],
+        subject,
+        html
+      })
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('Resend API error:', data)
+      return { success: false, error: data.message || 'Failed to send gift notification email' }
+    }
+    return { success: true, id: data.id }
+  } catch (err: any) {
+    console.error('Error dispatching gift notification email:', err)
+    return { success: false, error: err.message || 'Network error' }
+  }
+}
+
+interface SendGiftGiverReceiptParams {
+  to: string
+  giverName: string
+  recipientName: string
+  planDurationMonths: number
+  redemptionCode: string
+  deliveryMethod: string
+}
+
+export async function sendGiftGiverReceiptEmail({
+  to,
+  giverName,
+  recipientName,
+  planDurationMonths,
+  redemptionCode,
+  deliveryMethod
+}: SendGiftGiverReceiptParams) {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn('RESEND_API_KEY is not set. Skipping email dispatch.')
+    return { success: false, error: 'RESEND_API_KEY missing' }
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theshepherdsdesk.app'
+  const certUrl = `${appUrl}/gift/certificate/${encodeURIComponent(redemptionCode)}`
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "The Shepherd's Desk <invites@theshepherdsdesk.app>"
+
+  const durationText = planDurationMonths >= 12 ? '1 Full Year' : `${planDurationMonths} Months`
+  const subject = `Receipt & Gift Certificate for Pastor ${recipientName}`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8F5EE; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1F2937;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #F8F5EE; padding: 30px 15px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #E5E7EB;" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="background-color: #011830; padding: 30px 24px; text-align: center; border-bottom: 3px solid #D0A348;">
+              <a href="${appUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+                <img src="${appUrl}/shepherds-desk-banner-logo.png" alt="The Shepherd's Desk" width="320" style="max-width: 100%; height: auto; display: block; margin: 0 auto; border: 0;" />
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 36px 32px;">
+              <p style="font-size: 20px; font-weight: 700; color: #022d5c; margin-top: 0; margin-bottom: 12px;">
+                Thank you for your generosity, ${giverName}!
+              </p>
+              <p style="font-size: 15px; line-height: 1.6; color: #374151; margin-bottom: 20px;">
+                Your gift of <strong>${durationText} of The Shepherd's Desk Pro</strong> for <strong>Pastor ${recipientName}</strong> has been successfully processed.
+              </p>
+
+              <div style="background-color: #F8F5EE; border-radius: 10px; padding: 20px; margin-bottom: 24px; border: 1px solid #E5E7EB;">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 700; color: #022d5c; text-transform: uppercase;">
+                  Gift Details
+                </h4>
+                <p style="margin: 0 0 6px 0; font-size: 14px; color: #4B5563;">
+                  <strong>Recipient:</strong> Pastor ${recipientName}
+                </p>
+                <p style="margin: 0 0 6px 0; font-size: 14px; color: #4B5563;">
+                  <strong>Gift Package:</strong> ${durationText} Pro
+                </p>
+                <p style="margin: 0 0 6px 0; font-size: 14px; color: #4B5563;">
+                  <strong>Redemption Code:</strong> <span style="color: #022d5c; font-weight: 700; font-family: monospace; font-size: 15px;">${redemptionCode}</span>
+                </p>
+                <p style="margin: 0; font-size: 14px; color: #4B5563;">
+                  <strong>Delivery:</strong> ${deliveryMethod === 'print' ? 'Printable Gift Certificate (Self Delivery)' : 'Email Delivery to Pastor'}
+                </p>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0 24px 0;">
+                <a href="${certUrl}" target="_blank" style="display: inline-block; background-color: #D0A348; color: #022d5c; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                  View &amp; Print Gift Certificate &rarr;
+                </a>
+              </div>
+
+              <p style="font-size: 14px; line-height: 1.6; color: #6B7280; text-align: center;">
+                You can print this certificate at any time to slip into a card or present in person on Sunday morning.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #F8F5EE; padding: 20px; text-align: center; border-top: 1px solid #E5E7EB;">
+              <p style="margin: 0; font-size: 11px; color: #9CA3AF;">
+                The Shepherd's Desk &bull; Questions? Reply directly to this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [to],
+        subject,
+        html
+      })
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('Resend API error:', data)
+      return { success: false, error: data.message || 'Failed to send gift receipt email' }
+    }
+    return { success: true, id: data.id }
+  } catch (err: any) {
+    console.error('Error dispatching gift receipt email:', err)
+    return { success: false, error: err.message || 'Network error' }
+  }
+}

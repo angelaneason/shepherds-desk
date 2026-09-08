@@ -28,11 +28,13 @@ function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const refCode = searchParams.get('ref')
+  const giftCode = searchParams.get('gift')
+  const mode = searchParams.get('mode')
 
-  // If arriving via referral link, default to sign up mode
+  // If arriving via referral link or gift signup mode, default to sign up
   useEffect(() => {
-    if (refCode) setIsSignUp(true)
-  }, [refCode])
+    if (refCode || mode === 'signup') setIsSignUp(true)
+  }, [refCode, mode])
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -96,7 +98,11 @@ function LoginContent() {
         if (authError) throw authError
       }
 
-      router.push('/')
+      if (giftCode) {
+        router.push(`/gift/redeem?code=${encodeURIComponent(giftCode)}`)
+      } else {
+        router.push('/')
+      }
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'An error occurred during sign in.')
@@ -107,7 +113,13 @@ function LoginContent() {
 
   return (
     <div className="space-y-8 text-center">
-      {refCode && (
+      {giftCode && (
+        <div className="bg-[#D0A348]/15 border border-[#D0A348] rounded-xl p-4 text-sm text-[#022d5c] font-medium shadow-sm">
+          🎁 <strong>Pastoral Gift Subscription!</strong> {isSignUp ? 'Create your free account' : 'Sign in'} to claim and activate your gift.
+        </div>
+      )}
+
+      {refCode && !giftCode && (
         <div className="bg-[#D0A348]/10 border border-[#D0A348]/30 rounded-lg p-4 text-sm text-[#022d5c]">
           🎁 <strong>You've been invited!</strong> Create your free account to get started.
         </div>
