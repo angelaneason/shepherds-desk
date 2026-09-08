@@ -30,7 +30,7 @@ export default function WelcomePage() {
               alt="The Shepherd's Desk" 
               width={500} 
               height={150} 
-              className="h-32 md:h-44 w-auto object-contain rounded-lg shadow-lg"
+              className="h-32 md:h-44 w-auto object-contain bg-white/95 rounded-2xl p-3 shadow-xl backdrop-blur-sm"
               priority
             />
           </div>
@@ -308,13 +308,12 @@ export default function WelcomePage() {
           <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
             <div className="flex items-center gap-3">
               <Image 
-                src="/logo.png" 
-                alt="Shepherd's Desk Logo" 
-                width={120} 
-                height={32} 
-                className="h-8 w-auto object-contain brightness-0 invert opacity-80"
+                src="/logo-dark.png" 
+                alt="The Shepherd's Desk" 
+                width={190} 
+                height={55} 
+                className="h-11 w-auto object-contain rounded"
               />
-              <span className="font-[family-name:var(--font-playfair)] font-bold text-xl text-white/90">The Shepherd's Desk</span>
             </div>
             
             <nav className="flex flex-wrap gap-6 text-sm text-white/60">

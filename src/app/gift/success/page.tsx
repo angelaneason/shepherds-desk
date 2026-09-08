@@ -138,7 +138,7 @@ export default function GiftSuccessPage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link href="/welcome">
             <Image 
-              src="/shepherds-desk-banner-logo.png" 
+              src="/logo-dark.png" 
               alt="The Shepherd's Desk" 
               width={200} 
               height={50} 

@@ -94,7 +94,7 @@ export default function GiftPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/welcome" className="flex items-center gap-3">
             <Image 
-              src="/shepherds-desk-banner-logo.png" 
+              src="/logo-dark.png" 
               alt="The Shepherd's Desk" 
               width={220} 
               height={55} 

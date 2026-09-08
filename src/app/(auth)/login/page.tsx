@@ -125,15 +125,12 @@ function LoginContent() {
         </div>
       )}
 
-      <div className="space-y-2 flex flex-col items-center">
+      <div className="flex flex-col items-center">
         <img 
           src="/logo-clean.png" 
-          alt="The Shepherd's Desk" 
-          className="h-28 w-auto object-contain"
+          alt="The Shepherd's Desk - From Monday's ministry to Sunday's message." 
+          className="h-32 w-auto object-contain"
         />
-        <p className="text-sm text-gray-500 italic">
-          From Monday&apos;s ministry to Sunday&apos;s message.
-        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 text-left">

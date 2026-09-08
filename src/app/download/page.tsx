@@ -5,18 +5,13 @@ export default function DownloadPage() {
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #022d5c 0%, #011c3a 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
       
       {/* Logo */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ width: 80, height: 80, borderRadius: 20, background: 'linear-gradient(135deg, #D0A348, #b8892e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>
-          📖
-        </div>
+      <div style={{ marginBottom: 36, textAlign: 'center' }}>
+        <img 
+          src="/logo-dark.png" 
+          alt="The Shepherd's Desk - From Monday's ministry to Sunday's message." 
+          style={{ height: 110, width: 'auto', objectFit: 'contain', margin: '0 auto' }}
+        />
       </div>
-
-      <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 42, color: '#FFFFFF', marginBottom: 8, textAlign: 'center' }}>
-        The Shepherd&apos;s Desk
-      </h1>
-      <p style={{ color: '#D0A348', fontSize: 18, marginBottom: 48, textAlign: 'center', fontStyle: 'italic' }}>
-        From Monday&apos;s ministry to Sunday&apos;s message.
-      </p>
 
       {/* Download Cards */}
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 800 }}>
