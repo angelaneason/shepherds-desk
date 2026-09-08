@@ -170,7 +170,7 @@ export default function DashboardLayout({
             ) : (
               <div>
                 <img 
-                  src="/logo-dark.png" 
+                  src="/the_shepherds_desk_logo_transparent.png" 
                   alt="The Shepherd's Desk" 
                   className="h-20 w-auto object-contain"
                 />
@@ -239,7 +239,7 @@ export default function DashboardLayout({
                 {churchBrand?.logoUrl ? (
                   <img src={churchBrand.logoUrl} alt={churchBrand.name || "Church Logo"} className="h-12 w-auto max-w-[170px] object-contain rounded bg-white/10 p-1" />
                 ) : (
-                  <img src="/logo-dark.png" alt="The Shepherd's Desk" className="h-14 w-auto object-contain" />
+                  <img src="/the_shepherds_desk_logo_transparent.png" alt="The Shepherd's Desk" className="h-14 w-auto object-contain" />
                 )}
                 <button onClick={() => setDrawerOpen(false)} className="p-2 rounded-full hover:bg-white/10">
                   <X className="w-5 h-5 text-white/70" />
