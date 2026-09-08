@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library } from 'lucide-react'
+import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 import { SupportChat } from '@/components/support/SupportChat'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
@@ -110,7 +110,7 @@ export default function DashboardLayout({
     { name: 'Calendar', href: '/calendar', icon: CalendarDays },
     { name: 'Ministry Care', href: '/care', icon: Heart },
     { name: 'Study', href: '/study', icon: Clock },
-    { name: 'Announcements', href: '/announcements', icon: Megaphone },
+    { name: 'Communication', href: '/announcements', icon: MessageSquare },
     { name: 'Resources', href: '/resources', icon: Library },
     { name: 'Refer a Pastor', href: '/referrals', icon: Gift },
     { name: 'Settings', href: '/settings', icon: Settings },
