@@ -32,7 +32,7 @@ export default function DownloadPage() {
             Download the APK directly to your Android device. No Play Store needed.
           </p>
           <a 
-            href="https://expo.dev/artifacts/eas/mluwee1TyZ4AG63TL5smrhhg_9zlgDMs8jwGC6pEZr0.apk"
+            href="https://expo.dev/artifacts/eas/tKNnG1TDS1SKG34ZSJU_asz7lcsmzfR4UbOEgvKeTUM.apk"
             target="_blank"
             rel="noopener noreferrer"
             style={{ 
@@ -51,7 +51,7 @@ export default function DownloadPage() {
             ⬇️ Download for Android
           </a>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16 }}>
-            v2.1.2 • APK • Title Personalization, Sermon Notes Fix & Profile Updates
+            v2.1.3 (Build 8) • APK • Transparent Logo, Full Features & Settings Updates
           </p>
         </div>
 
