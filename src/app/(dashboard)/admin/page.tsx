@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Users, Lightbulb, BookOpen, UserPlus, Trash2, Key, Ban, CheckCircle, 
-  Mail, Send, Sparkles, Heart, Clock, Gift
+  Mail, Send, Sparkles, Heart, Clock, Gift, Crown, CalendarPlus
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -27,6 +27,8 @@ type UserData = {
   care_task_count: number
   status: string
   stripe_customer_id?: string
+  trial_ends_at?: string
+  is_vip?: boolean
 }
 
 type AdminReferral = {
@@ -129,6 +131,70 @@ export default function AdminPage() {
     } catch (error) {
       console.error('Error deleting user:', error)
       alert('An error occurred')
+    }
+  }
+
+  const handleUpdateRole = async (userId: string, newRole: string) => {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_role', userId, role: newRole })
+      })
+      if (res.ok) {
+        setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u))
+      } else {
+        alert('Failed to update user role')
+      }
+    } catch {
+      alert('Error updating user role')
+    }
+  }
+
+  const handleToggleVip = async (userId: string, currentlyVip?: boolean) => {
+    const action = currentlyVip ? 'revoke_vip' : 'grant_vip'
+    const confirmMsg = currentlyVip
+      ? 'Revoke VIP Complimentary access for this user?'
+      : 'Grant this pastor Lifetime VIP Complimentary Pro Access (no credit card or charges)?'
+    if (!confirm(confirmMsg)) return
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, userId })
+      })
+      if (res.ok) {
+        setUsers(users.map(u => u.id === userId ? {
+          ...u,
+          is_vip: !currentlyVip,
+          stripe_customer_id: !currentlyVip ? 'cus_vip_complimentary' : undefined
+        } : u))
+      } else {
+        alert('Failed to update VIP status')
+      }
+    } catch {
+      alert('Error updating VIP status')
+    }
+  }
+
+  const handleExtendTrial = async (userId: string, days = 30) => {
+    if (!confirm(`Extend this pastor's trial by +${days} days?`)) return
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'extend_trial', userId, days })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setUsers(users.map(u => u.id === userId ? { ...u, trial_ends_at: data.trial_ends_at } : u))
+        alert(`Trial successfully extended by +${days} days!`)
+      } else {
+        alert('Failed to extend trial')
+      }
+    } catch {
+      alert('Error extending trial')
     }
   }
 
@@ -698,16 +764,44 @@ export default function AdminPage() {
                           <TableRow key={user.id}>
                             <TableCell className="font-medium">{user.full_name || 'N/A'}</TableCell>
                             <TableCell>{user.email}</TableCell>
-                            <TableCell className="capitalize">{user.role}</TableCell>
+                            <TableCell>
+                              <select
+                                value={user.role}
+                                onChange={(e) => handleUpdateRole(user.id, e.target.value)}
+                                className={`text-xs font-semibold px-2.5 py-1 rounded border transition-colors ${
+                                  user.role === 'admin' 
+                                    ? 'bg-purple-50 text-purple-900 border-purple-300 font-bold' 
+                                    : 'bg-gray-50 text-gray-800 border-gray-200'
+                                } cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#022d5c]`}
+                              >
+                                <option value="pastor">Pastor</option>
+                                <option value="admin">Admin</option>
+                              </select>
+                            </TableCell>
                             <TableCell>
                               {user.created_at ? format(new Date(user.created_at), 'MMM d, yyyy') : 'N/A'}
                             </TableCell>
                             <TableCell>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                user.stripe_customer_id ? 'bg-[#022d5c] text-white' : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {user.stripe_customer_id ? 'Pro' : 'Free Trial'}
-                              </span>
+                              {user.is_vip ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  <Crown className="w-3 h-3 text-amber-700" /> VIP Comped
+                                </span>
+                              ) : user.stripe_customer_id ? (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[#022d5c] text-white">
+                                  Pro
+                                </span>
+                              ) : (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 w-fit">
+                                    Free Trial
+                                  </span>
+                                  {user.trial_ends_at && (
+                                    <span className="text-[10px] text-gray-500 font-medium">
+                                      Ends {format(new Date(user.trial_ends_at), 'MMM d')}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-right">{user.sermon_count}</TableCell>
                             <TableCell className="text-right capitalize">
@@ -720,6 +814,29 @@ export default function AdminPage() {
                               </span>
                             </TableCell>
                             <TableCell className="text-right whitespace-nowrap">
+                              {/* Grant / Revoke VIP Complimentary */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleToggleVip(user.id, user.is_vip)}
+                                title={user.is_vip ? "Revoke VIP Complimentary Access" : "Grant Lifetime VIP Complimentary Pro Access (Free)"}
+                                className={user.is_vip ? "text-amber-600 hover:text-amber-800 hover:bg-amber-50" : "text-gray-400 hover:text-amber-600 hover:bg-amber-50"}
+                              >
+                                <Crown className="h-4 w-4" />
+                              </Button>
+
+                              {/* Extend Trial */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleExtendTrial(user.id, 30)}
+                                title="Extend Trial (+30 Days)"
+                                className="text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50"
+                              >
+                                <CalendarPlus className="h-4 w-4" />
+                              </Button>
+
+                              {/* Password Reset */}
                               <Button 
                                 variant="ghost" 
                                 size="icon"
@@ -729,6 +846,8 @@ export default function AdminPage() {
                               >
                                 <Key className="h-4 w-4" />
                               </Button>
+
+                              {/* Suspend / Unsuspend */}
                               <Button 
                                 variant="ghost" 
                                 size="icon"
@@ -738,6 +857,8 @@ export default function AdminPage() {
                               >
                                 {user.status === 'suspended' ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                               </Button>
+
+                              {/* Delete User */}
                               <Button 
                                 variant="ghost" 
                                 size="icon"

@@ -91,7 +91,9 @@ export async function GET() {
         idea_count: ideaCounts[u.id] || 0,
         care_task_count: careTaskCounts[u.id] || 0,
         status: u.banned_until ? 'suspended' : (p?.role ? 'active' : 'inactive'),
-        stripe_customer_id: p?.stripe_customer_id || null
+        stripe_customer_id: p?.stripe_customer_id || null,
+        trial_ends_at: p?.trial_ends_at || null,
+        is_vip: p?.stripe_customer_id === 'cus_vip_complimentary' || (p?.stripe_customer_id && p.stripe_customer_id.startsWith('cus_vip_'))
       }
     })
 
@@ -157,6 +159,69 @@ export async function POST(req: Request) {
       })
       if (error) throw error
       return NextResponse.json({ success: true })
+    }
+
+    if (action === 'update_role' && userId && body.role) {
+      const newRole = body.role === 'admin' ? 'admin' : 'pastor'
+      const { error } = await serviceClient
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId)
+
+      if (error) throw error
+      return NextResponse.json({ success: true, role: newRole })
+    }
+
+    if (action === 'grant_vip' && userId) {
+      // 100-year free access
+      const futureDate = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString()
+      const { error } = await serviceClient
+        .from('profiles')
+        .update({
+          stripe_customer_id: 'cus_vip_complimentary',
+          trial_ends_at: futureDate
+        })
+        .eq('id', userId)
+
+      if (error) throw error
+      return NextResponse.json({ success: true, is_vip: true })
+    }
+
+    if (action === 'revoke_vip' && userId) {
+      const { error } = await serviceClient
+        .from('profiles')
+        .update({
+          stripe_customer_id: null,
+          trial_ends_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+
+      if (error) throw error
+      return NextResponse.json({ success: true, is_vip: false })
+    }
+
+    if (action === 'extend_trial' && userId) {
+      const daysToAdd = Number(body.days) || 30
+      const { data: profile } = await serviceClient
+        .from('profiles')
+        .select('trial_ends_at, created_at')
+        .eq('id', userId)
+        .single() as any
+
+      const currentEnd = profile?.trial_ends_at 
+        ? new Date(profile.trial_ends_at) 
+        : (profile?.created_at ? new Date(new Date(profile.created_at).getTime() + 30 * 24 * 60 * 60 * 1000) : new Date())
+
+      const baseDate = currentEnd > new Date() ? currentEnd : new Date()
+      const newEnd = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000)
+
+      const { error } = await serviceClient
+        .from('profiles')
+        .update({ trial_ends_at: newEnd.toISOString() })
+        .eq('id', userId)
+
+      if (error) throw error
+      return NextResponse.json({ success: true, trial_ends_at: newEnd.toISOString() })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
