@@ -25,11 +25,11 @@ export default function WelcomePage() {
         <div className="container mx-auto px-6 relative z-10 flex flex-col items-center text-center">
           <div className="mb-8">
             <Image 
-              src="/logo-dark.png" 
+              src="/shepherds-desk-banner-logo.png" 
               alt="The Shepherd's Desk" 
               width={500} 
               height={150} 
-              className="h-40 md:h-56 w-auto object-contain rounded-lg"
+              className="h-32 md:h-44 w-auto object-contain rounded-lg shadow-lg"
               priority
             />
           </div>
@@ -187,36 +187,52 @@ export default function WelcomePage() {
             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-gold/20 rounded-full blur-3xl"></div>
             
             <div className="relative z-10">
-              <h2 className="text-3xl md:text-5xl font-[family-name:var(--font-playfair)] mb-6">Simple, Transparent Pricing</h2>
-              <p className="text-white/80 mb-8 max-w-lg mx-auto">No tiers. No upsells. No surprises.</p>
+              <h2 className="text-3xl md:text-5xl font-[family-name:var(--font-playfair)] mb-4">Simple, Transparent Pricing</h2>
+              <p className="text-white/80 mb-10 max-w-lg mx-auto">Full pastoral access. 30-day free trial on all plans. No surprises.</p>
               
-              <div className="inline-block bg-white/10 rounded-2xl p-8 backdrop-blur-sm border border-white/20 mb-10 w-full max-w-md mx-auto">
-                <div className="text-5xl font-bold font-[family-name:var(--font-playfair)] text-gold mb-2">
-                  $15<span className="text-lg font-normal text-white/70">/month</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-10 text-left">
+                {/* Annual Plan */}
+                <div className="bg-white/15 rounded-2xl p-7 backdrop-blur-md border-2 border-gold relative shadow-xl">
+                  <div className="absolute -top-3.5 right-6 bg-gold text-navy text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full shadow-md">
+                    Best Value • Save $24/yr
+                  </div>
+                  <div className="text-sm font-semibold uppercase tracking-wider text-gold mb-1">Annual Plan</div>
+                  <div className="text-4xl font-bold font-[family-name:var(--font-playfair)] text-white mb-1">
+                    $12.99<span className="text-sm font-normal text-white/70"> / month</span>
+                  </div>
+                  <p className="text-xs text-white/70 mb-5">$155.88 billed annually after 30-day free trial</p>
+
+                  <ul className="space-y-3 mb-6 text-sm text-white/90">
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-gold flex-shrink-0" /> Full 30-day free trial</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-gold flex-shrink-0" /> Unlimited sermons &amp; Pulpit mode</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-gold flex-shrink-0" /> Smart Voice Pastoral Reminders</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-gold flex-shrink-0" /> Hospital visits &amp; pastoral care tracker</li>
+                  </ul>
+
+                  <Link href="/login" className="inline-flex items-center justify-center w-full bg-gold hover:bg-gold/90 text-navy font-bold h-12 rounded-xl text-sm transition-all shadow-md">
+                    Start 30-Day Free Trial
+                  </Link>
                 </div>
-                <div className="text-sm text-white/70 mb-8">Everything Included</div>
-                
-                <ul className="text-left space-y-4 mb-8">
-                  {[
-                    "Unlimited sermons & series",
-                    "AI assistant (brainstorm & polish)",
-                    "Bible tools & 6 translations",
-                    "Ministry calendar & events",
-                    "Pastoral care tracker",
-                    "Handwriting OCR (Snap & Digitize)",
-                    "Distraction-free Pulpit mode",
-                    "Study resources & commentaries"
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-gold flex-shrink-0" />
-                      <span className="text-white/90 text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <Link href="/login" className="inline-flex items-center justify-center w-full bg-gold hover:bg-gold/90 text-navy font-bold h-14 rounded-xl">
-                  Start Your Free Trial
-                </Link>
+
+                {/* Monthly Plan */}
+                <div className="bg-white/10 rounded-2xl p-7 backdrop-blur-sm border border-white/20">
+                  <div className="text-sm font-semibold uppercase tracking-wider text-white/80 mb-1">Monthly Plan</div>
+                  <div className="text-4xl font-bold font-[family-name:var(--font-playfair)] text-white mb-1">
+                    $14.99<span className="text-sm font-normal text-white/70"> / month</span>
+                  </div>
+                  <p className="text-xs text-white/70 mb-5">Billed monthly after 30-day free trial</p>
+
+                  <ul className="space-y-3 mb-6 text-sm text-white/90">
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-gold flex-shrink-0" /> Full 30-day free trial</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-gold flex-shrink-0" /> Unlimited sermons &amp; Pulpit mode</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-gold flex-shrink-0" /> Smart Voice Pastoral Reminders</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-gold flex-shrink-0" /> Flexible month-to-month, cancel anytime</li>
+                  </ul>
+
+                  <Link href="/login" className="inline-flex items-center justify-center w-full bg-white/20 hover:bg-white/30 text-white font-bold h-12 rounded-xl text-sm transition-all">
+                    Start 30-Day Free Trial
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
