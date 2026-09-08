@@ -6,9 +6,28 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { UploadCloud, Palette, User, Mail, Lock, LogOut, Bell, Image as ImageIcon, Loader2 } from 'lucide-react'
+import { 
+  UploadCloud, Palette, User, Mail, Lock, LogOut, Bell, Image as ImageIcon, Loader2,
+  Calendar, BookOpen, Clock, Moon, Volume2, Sparkles, Send, CheckCircle2, ShieldCheck, Sun, HeartHandshake, Megaphone, Smartphone, Check
+} from 'lucide-react'
 import { CalendarSyncCard } from '@/components/calendar/CalendarSyncCard'
+
+const DEFAULT_NOTIFICATION_PREFS = {
+  calendar_reminders: true,
+  calendar_lead_minutes: 15,
+  care_followups: true,
+  study_alerts: true,
+  sermon_deadlines: true,
+  morning_brief: true,
+  morning_brief_time: '07:00',
+  announcements: true,
+  quiet_hours_enabled: false,
+  quiet_hours_start: '21:00',
+  quiet_hours_end: '07:00',
+  sabbath_mute_day: 'none',
+  sound_enabled: true,
+  vibrate_enabled: true
+}
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -35,9 +54,14 @@ export default function SettingsPage() {
   // Password State
   const [newPassword, setNewPassword] = useState('')
 
-  // Notification Preferences
+  // Notification Preferences State
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [notificationPollMinutes, setNotificationPollMinutes] = useState(5)
+  const [notifPrefs, setNotifPrefs] = useState(DEFAULT_NOTIFICATION_PREFS)
+  const [browserPermission, setBrowserPermission] = useState<string>('default')
+  const [testSent, setTestSent] = useState(false)
+  const [savingNotifs, setSavingNotifs] = useState(false)
+  const [notifsSavedMessage, setNotifsSavedMessage] = useState(false)
 
   // Trial & Subscription State
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null)
@@ -88,6 +112,18 @@ export default function SettingsPage() {
             }
             if (profile.notification_poll_minutes !== undefined && profile.notification_poll_minutes !== null) {
               setNotificationPollMinutes(profile.notification_poll_minutes)
+            }
+
+            if (typeof window !== 'undefined') {
+              if ('Notification' in window) {
+                setBrowserPermission(Notification.permission)
+              }
+              const saved = localStorage.getItem('shepherds_desk_notification_prefs')
+              if (saved) {
+                try {
+                  setNotifPrefs({ ...DEFAULT_NOTIFICATION_PREFS, ...JSON.parse(saved) })
+                } catch {}
+              }
             }
 
             if (profile.church_id) {
@@ -161,6 +197,57 @@ export default function SettingsPage() {
     } catch (error) {
       console.error(error)
       alert('Error updating profile.')
+    }
+  }
+
+  const handleRequestBrowserPermission = async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      try {
+        const perm = await Notification.requestPermission()
+        setBrowserPermission(perm)
+      } catch (err) {
+        console.error('Permission error:', err)
+      }
+    }
+  }
+
+  const handleSaveNotificationPrefs = async (newPrefs: typeof notifPrefs, enabled: boolean) => {
+    setSavingNotifs(true)
+    setNotifPrefs(newPrefs)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('shepherds_desk_notification_prefs', JSON.stringify(newPrefs))
+    }
+    if (profileId) {
+      try {
+        await supabase.from('profiles').update({
+          notifications_enabled: enabled,
+          notification_poll_minutes: notificationPollMinutes,
+          study_reminders_enabled: newPrefs.study_alerts
+        } as any).eq('id', profileId)
+      } catch (err) {
+        console.error('Error saving notifs to profile:', err)
+      }
+    }
+    setSavingNotifs(false)
+    setNotifsSavedMessage(true)
+    setTimeout(() => setNotifsSavedMessage(false), 3000)
+  }
+
+  const handleSendTestNotification = () => {
+    setTestSent(true)
+    setTimeout(() => setTestSent(false), 3000)
+
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification("The Shepherd's Desk 🔔", {
+          body: "Pastoral Reminder: Hospital visit with Brother John at 2:00 PM. (Your notification settings are active!)",
+          icon: "/shepherds-desk-banner-logo.png"
+        })
+      } catch {
+        alert("🔔 Test Notification: Hospital visit with Brother John at 2:00 PM. (Your notification settings are active!)")
+      }
+    } else {
+      alert("🔔 Test Notification: Hospital visit with Brother John at 2:00 PM. (Tip: Click 'Enable Desktop Banners' above for pop-up alerts!)")
     }
   }
 
@@ -687,59 +774,308 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Notification Preferences */}
-      <Card className="shadow-sm rounded-xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-[#022d5c]" /> Notification Preferences
-          </CardTitle>
-          <CardDescription>Control how and when you receive in-app notifications.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between py-2">
-            <div className="space-y-0.5">
-              <Label className="text-base font-medium text-gray-900">Enable Notifications</Label>
-              <p className="text-sm text-gray-500">Receive study reminders, sermon deadlines, and care follow-up nudges.</p>
+      {/* Notification Preferences & Phone Alerts Control Panel */}
+      <Card className="shadow-sm rounded-xl border border-[#022d5c]/10 bg-white overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-[#022d5c]/5 via-[#D0A348]/5 to-transparent pb-4 border-b border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-xl font-playfair font-bold text-[#022d5c]">
+                <Bell className="w-5 h-5 text-[#D0A348]" /> Notification Preferences &amp; Phone Alerts
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm text-gray-600 mt-1">
+                Customize exactly which alerts reach you, set quiet hours, and control sounds and reminders.
+              </CardDescription>
             </div>
-            <input
-              type="checkbox"
-              className="h-5 w-5 rounded border-gray-300 text-[#022d5c] focus:ring-[#022d5c]"
-              checked={notificationsEnabled}
-              onChange={async (e) => {
-                const val = e.target.checked
-                setNotificationsEnabled(val)
-                if (profileId) {
-                  await supabase.from('profiles').update({ notifications_enabled: val } as any).eq('id', profileId)
-                }
-              }}
-            />
+            {notifsSavedMessage && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 animate-fade-in self-start sm:self-auto">
+                <Check className="w-3.5 h-3.5" /> Preferences Saved
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-5 sm:p-6 space-y-6">
+          {/* Master Switch & Browser Permission */}
+          <div className="p-4 rounded-xl bg-[#F8F5EE] border border-[#022d5c]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-gray-900 text-base">Allow Notifications</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${notificationsEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-700'}`}>
+                  {notificationsEnabled ? 'Active' : 'Muted'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-600">
+                Master switch for lock-screen alerts, visit reminders, and care nudges.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {browserPermission !== 'granted' && typeof window !== 'undefined' && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRequestBrowserPermission}
+                  className="text-xs border-[#022d5c] text-[#022d5c] hover:bg-[#022d5c]/5"
+                >
+                  <Bell className="w-3.5 h-3.5 mr-1 text-[#D0A348]" />
+                  Enable Desktop Banners
+                </Button>
+              )}
+              <input
+                type="checkbox"
+                id="masterNotifToggle"
+                className="h-6 w-6 rounded border-gray-300 text-[#022d5c] focus:ring-[#022d5c] cursor-pointer"
+                checked={notificationsEnabled}
+                onChange={async (e) => {
+                  const val = e.target.checked
+                  setNotificationsEnabled(val)
+                  await handleSaveNotificationPrefs(notifPrefs, val)
+                }}
+              />
+            </div>
           </div>
 
           {notificationsEnabled && (
-            <div className="space-y-2">
-              <Label>Check for New Notifications Every</Label>
-              <div className="flex items-center gap-3">
-                <select
-                  value={notificationPollMinutes}
-                  onChange={async (e) => {
-                    const val = parseInt(e.target.value)
-                    setNotificationPollMinutes(val)
-                    if (profileId) {
-                      await supabase.from('profiles').update({ notification_poll_minutes: val } as any).eq('id', profileId)
-                    }
-                  }}
-                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value={1}>1 minute</option>
-                  <option value={5}>5 minutes</option>
-                  <option value={10}>10 minutes</option>
-                  <option value={15}>15 minutes</option>
-                  <option value={30}>30 minutes</option>
-                  <option value={60}>1 hour</option>
-                </select>
-                <span className="text-sm text-gray-500">polling interval</span>
+            <div className="space-y-6">
+              {/* Category Toggles */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#022d5c] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
+                  Ministry Alert Categories (Turn on what you want):
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Calendar & Visits */}
+                  <div className="p-3.5 rounded-lg border border-gray-200 bg-white hover:border-[#D0A348]/40 transition-colors flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-[#022d5c]" />
+                        <span className="font-semibold text-sm text-gray-900">Calendar &amp; Visits</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Reminders for hospital visits, meetings, and Sunday services.</p>
+                      {notifPrefs.calendar_reminders && (
+                        <div className="pt-1.5 flex items-center gap-2">
+                          <span className="text-[11px] text-gray-500 font-medium">Alert me:</span>
+                          <select
+                            value={notifPrefs.calendar_lead_minutes}
+                            onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, calendar_lead_minutes: parseInt(e.target.value) }, notificationsEnabled)}
+                            className="text-xs h-7 px-2 border rounded bg-white text-gray-700"
+                          >
+                            <option value={15}>15 min before</option>
+                            <option value={30}>30 min before</option>
+                            <option value={60}>1 hour before</option>
+                            <option value={120}>2 hours before</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs.calendar_reminders}
+                      onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, calendar_reminders: e.target.checked }, notificationsEnabled)}
+                      className="h-4 w-4 rounded border-gray-300 text-[#022d5c] mt-1 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Care Follow-ups */}
+                  <div className="p-3.5 rounded-lg border border-gray-200 bg-white hover:border-[#D0A348]/40 transition-colors flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <HeartHandshake className="w-4 h-4 text-purple-600" />
+                        <span className="font-semibold text-sm text-gray-900">Care Follow-Ups</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Alerts on the day a member check-in call or visit is due.</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs.care_followups}
+                      onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, care_followups: e.target.checked }, notificationsEnabled)}
+                      className="h-4 w-4 rounded border-gray-300 text-[#022d5c] mt-1 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Sacred Study Alerts */}
+                  <div className="p-3.5 rounded-lg border border-gray-200 bg-white hover:border-[#D0A348]/40 transition-colors flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-emerald-600" />
+                        <span className="font-semibold text-sm text-gray-900">Sacred Study Time</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Gentle prep reminder 15 minutes before scheduled study block.</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs.study_alerts}
+                      onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, study_alerts: e.target.checked }, notificationsEnabled)}
+                      className="h-4 w-4 rounded border-gray-300 text-[#022d5c] mt-1 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Sermon Deadlines */}
+                  <div className="p-3.5 rounded-lg border border-gray-200 bg-white hover:border-[#D0A348]/40 transition-colors flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span className="font-semibold text-sm text-gray-900">Sermon Prep Milestones</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Thursday/Friday reminder if Sunday message outline is in draft.</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs.sermon_deadlines}
+                      onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, sermon_deadlines: e.target.checked }, notificationsEnabled)}
+                      className="h-4 w-4 rounded border-gray-300 text-[#022d5c] mt-1 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Morning Briefing */}
+                  <div className="p-3.5 rounded-lg border border-gray-200 bg-white hover:border-[#D0A348]/40 transition-colors flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Sun className="w-4 h-4 text-amber-500" />
+                        <span className="font-semibold text-sm text-gray-900">Daily Morning Brief</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Morning overview of today's calendar, visits, and follow-ups.</p>
+                      {notifPrefs.morning_brief && (
+                        <div className="pt-1.5 flex items-center gap-2">
+                          <span className="text-[11px] text-gray-500 font-medium">Send at:</span>
+                          <select
+                            value={notifPrefs.morning_brief_time}
+                            onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, morning_brief_time: e.target.value }, notificationsEnabled)}
+                            className="text-xs h-7 px-2 border rounded bg-white text-gray-700"
+                          >
+                            <option value="06:00">6:00 AM</option>
+                            <option value="07:00">7:00 AM</option>
+                            <option value="08:00">8:00 AM</option>
+                            <option value="09:00">9:00 AM</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs.morning_brief}
+                      onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, morning_brief: e.target.checked }, notificationsEnabled)}
+                      className="h-4 w-4 rounded border-gray-300 text-[#022d5c] mt-1 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Announcements */}
+                  <div className="p-3.5 rounded-lg border border-gray-200 bg-white hover:border-[#D0A348]/40 transition-colors flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Megaphone className="w-4 h-4 text-blue-600" />
+                        <span className="font-semibold text-sm text-gray-900">Church Announcements</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Urgent notices, event reminders, and volunteer calls.</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs.announcements}
+                      onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, announcements: e.target.checked }, notificationsEnabled)}
+                      className="h-4 w-4 rounded border-gray-300 text-[#022d5c] mt-1 cursor-pointer"
+                    />
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-gray-400">Lower intervals check more frequently but use more resources.</p>
+
+              {/* Quiet Hours & Sabbath Rest Mode */}
+              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#022d5c] flex items-center gap-1.5">
+                  <Moon className="w-3.5 h-3.5 text-indigo-600" />
+                  Quiet Hours &amp; Sabbath Rest (Do Not Disturb):
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="quietHours" className="text-xs font-semibold text-gray-800">
+                        Sleep Quiet Hours
+                      </Label>
+                      <input
+                        type="checkbox"
+                        id="quietHours"
+                        checked={notifPrefs.quiet_hours_enabled}
+                        onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, quiet_hours_enabled: e.target.checked }, notificationsEnabled)}
+                        className="h-4 w-4 rounded border-gray-300 text-[#022d5c]"
+                      />
+                    </div>
+                    <p className="text-[11px] text-gray-500">Mutes non-urgent reminders during the night.</p>
+                    {notifPrefs.quiet_hours_enabled && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span>From</span>
+                        <input
+                          type="time"
+                          value={notifPrefs.quiet_hours_start}
+                          onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, quiet_hours_start: e.target.value }, notificationsEnabled)}
+                          className="px-2 py-1 border rounded bg-white"
+                        />
+                        <span>to</span>
+                        <input
+                          type="time"
+                          value={notifPrefs.quiet_hours_end}
+                          onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, quiet_hours_end: e.target.value }, notificationsEnabled)}
+                          className="px-2 py-1 border rounded bg-white"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-gray-800">
+                      Sabbath Day Off (Mute on Day of Rest)
+                    </Label>
+                    <p className="text-[11px] text-gray-500">Protects your family day of rest by muting ministry notifications.</p>
+                    <select
+                      value={notifPrefs.sabbath_mute_day}
+                      onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, sabbath_mute_day: e.target.value }, notificationsEnabled)}
+                      className="text-xs h-8 px-2 border rounded bg-white text-gray-700 w-full sm:w-auto"
+                    >
+                      <option value="none">None (Receive all days)</option>
+                      <option value="Monday">Monday (Pastor's Sabbath)</option>
+                      <option value="Tuesday">Tuesday</option>
+                      <option value="Friday">Friday</option>
+                      <option value="Saturday">Saturday</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sounds & Test Notification */}
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-gray-100">
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs.sound_enabled}
+                      onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, sound_enabled: e.target.checked }, notificationsEnabled)}
+                      className="h-3.5 w-3.5 rounded text-[#022d5c]"
+                    />
+                    <Volume2 className="w-3.5 h-3.5 text-gray-500" />
+                    Play Alert Sound
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs.vibrate_enabled}
+                      onChange={(e) => handleSaveNotificationPrefs({ ...notifPrefs, vibrate_enabled: e.target.checked }, notificationsEnabled)}
+                      className="h-3.5 w-3.5 rounded text-[#022d5c]"
+                    />
+                    <Smartphone className="w-3.5 h-3.5 text-gray-500" />
+                    Vibrate
+                  </label>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendTestNotification}
+                  className="text-xs border-gray-300 text-[#022d5c] hover:bg-[#F8F5EE]"
+                >
+                  <Bell className="w-3.5 h-3.5 mr-1.5 text-[#D0A348]" />
+                  {testSent ? "Test Sent! 🔔" : "Send Test Phone Alert"}
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
