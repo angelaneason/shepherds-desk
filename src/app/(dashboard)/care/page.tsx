@@ -634,26 +634,41 @@ export default function CarePage() {
                       </div>
                       
                       <div className="flex sm:flex-col gap-2 shrink-0">
-                        {task.members?.phone && task.status !== 'completed' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-[#022d5c] border-[#D0A348]/40 bg-[#F8F5EE] hover:bg-[#D0A348]/20 flex items-center gap-1.5 font-medium"
-                            onClick={() => {
-                              setTextComposer({
-                                isOpen: true,
-                                recipientName: task.members?.full_name || '',
-                                recipientPhone: task.members?.phone,
-                                defaultCategory: task.task_type === 'hospital' ? 'hospital' : 'prayer_followup',
-                                defaultCustomPrompt: task.description || task.notes || ''
-                              })
-                            }}
-                            title="Compose personalized pastoral text"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
-                            AI Text
-                          </Button>
-                        )}
+                        {task.status !== 'completed' && (() => {
+                          const personName = task.members?.full_name || 
+                            (task.notes?.startsWith('Person:') ? task.notes.replace('Person: ', '').trim() : '') || 
+                            task.description?.replace(/^(Call|Visit)\s+/i, '').trim() || 
+                            'Church Member'
+
+                          const matchedMember = task.members || members.find(m => 
+                            personName && m.full_name && (
+                              m.full_name.toLowerCase() === personName.toLowerCase() ||
+                              m.full_name.toLowerCase().includes(personName.toLowerCase()) ||
+                              personName.toLowerCase().includes(m.full_name.toLowerCase())
+                            )
+                          )
+
+                          return (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-[#022d5c] border-[#D0A348]/60 bg-[#F8F5EE] hover:bg-[#D0A348]/25 flex items-center gap-1.5 font-semibold shadow-xs"
+                              onClick={() => {
+                                setTextComposer({
+                                  isOpen: true,
+                                  recipientName: matchedMember?.full_name || personName,
+                                  recipientPhone: matchedMember?.phone || null,
+                                  defaultCategory: task.task_type === 'hospital' ? 'hospital' : 'prayer_followup',
+                                  defaultCustomPrompt: task.description || task.notes || ''
+                                })
+                              }}
+                              title="Compose personalized pastoral text with AI"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
+                              AI Text
+                            </Button>
+                          )
+                        })()}
                         {task.status !== 'completed' && (
                           <Button 
                             variant="outline" 

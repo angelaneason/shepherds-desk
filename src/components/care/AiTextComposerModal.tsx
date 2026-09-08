@@ -83,6 +83,7 @@ export default function AiTextComposerModal({
 }: TextComposerProps) {
   const [category, setCategory] = useState(defaultCategory);
   const [customPrompt, setCustomPrompt] = useState(defaultCustomPrompt);
+  const [phone, setPhone] = useState(recipientPhone || "");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -92,11 +93,12 @@ export default function AiTextComposerModal({
     if (isOpen) {
       setCategory(defaultCategory || "encouragement");
       setCustomPrompt(defaultCustomPrompt || "");
+      setPhone(recipientPhone || "");
       setMessage("");
       setCopied(false);
       setError(null);
     }
-  }, [isOpen, defaultCategory, defaultCustomPrompt]);
+  }, [isOpen, defaultCategory, defaultCustomPrompt, recipientPhone]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -132,11 +134,11 @@ export default function AiTextComposerModal({
     }
   };
 
-  const cleanPhone = (recipientPhone || "").replace(/[^\d+]/g, "");
+  const cleanPhone = (phone || "").replace(/[^\d+]/g, "");
 
   const handleSendSms = () => {
     if (!cleanPhone) {
-      alert("No phone number available for this contact.");
+      alert("Please enter a phone number to send this text.");
       return;
     }
     const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
@@ -228,6 +230,21 @@ export default function AiTextComposerModal({
               placeholder="e.g., Surgery went well yesterday; loved having their family in church; etc."
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
+              className="mt-1 bg-white border-gray-300 text-xs sm:text-sm text-gray-800"
+            />
+          </div>
+
+          {/* Recipient Phone Number */}
+          <div>
+            <Label htmlFor="recipient-phone" className="text-xs font-bold uppercase tracking-wider text-[#022d5c]">
+              Member Phone Number:
+            </Label>
+            <Input
+              id="recipient-phone"
+              type="tel"
+              placeholder="e.g., (214) 555-0123"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               className="mt-1 bg-white border-gray-300 text-xs sm:text-sm text-gray-800"
             />
           </div>
