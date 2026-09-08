@@ -32,9 +32,8 @@ export default function DownloadPage() {
             Download the APK directly to your Android device. No Play Store needed.
           </p>
           <a 
-            href="https://expo.dev/artifacts/eas/tKNnG1TDS1SKG34ZSJU_asz7lcsmzfR4UbOEgvKeTUM.apk"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/shepherds-desk-v2.1.4.apk"
+            download="shepherds-desk-v2.1.4.apk"
             style={{ 
               display: 'inline-block',
               background: 'linear-gradient(135deg, #D0A348, #b8892e)', 
@@ -51,7 +50,7 @@ export default function DownloadPage() {
             ⬇️ Download for Android
           </a>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16 }}>
-            v2.1.3 (Build 8) • APK • Transparent Logo, Full Features & Settings Updates
+            v2.1.4 (Build 10) • APK • Communication & Group Texting, Header Logo & Full Settings
           </p>
         </div>
 
