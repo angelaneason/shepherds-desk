@@ -39,8 +39,11 @@ export default function SettingsPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [notificationPollMinutes, setNotificationPollMinutes] = useState(5)
 
-  // Trial State
+  // Trial & Subscription State
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null)
+  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null)
+  const [billingPlan, setBillingPlan] = useState<'monthly' | 'annual'>('annual')
+  const [isCheckingOut, setIsCheckingOut] = useState(false)
 
   const [isLoading, setIsLoading] = useState(true)
 
@@ -55,7 +58,7 @@ export default function SettingsPage() {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, full_name, church_id, trial_ends_at, notification_poll_minutes, notifications_enabled')
+            .select('id, full_name, church_id, trial_ends_at, stripe_customer_id, created_at, notification_poll_minutes, notifications_enabled')
             .eq('id', user.id)
             .single() as any
 
@@ -63,12 +66,22 @@ export default function SettingsPage() {
             setFullName(profile.full_name || user.user_metadata?.full_name || '')
             setTitle(user.user_metadata?.title || 'Pastor')
             setChurchId(profile.church_id)
+            setStripeCustomerId(profile.stripe_customer_id || null)
+
             if (profile.trial_ends_at) {
               const endsAt = new Date(profile.trial_ends_at)
               const now = new Date()
               const diffTime = endsAt.getTime() - now.getTime()
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
               setTrialDaysRemaining(diffDays > 0 ? diffDays : 0)
+            } else if (profile.created_at) {
+              const createdAt = new Date(profile.created_at)
+              const trialEnd = new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000)
+              const diffTime = trialEnd.getTime() - Date.now()
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+              setTrialDaysRemaining(diffDays > 0 ? diffDays : 0)
+            } else {
+              setTrialDaysRemaining(30)
             }
             if (profile.notifications_enabled !== undefined && profile.notifications_enabled !== null) {
               setNotificationsEnabled(profile.notifications_enabled)
@@ -542,36 +555,126 @@ export default function SettingsPage() {
           
           <hr className="my-6" />
           
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Subscription Plan</p>
-              <p className="text-sm text-muted-foreground">
-                {profileId 
-                  ? 'Pro - $15/month' 
-                  : `Free Trial${trialDaysRemaining !== null ? ` - ${trialDaysRemaining} days remaining` : ''}`
-                }
-              </p>
+          {stripeCustomerId ? (
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  <p className="font-semibold text-emerald-950">The Shepherd's Desk Pro Active</p>
+                </div>
+                <p className="text-xs text-emerald-700 mt-1">Full access to sermon studio, pastoral care, smart reminders, and study tools.</p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="border-emerald-300 text-emerald-900 hover:bg-emerald-100/50 text-xs font-semibold"
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/billing/portal', { method: 'POST' });
+                    if (res.ok) {
+                      const data = await res.json();
+                      if (data.url) window.location.href = data.url;
+                    } else {
+                      alert('Unable to open billing portal. Please contact support.');
+                    }
+                  } catch {
+                    alert('Error reaching billing portal');
+                  }
+                }}
+              >
+                Manage Subscription &amp; Invoices
+              </Button>
             </div>
-            {profileId ? (
-              <Button variant="outline" onClick={async () => {
-                const res = await fetch('/api/billing/portal', { method: 'POST' });
-                if (res.ok) {
-                  const data = await res.json();
-                  window.location.href = data.url;
-                } else {
-                  alert('You must subscribe first.');
-                }
-              }}>Manage Subscription</Button>
-            ) : (
-              <Button variant="outline" onClick={async () => {
-                const res = await fetch('/api/billing/checkout', { method: 'POST' });
-                if (res.ok) {
-                  const data = await res.json();
-                  window.location.href = data.url;
-                }
-              }}>Upgrade Plan</Button>
-            )}
-          </div>
+          ) : (
+            <div className="border border-amber-200 bg-amber-50/40 rounded-xl p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                      30-Day Free Trial
+                    </span>
+                    <span className="text-xs font-medium text-amber-800">
+                      {trialDaysRemaining !== null ? `${trialDaysRemaining} days remaining` : '30 days remaining'}
+                    </span>
+                  </div>
+                  <h4 className="text-base font-bold text-[#022d5c] mt-1.5">Experience Full Pastoral Access</h4>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    Try every feature completely free for 30 days. No charge today. Cancel anytime with 1-click.
+                  </p>
+                </div>
+              </div>
+
+              {/* Plan Selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div 
+                  onClick={() => setBillingPlan('annual')}
+                  className={`p-3.5 rounded-lg border-2 cursor-pointer transition-all ${
+                    billingPlan === 'annual' 
+                      ? 'border-[#022d5c] bg-white shadow-sm ring-1 ring-[#022d5c]' 
+                      : 'border-gray-200 bg-white/60 hover:bg-white'
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-[#022d5c] uppercase tracking-wider">Annual Plan</span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      Save $24 / year
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold text-[#022d5c]">$12.99</span>
+                    <span className="text-xs text-gray-500"> / month</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">$155.88 billed annually in advance after your 30-day free trial</p>
+                </div>
+
+                <div 
+                  onClick={() => setBillingPlan('monthly')}
+                  className={`p-3.5 rounded-lg border-2 cursor-pointer transition-all ${
+                    billingPlan === 'monthly' 
+                      ? 'border-[#022d5c] bg-white shadow-sm ring-1 ring-[#022d5c]' 
+                      : 'border-gray-200 bg-white/60 hover:bg-white'
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-[#022d5c] uppercase tracking-wider">Monthly Plan</span>
+                    <span className="text-[11px] text-gray-500">Flexible</span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold text-[#022d5c]">$14.99</span>
+                    <span className="text-xs text-gray-500"> / month</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">Billed monthly after your 30-day free trial</p>
+                </div>
+              </div>
+
+              <Button 
+                disabled={isCheckingOut}
+                onClick={async () => {
+                  setIsCheckingOut(true);
+                  try {
+                    const res = await fetch('/api/billing/checkout', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ plan: billingPlan })
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      if (data.url) window.location.href = data.url;
+                    } else {
+                      const err = await res.json();
+                      alert(err.error || 'Failed to start checkout');
+                    }
+                  } catch (e) {
+                    alert('Network error initiating checkout');
+                  } finally {
+                    setIsCheckingOut(false);
+                  }
+                }}
+                className="w-full sm:w-auto bg-[#022d5c] hover:bg-[#022d5c]/90 text-white font-semibold px-6"
+              >
+                {isCheckingOut ? 'Opening Secure Checkout...' : `Start 30-Day Free Trial (${billingPlan === 'annual' ? '$12.99/mo' : '$14.99/mo'})`}
+              </Button>
+            </div>
+          )}
           
           <hr className="my-6" />
 

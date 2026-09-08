@@ -2,6 +2,15 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+function getAdminClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const headersList = await headers();
@@ -23,12 +32,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  const admin = getAdminClient();
+
   // Handle the event
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as any;
-      console.log('Checkout completed for user:', session.metadata?.supabase_user_id);
-      // Here we would wire up the database update for stripe_customer_id and status
+      const userId = session.metadata?.supabase_user_id;
+      const customerId = session.customer;
+
+      if (userId) {
+        // Save Stripe customer ID to profile
+        await admin.from('profiles').update({
+          stripe_customer_id: customerId,
+        } as any).eq('id', userId);
+
+        // Mark referral as converted/subscribed
+        await admin.from('referrals').update({
+          status: 'subscribed',
+          converted_at: new Date().toISOString(),
+        } as any).eq('referred_id', userId);
+      }
       break;
     }
     case 'customer.subscription.updated': {

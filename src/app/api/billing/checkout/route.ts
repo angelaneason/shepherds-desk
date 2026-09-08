@@ -11,6 +11,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const body = await req.json().catch(() => ({}));
+    const isAnnual = body?.plan === 'annual';
+
+    // Monthly: $14.99/mo | Annual: $12.99/mo ($155.88 billed annually in advance)
+    const unitAmount = isAnnual ? 15588 : 1499;
+    const interval = isAnnual ? 'year' : 'month';
+    const planName = isAnnual ? "The Shepherd's Desk Pro (Annual)" : "The Shepherd's Desk Pro (Monthly)";
+    const planDescription = isAnnual 
+      ? '$12.99/month ($155.88 billed annually in advance) - Includes 30-Day Free Trial'
+      : '$14.99/month - Includes 30-Day Free Trial';
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
@@ -19,22 +30,30 @@ export async function POST(req: Request) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'Shepherds Desk Pro',
-              description: 'All-in-one pastoral productivity',
+              name: planName,
+              description: planDescription,
             },
-            unit_amount: 1500, // $15.00
+            unit_amount: unitAmount,
             recurring: {
-              interval: 'month',
+              interval: interval as 'month' | 'year',
             },
           },
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings?billing=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings?billing=cancelled`,
+      subscription_data: {
+        trial_period_days: 30,
+        metadata: {
+          supabase_user_id: user.id,
+          plan: isAnnual ? 'annual' : 'monthly',
+        },
+      },
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://theshepherdsdesk.app'}/settings?billing=success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://theshepherdsdesk.app'}/settings?billing=cancelled`,
       customer_email: user.email,
       metadata: {
         supabase_user_id: user.id,
+        plan: isAnnual ? 'annual' : 'monthly',
       },
     });
 
