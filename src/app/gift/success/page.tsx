@@ -138,7 +138,7 @@ export default function GiftSuccessPage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link href="/welcome">
             <Image 
-              src="/logo-dark.png" 
+              src="/the_shepherds_desk_logo_transparent.png" 
               alt="The Shepherd's Desk" 
               width={200} 
               height={50} 
@@ -151,6 +151,25 @@ export default function GiftSuccessPage() {
       <Suspense fallback={<div className="text-center py-20 text-gray-500">Loading gift details...</div>}>
         <GiftSuccessContent />
       </Suspense>
+
+      <footer className="py-8 text-center text-xs flex flex-col items-center gap-3">
+        <a 
+          href="https://tinytechcompany.com" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="flex flex-col items-center justify-center gap-1.5 group opacity-85 hover:opacity-100 transition-opacity"
+        >
+          <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold group-hover:text-[#022d5c] transition-colors">POWERED BY</span>
+          <img 
+            src="/tiny-tech-logo.png" 
+            alt="Tiny Tech" 
+            className="h-7 w-auto max-w-[150px] object-contain transition-transform group-hover:scale-105" 
+          />
+        </a>
+        <p className="text-gray-400 text-xs">
+          © {new Date().getFullYear()} The Shepherd's Desk &bull; Built with love for those who shepherd God's people.
+        </p>
+      </footer>
     </div>
   );
 }

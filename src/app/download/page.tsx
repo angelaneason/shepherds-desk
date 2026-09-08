@@ -7,7 +7,7 @@ export default function DownloadPage() {
       {/* Logo */}
       <div style={{ marginBottom: 36, textAlign: 'center' }}>
         <img 
-          src="/logo-dark.png" 
+          src="/the_shepherds_desk_logo_transparent.png" 
           alt="The Shepherd's Desk - From Monday's ministry to Sunday's message." 
           style={{ height: 110, width: 'auto', objectFit: 'contain', margin: '0 auto' }}
         />
@@ -125,8 +125,25 @@ export default function DownloadPage() {
         </div>
       </div>
 
+      {/* Powered by Tiny Tech */}
+      <div style={{ marginTop: 40, textAlign: 'center' }}>
+        <a 
+          href="https://tinytechcompany.com" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 6, textDecoration: 'none', opacity: 0.85 }}
+        >
+          <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>POWERED BY</span>
+          <img 
+            src="/tiny-tech-logo.png" 
+            alt="Tiny Tech" 
+            style={{ height: 32, width: 'auto', maxWidth: 160, objectFit: 'contain' }} 
+          />
+        </a>
+      </div>
+
       {/* Back to website */}
-      <div style={{ marginTop: 48 }}>
+      <div style={{ marginTop: 24 }}>
         <Link href="/" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textDecoration: 'none' }}>
           ← Back to website
         </Link>

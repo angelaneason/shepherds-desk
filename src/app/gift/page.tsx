@@ -94,7 +94,7 @@ export default function GiftPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href="/welcome" className="flex items-center gap-3">
             <Image 
-              src="/logo-dark.png" 
+              src="/the_shepherds_desk_logo_transparent.png" 
               alt="The Shepherd's Desk" 
               width={220} 
               height={55} 
@@ -520,8 +520,23 @@ export default function GiftPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#022d5c] text-white/70 py-8 px-6 text-center text-xs">
-        <p>© {new Date().getFullYear()} The Shepherd's Desk &bull; Built with love for those who shepherd God's people.</p>
+      <footer className="bg-[#022d5c] text-white/70 py-10 px-6 text-center text-xs flex flex-col items-center gap-4">
+        <a 
+          href="https://tinytechcompany.com" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="flex flex-col items-center justify-center gap-1.5 group opacity-85 hover:opacity-100 transition-opacity"
+        >
+          <span className="text-[10px] uppercase tracking-widest text-white/50 font-semibold group-hover:text-[#D0A348] transition-colors">POWERED BY</span>
+          <img 
+            src="/tiny-tech-logo.png" 
+            alt="Tiny Tech" 
+            className="h-8 w-auto max-w-[160px] object-contain transition-transform group-hover:scale-105" 
+          />
+        </a>
+        <p className="border-t border-white/10 pt-4 w-full max-w-xl text-white/50">
+          © {new Date().getFullYear()} The Shepherd's Desk &bull; Built with love for those who shepherd God's people.
+        </p>
       </footer>
     </div>
   );

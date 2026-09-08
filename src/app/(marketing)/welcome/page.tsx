@@ -308,7 +308,7 @@ export default function WelcomePage() {
           <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
             <div className="flex items-center gap-3">
               <Image 
-                src="/logo-dark.png" 
+                src="/the_shepherds_desk_logo_transparent.png" 
                 alt="The Shepherd's Desk" 
                 width={190} 
                 height={55} 
@@ -326,8 +326,27 @@ export default function WelcomePage() {
               <a href="#" className="hover:text-gold transition-colors">Contact</a>
             </nav>
           </div>
+
+          {/* Powered by Tiny Tech */}
+          <div className="flex flex-col items-center justify-center py-6 border-t border-white/10">
+            <a 
+              href="https://tinytechcompany.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex flex-col items-center justify-center gap-2 group opacity-80 hover:opacity-100 transition-all"
+            >
+              <span className="text-[10px] uppercase tracking-widest text-white/60 font-semibold group-hover:text-gold transition-colors">Powered by</span>
+              <Image 
+                src="/tiny-tech-logo.png" 
+                alt="Tiny Tech" 
+                width={160} 
+                height={40} 
+                className="h-8 w-auto object-contain transition-transform group-hover:scale-105" 
+              />
+            </a>
+          </div>
           
-          <div className="text-center md:text-left text-white/40 text-sm border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="text-center md:text-left text-white/40 text-sm border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
             <p>© {new Date().getFullYear()} The Shepherd's Desk. Built with love for those who shepherd God's people.</p>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 cursor-pointer transition-colors">
