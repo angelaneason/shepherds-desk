@@ -5,9 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Copy, Pencil, Trash, Megaphone, PartyPopper, Heart, HandHeart, Zap, ChevronDown, ChevronUp, Plus, X } from 'lucide-react'
+import { Copy, Pencil, Trash, Megaphone, PartyPopper, Heart, HandHeart, Zap, ChevronDown, ChevronUp, Plus, X, Sparkles, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import AiTextComposerModal from '@/components/care/AiTextComposerModal'
 
 type AnnouncementCategory = 'general' | 'event' | 'prayer' | 'volunteer' | 'celebration' | 'urgent'
 
@@ -70,6 +70,22 @@ export default function AnnouncementsPage() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [pastorProfile, setPastorProfile] = useState<{ full_name?: string, church_name?: string }>({})
+  
+  // AI Text Composer State
+  const [textComposer, setTextComposer] = useState<{
+    isOpen: boolean
+    recipientName: string
+    recipientPhone?: string | null
+    defaultCategory?: string
+    defaultCustomPrompt?: string
+  }>({
+    isOpen: false,
+    recipientName: 'Church Family',
+    recipientPhone: null,
+    defaultCategory: 'announcement',
+    defaultCustomPrompt: ''
+  })
   
   const [formData, setFormData] = useState<{
     title: string
@@ -99,16 +115,27 @@ export default function AnnouncementsPage() {
       return
     }
 
-    const { data, error } = await supabase
-      .from('announcements')
-      .select('*')
-      .eq('profile_id', user.id)
-      .order('created_at', { ascending: false }) as any
+    const [announcesRes, profileRes] = await Promise.all([
+      supabase
+        .from('announcements')
+        .select('*')
+        .eq('profile_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('profiles')
+        .select('full_name, church_name')
+        .eq('id', user.id)
+        .single()
+    ])
 
-    if (error) {
-      console.error('Error fetching announcements:', error)
+    if (profileRes.data) {
+      setPastorProfile(profileRes.data)
+    }
+
+    if (announcesRes.error) {
+      console.error('Error fetching announcements:', announcesRes.error)
     } else {
-      setAnnouncements(data || [])
+      setAnnouncements((announcesRes.data as any) || [])
     }
     setLoading(false)
   }
@@ -216,59 +243,76 @@ export default function AnnouncementsPage() {
     })
   }
 
+  const handleTextAnnouncement = (announcement: Announcement) => {
+    setTextComposer({
+      isOpen: true,
+      recipientName: 'Church Family',
+      recipientPhone: null,
+      defaultCategory: 'announcement',
+      defaultCustomPrompt: `Announcement Title: ${announcement.title}\nDetails: ${announcement.content}`
+    })
+  }
+
   const activeAnnouncements = announcements.filter(a => a.is_active)
   const inactiveAnnouncements = announcements.filter(a => !a.is_active)
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl space-y-8 bg-[#F8F5EE] min-h-screen text-[#022d5c]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#022d5c]/10 pb-6">
         <div>
-          <h1 className="text-4xl font-playfair font-bold text-[#022d5c]">Announcements</h1>
-          <p className="text-[#022d5c]/70 mt-1">Create and manage your church announcements.</p>
+          <h1 className="text-3xl sm:text-4xl font-playfair font-bold text-[#022d5c]">Announcements</h1>
+          <p className="text-sm sm:text-base text-[#022d5c]/70 mt-1">
+            Create, manage, and share your church announcements.
+          </p>
         </div>
-        <Button onClick={() => openModalForNew()} className="bg-[#022d5c] text-[#F8F5EE] hover:bg-[#022d5c]/90">
-          <Plus className="w-4 h-4 mr-2" />
-          Create Custom
+        <Button 
+          onClick={() => openModalForNew()}
+          className="bg-[#022d5c] text-[#F8F5EE] hover:bg-[#022d5c]/90 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Create Announcement
         </Button>
       </div>
 
       {/* Templates */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Quick Start Templates</h2>
-        <div className="flex overflow-x-auto pb-4 gap-3 snap-x">
-          {TEMPLATES.map((template) => {
-            const Icon = template.icon
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-[#022d5c]/70">Quick Start Templates</h2>
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+          {TEMPLATES.map(t => {
+            const Icon = t.icon
             return (
-              <Button
-                key={template.id}
-                variant="outline"
-                className="flex-shrink-0 flex items-center gap-2 border-[#D0A348] text-[#022d5c] hover:bg-[#D0A348]/10 snap-start"
-                onClick={() => openModalForNew(template)}
+              <button
+                key={t.id}
+                onClick={() => openModalForNew(t)}
+                className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-[#022d5c]/10 shadow-xs hover:border-[#D0A348] hover:shadow-sm whitespace-nowrap transition-all text-sm text-[#022d5c]"
               >
                 <Icon className="w-4 h-4 text-[#D0A348]" />
-                {template.label}
-              </Button>
+                {t.label}
+              </button>
             )
           })}
         </div>
       </div>
 
+      {/* Content Feed */}
       {loading ? (
-        <div className="text-center py-12 text-[#022d5c]/50">Loading announcements...</div>
+        <div className="py-20 text-center text-[#022d5c]/50">Loading announcements...</div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {activeAnnouncements.length === 0 ? (
-            <Card className="border-dashed bg-transparent border-[#022d5c]/20">
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Megaphone className="w-12 h-12 text-[#022d5c]/20 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Active Announcements</h3>
-                <p className="text-[#022d5c]/60 max-w-md">
-                  You don't have any active announcements right now. Use one of the templates above or create a new one to get started.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="text-center py-16 bg-white/50 border border-dashed border-[#022d5c]/20 rounded-xl p-8">
+              <Megaphone className="w-12 h-12 text-[#022d5c]/30 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-[#022d5c]">No active announcements</h3>
+              <p className="text-sm text-[#022d5c]/60 max-w-sm mx-auto mt-1 mb-4">
+                Use a template above or create your own custom church announcement.
+              </p>
+              <Button onClick={() => openModalForNew()} className="bg-[#022d5c] text-[#F8F5EE]">
+                Create First Announcement
+              </Button>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {activeAnnouncements.map(announcement => (
                 <AnnouncementCard 
                   key={announcement.id} 
@@ -277,6 +321,7 @@ export default function AnnouncementsPage() {
                   onDelete={() => handleDelete(announcement.id)}
                   onToggleActive={() => handleToggleActive(announcement.id, announcement.is_active)}
                   onCopy={() => copyToClipboard(`${announcement.title}\n\n${announcement.content}`)}
+                  onTextAnnouncement={() => handleTextAnnouncement(announcement)}
                 />
               ))}
             </div>
@@ -303,6 +348,7 @@ export default function AnnouncementsPage() {
                       onDelete={() => handleDelete(announcement.id)}
                       onToggleActive={() => handleToggleActive(announcement.id, announcement.is_active)}
                       onCopy={() => copyToClipboard(`${announcement.title}\n\n${announcement.content}`)}
+                      onTextAnnouncement={() => handleTextAnnouncement(announcement)}
                     />
                   ))}
                 </div>
@@ -413,6 +459,18 @@ export default function AnnouncementsPage() {
           </div>
         </div>
       )}
+
+      {/* AI Text Composer Modal */}
+      <AiTextComposerModal
+        isOpen={textComposer.isOpen}
+        onClose={() => setTextComposer(prev => ({ ...prev, isOpen: false }))}
+        recipientName={textComposer.recipientName}
+        recipientPhone={textComposer.recipientPhone}
+        defaultCategory={textComposer.defaultCategory}
+        defaultCustomPrompt={textComposer.defaultCustomPrompt}
+        pastorName={pastorProfile.full_name || ''}
+        churchName={pastorProfile.church_name || ''}
+      />
     </div>
   )
 }
@@ -422,13 +480,15 @@ function AnnouncementCard({
   onEdit, 
   onDelete, 
   onToggleActive,
-  onCopy 
+  onCopy,
+  onTextAnnouncement
 }: { 
   announcement: Announcement
   onEdit: () => void
   onDelete: () => void
   onToggleActive: () => void
   onCopy: () => void
+  onTextAnnouncement: () => void
 }) {
   return (
     <Card className="flex flex-col bg-white border-[#022d5c]/10 shadow-sm hover:shadow-md transition-shadow">
@@ -437,7 +497,17 @@ function AnnouncementCard({
           <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-semibold", CATEGORY_COLORS[announcement.category])}>
             {CATEGORY_LABELS[announcement.category]}
           </span>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 px-2 text-[#022d5c] hover:bg-[#D0A348]/20 flex items-center gap-1 text-xs font-medium" 
+              onClick={onTextAnnouncement} 
+              title="Create SMS Text with AI"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#D0A348]" />
+              <span>AI Text</span>
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-[#022d5c]/50 hover:text-[#022d5c]" onClick={onCopy} title="Copy Content">
               <Copy className="h-4 w-4" />
             </Button>

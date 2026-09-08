@@ -14,10 +14,11 @@ import {
   Search, Plus, CheckCircle, Trash2, Hospital, Phone, 
   Home, Car, Church, HelpCircle, Mail, Clock, 
   ChevronDown, ChevronUp, AlertCircle, Calendar as CalendarIcon,
-  Download, Smartphone, MessageSquare, Upload
+  Download, Smartphone, MessageSquare, Upload, Sparkles
 } from 'lucide-react'
 import { downloadVCard, parseVCardText, parseCSVContacts } from '@/lib/vcard'
 import { format, isPast, parseISO, addHours } from 'date-fns'
+import AiTextComposerModal from '@/components/care/AiTextComposerModal'
 
 type Member = {
   id: string
@@ -89,6 +90,20 @@ export default function CarePage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [hasNativeContactPicker, setHasNativeContactPicker] = useState(false)
   const [isAnswerDialogOpen, setIsAnswerDialogOpen] = useState<{isOpen: boolean, prayerId: string | null}>({isOpen: false, prayerId: null})
+  const [pastorProfile, setPastorProfile] = useState<{ full_name?: string, church_name?: string }>({})
+  const [textComposer, setTextComposer] = useState<{
+    isOpen: boolean
+    recipientName: string
+    recipientPhone?: string | null
+    defaultCategory?: string
+    defaultCustomPrompt?: string
+  }>({
+    isOpen: false,
+    recipientName: '',
+    recipientPhone: null,
+    defaultCategory: 'encouragement',
+    defaultCustomPrompt: ''
+  })
   
   // Forms state
   const [newMember, setNewMember] = useState<Partial<Member>>({ status: 'active' })
@@ -116,6 +131,12 @@ export default function CarePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       setUserProfileId(user.id)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('full_name, church_name')
+        .eq('id', user.id)
+        .single()
+      if (prof) setPastorProfile(prof)
     }
 
     const [membersRes, tasksRes, prayersRes] = await Promise.all([
@@ -613,6 +634,26 @@ export default function CarePage() {
                       </div>
                       
                       <div className="flex sm:flex-col gap-2 shrink-0">
+                        {task.members?.phone && task.status !== 'completed' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-[#022d5c] border-[#D0A348]/40 bg-[#F8F5EE] hover:bg-[#D0A348]/20 flex items-center gap-1.5 font-medium"
+                            onClick={() => {
+                              setTextComposer({
+                                isOpen: true,
+                                recipientName: task.members?.full_name || '',
+                                recipientPhone: task.members?.phone,
+                                defaultCategory: task.task_type === 'hospital' ? 'hospital' : 'prayer_followup',
+                                defaultCustomPrompt: task.description || task.notes || ''
+                              })
+                            }}
+                            title="Compose personalized pastoral text"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
+                            AI Text
+                          </Button>
+                        )}
                         {task.status !== 'completed' && (
                           <Button 
                             variant="outline" 
@@ -920,14 +961,32 @@ export default function CarePage() {
                               <a href={`tel:${member.phone}`} className="hover:text-[#022d5c] hover:underline font-medium" onClick={(e) => e.stopPropagation()}>{member.phone}</a>
                             </div>
                             <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setTextComposer({
+                                    isOpen: true,
+                                    recipientName: member.full_name,
+                                    recipientPhone: member.phone,
+                                    defaultCategory: 'encouragement',
+                                    defaultCustomPrompt: member.notes || ''
+                                  })
+                                }}
+                                className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-[#022d5c] text-white hover:bg-[#022d5c]/90 font-medium transition-colors shadow-xs"
+                                title="Compose personalized text with AI"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
+                                AI Text
+                              </button>
                               <a
                                 href={`sms:${member.phone}`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-[#F8F5EE] text-[#022d5c] hover:bg-[#D0A348]/20 font-medium transition-colors"
-                                title="Send SMS message"
+                                className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-100 font-medium transition-colors"
+                                title="Open SMS app directly"
                               >
-                                <MessageSquare className="w-3.5 h-3.5 text-[#D0A348]" />
-                                Text
+                                <MessageSquare className="w-3.5 h-3.5 text-gray-500" />
+                                SMS
                               </a>
                               <button
                                 type="button"
@@ -1144,28 +1203,54 @@ export default function CarePage() {
                     <div className="flex justify-between items-center mt-2 pt-3 border-t border-gray-100 text-sm text-gray-500">
                       <span>Added {format(parseISO(prayer.created_at), 'MMM d, yyyy')}</span>
                       
-                      {prayer.status === 'active' && (
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8"
-                            onClick={() => {
-                              setNewTask({ ...newTask, description: `Follow up on prayer: ${prayer.request.substring(0, 50)}...`, prayer_request_id: prayer.id })
-                              setIsAddTaskOpen(true)
-                            }}
-                          >
-                            Add Follow-Up
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            className="bg-green-600 hover:bg-green-700 text-white h-8"
-                            onClick={() => setIsAnswerDialogOpen({isOpen: true, prayerId: prayer.id})}
-                          >
-                            Mark Answered
-                          </Button>
-                        </div>
-                      )}
+                      {prayer.status === 'active' && (() => {
+                        const matchingMember = members.find(m => 
+                          (prayer.member_id && m.id === prayer.member_id) || 
+                          (m.full_name && prayer.person_name && m.full_name.toLowerCase().trim() === prayer.person_name.toLowerCase().trim())
+                        )
+                        return (
+                          <div className="flex gap-2 items-center">
+                            {matchingMember?.phone && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 text-[#022d5c] border-[#D0A348]/40 bg-[#F8F5EE] hover:bg-[#D0A348]/20 flex items-center gap-1.5 font-medium"
+                                onClick={() => {
+                                  setTextComposer({
+                                    isOpen: true,
+                                    recipientName: matchingMember.full_name,
+                                    recipientPhone: matchingMember.phone,
+                                    defaultCategory: 'prayer_followup',
+                                    defaultCustomPrompt: `Praying for: ${prayer.request}`
+                                  })
+                                }}
+                                title="Send encouraging text about this prayer request"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
+                                AI Text
+                              </Button>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8"
+                              onClick={() => {
+                                setNewTask({ ...newTask, description: `Follow up on prayer: ${prayer.request.substring(0, 50)}...`, prayer_request_id: prayer.id })
+                                setIsAddTaskOpen(true)
+                              }}
+                            >
+                              Add Follow-Up
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              className="bg-green-600 hover:bg-green-700 text-white h-8"
+                              onClick={() => setIsAnswerDialogOpen({isOpen: true, prayerId: prayer.id})}
+                            >
+                              Mark Answered
+                            </Button>
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
                 </Card>
@@ -1199,6 +1284,18 @@ export default function CarePage() {
           </DialogContent>
         </Dialog>
       </Tabs>
+
+      {/* AI Pastoral Text Assistant Modal */}
+      <AiTextComposerModal
+        isOpen={textComposer.isOpen}
+        onClose={() => setTextComposer(prev => ({ ...prev, isOpen: false }))}
+        recipientName={textComposer.recipientName}
+        recipientPhone={textComposer.recipientPhone}
+        defaultCategory={textComposer.defaultCategory}
+        defaultCustomPrompt={textComposer.defaultCustomPrompt}
+        pastorName={pastorProfile.full_name || ''}
+        churchName={pastorProfile.church_name || ''}
+      />
     </div>
   )
 }
