@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import AiTextComposerModal from '@/components/care/AiTextComposerModal'
+import { VoiceDictation } from '@/components/voice/VoiceDictation'
 
 type AnnouncementCategory = 'general' | 'event' | 'prayer' | 'volunteer' | 'celebration' | 'urgent'
 
@@ -701,7 +702,14 @@ export default function CommunicationPage() {
               <CardContent className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Text Message</Label>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Text Message</Label>
+                      <VoiceDictation
+                        onTranscript={(text) => setBroadcastMessage(prev => prev ? `${prev} ${text}` : text)}
+                        size="sm"
+                        placeholderPrompt="Dictate text broadcast"
+                      />
+                    </div>
                     <span className={cn(
                       "text-xs font-mono font-medium",
                       charCount > 160 ? "text-amber-600 font-bold" : "text-gray-400"
@@ -808,7 +816,14 @@ export default function CommunicationPage() {
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-[#022d5c]">Content</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label className="text-xs font-bold text-[#022d5c]">Content</Label>
+                  <VoiceDictation
+                    onTranscript={(text) => setFormData(prev => ({ ...prev, content: prev.content ? `${prev.content} ${text}` : text }))}
+                    size="sm"
+                    placeholderPrompt="Dictate announcement details"
+                  />
+                </div>
                 <textarea
                   required
                   rows={6}

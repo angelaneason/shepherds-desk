@@ -1,7 +1,7 @@
 # 📖 The Shepherd's Desk — Project Status & Master Roadmap
 
 > **Single Source of Truth** for Angela, Octo, and AI Pair Programmers.  
-> *Last Updated: September 10, 2026*
+> *Last Updated: September 11, 2026*
 
 ---
 
@@ -83,6 +83,12 @@
 - [x] **Ministry Care CRM:** Follow-ups & hospital visits, Church Members directory, and Prayer Requests pipeline.
 - [x] **Idea Capture:** Quick jotting with tags (`[Sermon Idea]`, `[Quote]`, `[Prayer]`), promote idea directly to new sermon draft.
 - [x] **Community & Counseling Resources:** Categorized pastoral counseling guides and community emergency hotlines.
+
+### 5. Universal Voice Dictation & AI Sermon Audio Transcriber (Sept 11, 2026)
+- [x] **Universal Voice Dictation (Short-Form):** Live speech-to-text integration with real-time interim speech tooltips and visual listening indicators across Communication Hub (SMS & announcements), Ministry Care (care tasks & prayer requests), Sermon Editor toolbar, and Ideas Inbox.
+- [x] **AI Sermon Audio Transcriber & Analyzer (Long-Form):** Dual-mode studio supporting audio file uploads (.mp3, .m4a, .wav, .webm, .aac up to 50MB) and browser live recordings.
+- [x] **Theological Extraction Engine:** Powered by Google Gemini 2.0 Flash multimodal audio API; extracts word-for-word transcript, scripture citations, structured sermon outline, executive summary, and key pastoral quotes.
+- [x] **1-Click Workflow Conversion:** Allows pastors to instantly convert analyzed sermon audio directly into an active editable Sermon Draft in Supabase.
 
 ---
 

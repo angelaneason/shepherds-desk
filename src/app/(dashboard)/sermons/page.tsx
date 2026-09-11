@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Calendar, Clock, Edit, ScanLine, LayoutGrid, Layers, Filter, BookOpen, BookMarked, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Search, Calendar, Clock, Edit, ScanLine, LayoutGrid, Layers, Filter, BookOpen, BookMarked, ChevronDown, ChevronRight, Mic } from "lucide-react";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScanSermon } from "@/components/capture/ScanSermon";
+import SermonAudioTranscriberModal from "@/components/sermons/SermonAudioTranscriberModal";
 import { cn } from "@/lib/utils";
 
 type Sermon = {
@@ -44,6 +45,7 @@ export default function SermonsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+  const [isTranscribeModalOpen, setIsTranscribeModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'series'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [seriesFilter, setSeriesFilter] = useState<string>('all');
@@ -228,6 +230,14 @@ export default function SermonsPage() {
             </Button>
           </Link>
           <Button 
+            onClick={() => setIsTranscribeModalOpen(true)}
+            variant="outline"
+            className="border-[#D0A348] text-[#8B6A27] hover:bg-[#D0A348]/15 font-medium flex items-center gap-1.5 cursor-pointer"
+          >
+            <Mic className="h-4 w-4 text-[#D0A348]" />
+            <span>Transcribe Audio</span>
+          </Button>
+          <Button 
             onClick={() => setIsScanModalOpen(true)}
             variant="outline"
             className="border-[#022d5c] text-[#022d5c] hover:bg-[#022d5c]/10"
@@ -245,6 +255,7 @@ export default function SermonsPage() {
       </div>
 
       <ScanSermon isOpen={isScanModalOpen} onClose={() => setIsScanModalOpen(false)} />
+      <SermonAudioTranscriberModal isOpen={isTranscribeModalOpen} onClose={() => setIsTranscribeModalOpen(false)} />
 
       {/* Search, Filters, and View Toggle */}
       <div className="space-y-4 mb-6">

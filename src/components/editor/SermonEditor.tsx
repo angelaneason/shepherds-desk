@@ -15,6 +15,7 @@ import { AIPanel } from "./AIPanel";
 import { BibleLookup } from "./BibleLookup";
 import { StudyPanel } from "./StudyPanel";
 import { Button } from "@/components/ui/button";
+import { VoiceDictation } from "@/components/voice/VoiceDictation";
 
 interface SermonEditorProps {
   content?: any;
@@ -101,6 +102,17 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
                 <BookMarked className="h-4 w-4" />
                 <span className="hidden sm:inline">Study</span>
               </Button>
+
+              <VoiceDictation
+                onTranscript={(text) => {
+                  if (editor) {
+                    editor.commands.insertContent(text + ' ')
+                  }
+                }}
+                size="sm"
+                variant="gold"
+                placeholderPrompt="Dictate into sermon notes"
+              />
 
               <Button 
                 variant="outline"

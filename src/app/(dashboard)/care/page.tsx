@@ -19,6 +19,7 @@ import {
 import { downloadVCard, parseVCardText, parseCSVContacts } from '@/lib/vcard'
 import { format, isPast, parseISO, addHours } from 'date-fns'
 import AiTextComposerModal from '@/components/care/AiTextComposerModal'
+import { VoiceDictation } from '@/components/voice/VoiceDictation'
 
 type Member = {
   id: string
@@ -560,7 +561,14 @@ export default function CarePage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="notes">Notes</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="notes">Notes</Label>
+                      <VoiceDictation
+                        onTranscript={(text) => setNewTask(prev => ({ ...prev, notes: prev.notes ? `${prev.notes} ${text}` : text }))}
+                        size="sm"
+                        placeholderPrompt="Dictate care task notes"
+                      />
+                    </div>
                     <Textarea
                       id="notes"
                       value={newTask.notes || ''}
@@ -1136,7 +1144,14 @@ export default function CarePage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="prayer_request">Request *</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="prayer_request">Request *</Label>
+                      <VoiceDictation
+                        onTranscript={(text) => setNewPrayer(prev => ({ ...prev, request: prev.request ? `${prev.request} ${text}` : text }))}
+                        size="sm"
+                        placeholderPrompt="Dictate prayer request"
+                      />
+                    </div>
                     <Textarea
                       id="prayer_request"
                       value={newPrayer.request || ''}
