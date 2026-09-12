@@ -42,7 +42,7 @@ export default function SettingsPage() {
   const [churchId, setChurchId] = useState<string | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
 
-  const TITLE_OPTIONS = ['Pastor', 'Minister', 'Teacher', 'Preacher', 'Reverend', 'Bishop', 'Elder', 'Evangelist', 'Deacon', 'Chaplain', 'Other']
+  const TITLE_OPTIONS = ['Pastor', 'Minister', 'Teacher', 'Preacher', 'Reverend', 'Bishop', 'Elder', 'Evangelist', 'Deacon', 'Chaplain', 'Brother', 'Sister', 'Other']
 
   // Branding State
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
