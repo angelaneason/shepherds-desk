@@ -21,18 +21,34 @@ export function StudyPanel({ isOpen, onClose, onInsertText }: StudyPanelProps) {
   const [commentaryResults, setCommentaryResults] = useState<any>(null);
   
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const searchConcordance = async () => {
     if (!searchWord.trim()) return;
     setIsLoading(true);
+    setErrorMessage(null);
     setConcordanceResults(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
     try {
-      const res = await fetch(`/api/study?type=concordance&word=${encodeURIComponent(searchWord)}`);
+      const res = await fetch(`/api/study?type=concordance&word=${encodeURIComponent(searchWord)}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         setConcordanceResults(data);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrorMessage(data.error || 'Failed to find concordance matches. Please try again.');
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        setErrorMessage('Search took too long. Please try again with a simpler term.');
+      } else {
+        setErrorMessage('Network error while searching Scripture. Please check your connection.');
+      }
       console.error(e);
     } finally {
       setIsLoading(false);
@@ -42,14 +58,29 @@ export function StudyPanel({ isOpen, onClose, onInsertText }: StudyPanelProps) {
   const searchCommentary = async () => {
     if (!reference.trim()) return;
     setIsLoading(true);
+    setErrorMessage(null);
     setCommentaryResults(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
+
     try {
-      const res = await fetch(`/api/study?type=commentary&reference=${encodeURIComponent(reference)}`);
+      const res = await fetch(`/api/study?type=commentary&reference=${encodeURIComponent(reference)}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         setCommentaryResults(data);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrorMessage(data.error || 'Failed to retrieve commentary. Please try again.');
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        setErrorMessage('Commentary took too long to respond. Please try again.');
+      } else {
+        setErrorMessage('Network error while consulting commentaries. Please try again.');
+      }
       console.error(e);
     } finally {
       setIsLoading(false);
@@ -98,6 +129,15 @@ export function StudyPanel({ isOpen, onClose, onInsertText }: StudyPanelProps) {
               </div>
             )}
 
+            {errorMessage && activeTab === "concordance" && !isLoading && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm space-y-2">
+                <p>{errorMessage}</p>
+                <Button size="sm" variant="outline" onClick={searchConcordance} className="text-red-700 border-red-300 hover:bg-red-100">
+                  Try Again
+                </Button>
+              </div>
+            )}
+
             {concordanceResults && !isLoading && (
               <div className="space-y-4">
                 <div className="bg-white p-4 rounded-md border border-[#D0A348]/20 shadow-sm">
@@ -141,6 +181,15 @@ export function StudyPanel({ isOpen, onClose, onInsertText }: StudyPanelProps) {
               <div className="py-12 flex flex-col items-center justify-center text-muted-foreground space-y-4 text-[#022d5c]">
                 <Loader2 className="h-8 w-8 animate-spin text-[#D0A348]" />
                 <p className="text-sm">Consulting the commentaries...</p>
+              </div>
+            )}
+
+            {errorMessage && activeTab === "commentary" && !isLoading && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm space-y-2">
+                <p>{errorMessage}</p>
+                <Button size="sm" variant="outline" onClick={searchCommentary} className="text-red-700 border-red-300 hover:bg-red-100">
+                  Try Again
+                </Button>
               </div>
             )}
 

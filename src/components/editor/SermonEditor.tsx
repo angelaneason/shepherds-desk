@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -16,6 +16,7 @@ import { BibleLookup } from "./BibleLookup";
 import { StudyPanel } from "./StudyPanel";
 import { Button } from "@/components/ui/button";
 import { VoiceDictation } from "@/components/voice/VoiceDictation";
+import { normalizeSermonContent } from "@/lib/sermon-content";
 
 interface SermonEditorProps {
   content?: any;
@@ -28,6 +29,9 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isBibleOpen, setIsBibleOpen] = useState(false);
   const [isStudyPanelOpen, setIsStudyPanelOpen] = useState(false);
+  const initialSyncDone = useRef(false);
+
+  const initialContent = React.useMemo(() => normalizeSermonContent(content) || "", []);
 
   const editor = useEditor({
     extensions: [
@@ -45,7 +49,7 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
         nested: true,
       }),
     ],
-    content: content || "",
+    content: initialContent,
     editable: !readOnly,
     onUpdate: ({ editor }) => {
       if (onChange) {
@@ -58,6 +62,23 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
       },
     },
   });
+
+  // Keep editor content in sync when content loads or changes externally
+  useEffect(() => {
+    if (!editor || !content) return;
+    
+    // If not yet synced, or if current editor text is empty or contains raw JSON corruption
+    const currentText = editor.getText();
+    const isCorrupted = currentText.includes('{"type":"doc"') || currentText.includes('ROO{');
+
+    if (!initialSyncDone.current || isCorrupted) {
+      const normalized = normalizeSermonContent(content);
+      if (normalized) {
+        editor.commands.setContent(normalized);
+        initialSyncDone.current = true;
+      }
+    }
+  }, [editor, content]);
 
   const getSermonText = () => editor?.getText() || "";
   

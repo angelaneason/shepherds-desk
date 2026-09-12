@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SermonEditor } from "@/components/editor/SermonEditor";
+import { normalizeSermonContent } from "@/lib/sermon-content";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -63,7 +64,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
         setPreachDate(data.preach_date || "");
         setLocation(data.location || "");
         setStatus(data.status || "draft");
-        setContent(data.content);
+        setContent(normalizeSermonContent(data.content));
       }
     } catch (error) {
       console.error("Error fetching sermon:", error);

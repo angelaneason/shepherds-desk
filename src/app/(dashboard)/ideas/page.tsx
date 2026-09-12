@@ -15,6 +15,7 @@ import { VoiceDictation } from '@/components/voice/VoiceDictation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
+import { plainTextToTipTap } from '@/lib/sermon-content'
 
 const QUICK_TYPES = [
   { label: 'Sermon Idea', emoji: '💡', color: 'bg-[#D0A348] text-white', prefix: '[Sermon Idea]' },
@@ -157,7 +158,7 @@ export default function IdeasPage() {
         .insert({
           author_id: user.id,
           title: promoteTitle,
-          content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: promoteIdea.content }] }] },
+          content: plainTextToTipTap(promoteIdea.content),
           status: 'draft'
         })
         .select()
