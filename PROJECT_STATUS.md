@@ -16,6 +16,7 @@
 | **Mobile Repository** | `https://github.com/angelaneason/shepherds-desk-mobile` (`main` branch) |
 | **Hosting & CI/CD** | Vercel (Web), Local Gradle / EAS (Mobile) |
 | **Database & Auth** | Supabase (`https://yyghygvyzpqzvxnjyqlb.supabase.co`) |
+| **Payment Processing** | Stripe Live (`The Shepherd's Desk` dedicated account) |
 | **AI Integration** | Google Gemini API (`gemini-3.6-flash`) |
 | **Email Delivery** | Resend API |
 | **Apple App Store ID** | `6808595831` • Bundle: `com.theshepherdsdesk.app` |
