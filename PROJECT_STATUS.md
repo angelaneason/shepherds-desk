@@ -27,11 +27,12 @@
 ## 🚦 Live Store & Platform Status
 
 ### 🍎 Apple App Store (iOS)
-* **Current Status:** `🟡 Waiting for Review` (Re-submitted Sept 10, 2026)
-* **Target Version in Review:** `1.0` (Build `2.1.3 (2)`)
+* **Current Status:** `🟢 Approved & Ready for Sale (Live on App Store)` (Approved Sept 14, 2026)
+* **Live Version:** `1.0` (Build `2.1.3 (2)`)
+* **App Store ID:** `6808595831`
+* **Direct App Store Link:** `https://apps.apple.com/app/id6808595831`
 * **Review Console:** [App Store Connect — The Shepherd's Desk](https://appstoreconnect.apple.com/apps/6808595831/appstore)
-* **Recent Resolution:** Resolved Guideline 2.1 info request regarding religious book/concordance content by unchecking China mainland territory in App Availability.
-* **Next Step on Approval:** Once approved and live in App Store, submit the updated `v2.1.4 (Build 10)` featuring the Communication Hub & expanded Settings.
+* **Next Step:** Allow up to 24 hours for worldwide App Store CDN propagation, then submit the update `v2.1.4 (Build 10)` containing the Communication Hub, universal voice dictation, and expanded settings.
 
 ---
 
