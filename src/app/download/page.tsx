@@ -50,7 +50,7 @@ export default function DownloadPage() {
             ⬇️ Download for Android
           </a>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16 }}>
-            v2.1.8 (Build 14) • APK • 1-Tap Contact Referrals & Texting, Voice Dictation & Full Settings
+            v2.1.8 (Build 15) • APK • Native Contact Picker, Bible Lookup & 1-Tap Referrals
           </p>
         </div>
 
