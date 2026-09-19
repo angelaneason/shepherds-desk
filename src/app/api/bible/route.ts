@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const reference = searchParams.get('reference');
+    const reference = searchParams.get('reference') || searchParams.get('passage');
     const translation = searchParams.get('translation') || 'kjv';
 
     if (!reference) {
