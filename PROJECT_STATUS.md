@@ -37,11 +37,12 @@
 ---
 
 ### 🤖 Google Play Store (Android)
-* **Current Alpha / Closed Testing Track:** `v2.1.3` (Version Code `7`) — 177 testers
-* **Latest Production Bundle Built:** `v2.1.4` (Version Code `10`)
-* **Bundle Location:** `ShepherdsDesk-v2.1.4-build10.aab` (root workspace)
-* **Play Console:** [Google Play Console — Closed Testing (Alpha)](https://play.google.com/console)
-* **Next Step:** Upload `ShepherdsDesk-v2.1.4-build10.aab` to Closed Testing Alpha track to upgrade testers from build 7 to 10.
+* **Current Status:** `🟡 In Review (Production Track — Full Rollout)` (Submitted Sept 19, 2026)
+* **Target Version in Review:** `v2.1.6` (Version Code `12`) — *Official Launch*
+* **Managed Publishing:** Off (will go live automatically upon Google approval)
+* **Play Store URL:** [https://play.google.com/store/apps/details?id=com.theshepherdsdesk.app](https://play.google.com/store/apps/details?id=com.theshepherdsdesk.app)
+* **Review Console:** [Google Play Console — Publishing Overview](https://play.google.com/console)
+* **Next Step:** Await Google Play review completion (typically 24–48 hours). Once approved, app will be live and searchable on Google Play worldwide.
 
 ---
 

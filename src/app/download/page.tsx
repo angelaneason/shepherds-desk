@@ -32,8 +32,8 @@ export default function DownloadPage() {
             Download the APK directly to your Android device. No Play Store needed.
           </p>
           <a 
-            href="/shepherds-desk-v2.1.4.apk"
-            download="shepherds-desk-v2.1.4.apk"
+            href="/shepherds-desk-v2.1.8.apk"
+            download="shepherds-desk-v2.1.8.apk"
             style={{ 
               display: 'inline-block',
               background: 'linear-gradient(135deg, #D0A348, #b8892e)', 
@@ -50,7 +50,7 @@ export default function DownloadPage() {
             ⬇️ Download for Android
           </a>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16 }}>
-            v2.1.4 (Build 10) • APK • Communication & Group Texting, Header Logo & Full Settings
+            v2.1.8 (Build 14) • APK • 1-Tap Contact Referrals & Texting, Voice Dictation & Full Settings
           </p>
         </div>
 
