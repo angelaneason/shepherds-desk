@@ -226,6 +226,29 @@ function LoginContent() {
         </button>
       </p>
 
+      {/* Mobile App Download Badges */}
+      <div className="pt-4 pb-2 border-t border-gray-100 w-full text-center">
+        <p className="text-xs text-gray-400 font-medium mb-3">Get The Shepherd&apos;s Desk on your phone</p>
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <a
+            href="https://apps.apple.com/app/id6808595831"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black text-white text-xs font-semibold hover:bg-gray-800 transition-all shadow-sm"
+          >
+            <span className="text-base leading-none"></span>
+            <span>App Store</span>
+          </a>
+          <a
+            href="/download"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#022d5c] text-white text-xs font-semibold hover:bg-[#D0A348] transition-all shadow-sm"
+          >
+            <span className="text-base leading-none">📱</span>
+            <span>Android / APK</span>
+          </a>
+        </div>
+      </div>
+
       {/* Powered by Tiny Tech */}
       <a 
         href="https://tinytechcompany.com" 
