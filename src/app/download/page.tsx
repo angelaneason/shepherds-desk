@@ -56,33 +56,41 @@ export default function DownloadPage() {
 
         {/* iOS Card */}
         <div style={{ 
-          background: 'rgba(255,255,255,0.04)', 
+          background: 'rgba(255,255,255,0.08)', 
+          backdropFilter: 'blur(20px)',
           borderRadius: 24, 
           padding: '40px 32px', 
           width: 340, 
           textAlign: 'center',
-          border: '1px solid rgba(255,255,255,0.08)',
-          opacity: 0.7
+          border: '1px solid rgba(255,255,255,0.12)'
         }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🍎</div>
-          <h2 style={{ color: '#FFFFFF', fontSize: 24, marginBottom: 8 }}>iOS</h2>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-            Coming soon to the Apple App Store. Join the waitlist to be notified.
+          <h2 style={{ color: '#FFFFFF', fontSize: 24, marginBottom: 8 }}>iPhone & iPad</h2>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+            Download The Shepherd&apos;s Desk directly from the official Apple App Store.
           </p>
-          <div style={{ 
-            display: 'inline-block',
-            background: 'rgba(255,255,255,0.1)', 
-            color: 'rgba(255,255,255,0.5)', 
-            padding: '14px 32px', 
-            borderRadius: 12, 
-            fontSize: 16, 
-            fontWeight: 600,
-            cursor: 'default'
-          }}>
-            🔜 Coming Soon
-          </div>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginTop: 16 }}>
-            Estimated Q4 2026
+          <a 
+            href="https://apps.apple.com/app/id6808595831"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ 
+              display: 'inline-block',
+              background: '#0070c9',
+              backgroundImage: 'linear-gradient(135deg, #0071e3 0%, #005bb5 100%)',
+              color: '#FFFFFF', 
+              padding: '14px 32px', 
+              borderRadius: 12, 
+              fontSize: 16, 
+              fontWeight: 600, 
+              textDecoration: 'none',
+              transition: 'transform 0.2s',
+              cursor: 'pointer'
+            }}
+          >
+             Download on App Store
+          </a>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16 }}>
+            v2.1.5 • Official Apple App Store Release
           </p>
         </div>
       </div>
