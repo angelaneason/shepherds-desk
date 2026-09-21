@@ -54,6 +54,27 @@ export default function WelcomePage() {
               See Features
             </a>
           </div>
+
+          {/* App Store & Google Play Badges */}
+          <div className="flex items-center gap-3 pt-2">
+            <span className="text-xs text-white/50 font-medium">Download Mobile App:</span>
+            <a
+              href="https://apps.apple.com/app/id6808595831"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 hover:bg-black/90 text-white text-xs font-semibold border border-white/15 transition-all"
+            >
+              <span></span> App Store
+            </a>
+            <a
+              href="https://play.google.com/store/apps/details?id=com.theshepherdsdesk.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00875A]/80 hover:bg-[#00875A] text-white text-xs font-semibold border border-white/15 transition-all"
+            >
+              <span>▶️</span> Google Play
+            </a>
+          </div>
         </div>
       </section>
 

@@ -240,11 +240,13 @@ function LoginContent() {
             <span>App Store</span>
           </a>
           <a
-            href="/download"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#022d5c] text-white text-xs font-semibold hover:bg-[#D0A348] transition-all shadow-sm"
+            href="https://play.google.com/store/apps/details?id=com.theshepherdsdesk.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#00875A] text-white text-xs font-semibold hover:bg-[#006644] transition-all shadow-sm"
           >
-            <span className="text-base leading-none">📱</span>
-            <span>Android / APK</span>
+            <span className="text-base leading-none">▶️</span>
+            <span>Google Play</span>
           </a>
         </div>
       </div>

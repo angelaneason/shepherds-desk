@@ -24,34 +24,53 @@ export default function DownloadPage() {
           padding: '40px 32px', 
           width: 340, 
           textAlign: 'center',
-          border: '1px solid rgba(255,255,255,0.12)'
+          border: '1px solid rgba(255,255,255,0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
         }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
-          <h2 style={{ color: '#FFFFFF', fontSize: 24, marginBottom: 8 }}>Android</h2>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-            Download the APK directly to your Android device. No Play Store needed.
-          </p>
-          <a 
-            href="/shepherds-desk-v2.1.8.apk"
-            download="shepherds-desk-v2.1.8.apk"
-            style={{ 
-              display: 'inline-block',
-              background: 'linear-gradient(135deg, #D0A348, #b8892e)', 
-              color: '#FFFFFF', 
-              padding: '14px 32px', 
-              borderRadius: 12, 
-              fontSize: 16, 
-              fontWeight: 600, 
-              textDecoration: 'none',
-              transition: 'transform 0.2s',
-              cursor: 'pointer'
-            }}
-          >
-            ⬇️ Download for Android
-          </a>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16 }}>
-            v2.1.8 (Build 18) • APK • Reviewer Login Sanitization, Dismissible Reminders & Referrals
-          </p>
+          <div>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+            <h2 style={{ color: '#FFFFFF', fontSize: 24, marginBottom: 8 }}>Google Play Store</h2>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+              Get The Shepherd&apos;s Desk for Android phones and tablets directly from Google Play.
+            </p>
+          </div>
+          <div>
+            <a 
+              href="https://play.google.com/store/apps/details?id=com.theshepherdsdesk.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                background: 'linear-gradient(135deg, #00875A, #006644)', 
+                color: '#FFFFFF', 
+                padding: '14px 28px', 
+                borderRadius: 12, 
+                fontSize: 16, 
+                fontWeight: 600, 
+                textDecoration: 'none',
+                transition: 'transform 0.2s',
+                cursor: 'pointer',
+                width: '100%',
+                boxShadow: '0 4px 14px rgba(0, 135, 90, 0.4)'
+              }}
+            >
+              <span>▶️</span> Get it on Google Play
+            </a>
+            <div style={{ marginTop: 14 }}>
+              <a 
+                href="/shepherds-desk-v2.1.9.apk"
+                download="shepherds-desk-v2.1.9.apk"
+                style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textDecoration: 'underline' }}
+              >
+                Direct APK download for offline devices
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* iOS Card */}
@@ -62,36 +81,48 @@ export default function DownloadPage() {
           padding: '40px 32px', 
           width: 340, 
           textAlign: 'center',
-          border: '1px solid rgba(255,255,255,0.12)'
+          border: '1px solid rgba(255,255,255,0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
         }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🍎</div>
-          <h2 style={{ color: '#FFFFFF', fontSize: 24, marginBottom: 8 }}>iPhone & iPad</h2>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-            Download The Shepherd&apos;s Desk directly from the official Apple App Store.
-          </p>
-          <a 
-            href="https://apps.apple.com/app/id6808595831"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ 
-              display: 'inline-block',
-              background: '#0070c9',
-              backgroundImage: 'linear-gradient(135deg, #0071e3 0%, #005bb5 100%)',
-              color: '#FFFFFF', 
-              padding: '14px 32px', 
-              borderRadius: 12, 
-              fontSize: 16, 
-              fontWeight: 600, 
-              textDecoration: 'none',
-              transition: 'transform 0.2s',
-              cursor: 'pointer'
-            }}
-          >
-             Download on App Store
-          </a>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 16 }}>
-            v2.1.5 • Official Apple App Store Release
-          </p>
+          <div>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🍎</div>
+            <h2 style={{ color: '#FFFFFF', fontSize: 24, marginBottom: 8 }}>Apple App Store</h2>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+              Download The Shepherd&apos;s Desk for iPhone and iPad directly from the official App Store.
+            </p>
+          </div>
+          <div>
+            <a 
+              href="https://apps.apple.com/app/id6808595831"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                background: '#0070c9',
+                backgroundImage: 'linear-gradient(135deg, #0071e3 0%, #005bb5 100%)',
+                color: '#FFFFFF', 
+                padding: '14px 28px', 
+                borderRadius: 12, 
+                fontSize: 16, 
+                fontWeight: 600, 
+                textDecoration: 'none',
+                transition: 'transform 0.2s',
+                cursor: 'pointer',
+                width: '100%',
+                boxShadow: '0 4px 14px rgba(0, 113, 227, 0.4)'
+              }}
+            >
+              <span style={{ fontSize: 20 }}></span> Download on App Store
+            </a>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 14 }}>
+              Official Apple App Store Release
+            </p>
+          </div>
         </div>
       </div>
 
