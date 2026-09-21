@@ -132,7 +132,10 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
                 }}
                 size="sm"
                 variant="gold"
-                placeholderPrompt="Dictate into sermon notes"
+                showLabel
+                label="Dictate Notes"
+                labelActive="Listening..."
+                placeholderPrompt="Dictate directly into your sermon notes"
               />
 
               <Button 

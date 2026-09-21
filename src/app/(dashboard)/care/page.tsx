@@ -566,6 +566,10 @@ export default function CarePage() {
                       <VoiceDictation
                         onTranscript={(text) => setNewTask(prev => ({ ...prev, notes: prev.notes ? `${prev.notes} ${text}` : text }))}
                         size="sm"
+                        showLabel
+                        label="Dictate Notes"
+                        labelActive="Listening..."
+                        variant="gold"
                         placeholderPrompt="Dictate care task notes"
                       />
                     </div>
@@ -1149,6 +1153,10 @@ export default function CarePage() {
                       <VoiceDictation
                         onTranscript={(text) => setNewPrayer(prev => ({ ...prev, request: prev.request ? `${prev.request} ${text}` : text }))}
                         size="sm"
+                        showLabel
+                        label="Dictate Prayer"
+                        labelActive="Listening..."
+                        variant="gold"
                         placeholderPrompt="Dictate prayer request"
                       />
                     </div>

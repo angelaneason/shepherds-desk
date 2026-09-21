@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare, Mic } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 import { SupportChat } from '@/components/support/SupportChat'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
@@ -297,10 +297,13 @@ export default function DashboardLayout({
               </Link>
               <button
                 onClick={() => { setIsCaptureOpen(true); setDrawerOpen(false) }}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/10 transition-all text-[#D0A348] w-full text-left"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-all text-[#D0A348] w-full text-left"
               >
-                <Camera className="w-5 h-5" />
-                <span className="text-sm font-medium">Quick Capture</span>
+                <div className="flex items-center gap-1.5">
+                  <Mic className="w-5 h-5" />
+                  <Camera className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-semibold">Quick Capture (Voice & Photo)</span>
               </button>
             </div>
 
@@ -335,11 +338,13 @@ export default function DashboardLayout({
             <NotificationCenter />
             <Button
               onClick={() => setIsCaptureOpen(true)}
-              className="hidden md:flex text-white gap-2 transition-colors"
+              className="hidden md:flex text-white gap-2 transition-all hover:opacity-95 shadow-sm font-semibold cursor-pointer"
               style={{ backgroundColor: churchBrand?.secondaryColor || '#D0A348' }}
+              title="Quick Capture (Voice Dictation & Photo OCR)"
             >
-              <Camera className="w-4 h-4" />
-              Quick Capture
+              <Mic className="w-4 h-4 text-white" />
+              <Camera className="w-4 h-4 text-white/80" />
+              <span>Quick Capture</span>
             </Button>
             <div 
               className="w-9 h-9 rounded-full text-white flex items-center justify-center font-bold text-sm"

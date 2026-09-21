@@ -707,6 +707,10 @@ export default function CommunicationPage() {
                       <VoiceDictation
                         onTranscript={(text) => setBroadcastMessage(prev => prev ? `${prev} ${text}` : text)}
                         size="sm"
+                        showLabel
+                        label="Dictate SMS"
+                        labelActive="Listening..."
+                        variant="gold"
                         placeholderPrompt="Dictate text broadcast"
                       />
                     </div>
@@ -821,6 +825,10 @@ export default function CommunicationPage() {
                   <VoiceDictation
                     onTranscript={(text) => setFormData(prev => ({ ...prev, content: prev.content ? `${prev.content} ${text}` : text }))}
                     size="sm"
+                    showLabel
+                    label="Dictate Details"
+                    labelActive="Listening..."
+                    variant="gold"
                     placeholderPrompt="Dictate announcement details"
                   />
                 </div>

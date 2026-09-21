@@ -231,11 +231,14 @@ export default function SermonsPage() {
           </Link>
           <Button 
             onClick={() => setIsTranscribeModalOpen(true)}
-            variant="outline"
-            className="border-[#D0A348] text-[#8B6A27] hover:bg-[#D0A348]/15 font-medium flex items-center gap-1.5 cursor-pointer"
+            className="bg-gradient-to-r from-[#D0A348] to-[#b8892e] text-white hover:opacity-95 font-semibold flex items-center gap-2 shadow-sm border border-[#D0A348] cursor-pointer"
           >
-            <Mic className="h-4 w-4 text-[#D0A348]" />
-            <span>Transcribe Audio</span>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+            </span>
+            <Mic className="h-4 w-4" />
+            <span>Live Sermon Capture</span>
           </Button>
           <Button 
             onClick={() => setIsScanModalOpen(true)}

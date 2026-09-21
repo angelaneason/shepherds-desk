@@ -238,11 +238,25 @@ export default function IdeasPage() {
           <div className="pt-2">
             <VoiceDictation 
               onTranscript={(text) => setContent(prev => prev ? `${prev} ${text}` : text)} 
+              size="sm"
+              showLabel
+              label="Voice Dictate"
+              labelActive="Listening..."
+              variant="gold"
             />
           </div>
         </div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-4 gap-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <VoiceDictation 
+              onTranscript={(text) => setContent(prev => prev ? `${prev} ${text}` : text)} 
+              size="sm"
+              showLabel
+              label="🎙️ Speak Idea"
+              labelActive="Listening..."
+              variant="navy"
+              className="rounded-full shadow-sm"
+            />
             <Button
               variant="outline"
               size="sm"

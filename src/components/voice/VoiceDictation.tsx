@@ -10,15 +10,21 @@ interface VoiceDictationProps {
   className?: string
   size?: 'sm' | 'md' | 'lg' | 'icon'
   placeholderPrompt?: string
-  variant?: 'gold' | 'navy' | 'ghost' | 'icon'
+  variant?: 'gold' | 'navy' | 'ghost' | 'icon' | 'outline'
+  showLabel?: boolean
+  label?: string
+  labelActive?: string
 }
 
 export function VoiceDictation({ 
   onTranscript, 
   className,
-  size = 'icon',
+  size = 'sm',
   placeholderPrompt = 'Dictate with voice',
-  variant = 'gold'
+  variant = 'gold',
+  showLabel,
+  label = 'Dictate',
+  labelActive = 'Listening...'
 }: VoiceDictationProps) {
   const [isListening, setIsListening] = useState(false)
   const [interimText, setInterimText] = useState('')
@@ -28,6 +34,9 @@ export function VoiceDictation({
   const recognitionRef = useRef<any>(null)
   const onTranscriptRef = useRef(onTranscript)
   onTranscriptRef.current = onTranscript
+
+  // Should we show the label?
+  const displayLabel = showLabel ?? (size !== 'icon')
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -156,47 +165,62 @@ export function VoiceDictation({
         type="button"
         onClick={toggleListening}
         variant="outline"
-        size={size === 'icon' ? 'icon' : 'sm'}
+        size={size === 'icon' && !displayLabel ? 'icon' : 'sm'}
         title={isListening ? 'Listening... Tap to stop' : placeholderPrompt}
         className={cn(
-          "transition-all duration-200 cursor-pointer shadow-sm text-xs font-medium",
+          "transition-all duration-200 cursor-pointer shadow-sm text-xs font-semibold rounded-lg select-none",
           isListening 
-            ? "bg-red-500 hover:bg-red-600 text-white animate-pulse border-red-500 ring-2 ring-red-400/40" 
+            ? "bg-red-600 hover:bg-red-700 text-white border-red-500 shadow-md shadow-red-500/30 ring-2 ring-red-400/50 animate-pulse" 
             : variant === 'gold'
-              ? "bg-[#D0A348] hover:bg-[#b8892e] text-white border-[#D0A348]"
+              ? "bg-[#D0A348] hover:bg-[#b8892e] text-white border-[#D0A348] shadow-[#D0A348]/20"
               : variant === 'navy'
-                ? "bg-[#022d5c] hover:bg-[#033b7a] text-white border-[#022d5c]"
-                : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300",
-          size === 'icon' ? 'h-9 w-9 p-0' : 'h-8 px-2.5 gap-1.5'
+                ? "bg-[#022d5c] hover:bg-[#033b7a] text-white border-[#022d5c] shadow-[#022d5c]/20"
+                : variant === 'outline'
+                  ? "bg-white hover:bg-amber-50/50 text-[#022d5c] border-amber-300/80 hover:border-[#D0A348]"
+                  : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300",
+          size === 'icon' && !displayLabel ? 'h-8 w-8 p-0' : 'h-8 px-3 gap-1.5'
         )}
       >
         {isListening ? (
           <>
-            <MicOff className="h-3.5 w-3.5" />
-            {size !== 'icon' && <span>Listening...</span>}
+            <MicOff className="h-3.5 w-3.5 text-white animate-bounce" />
+            {displayLabel && <span>{labelActive}</span>}
+            {/* Audio Wave Visualizer Bars */}
+            <span className="flex items-center gap-0.5 ml-1">
+              <span className="w-0.5 h-3 bg-white animate-pulse rounded-full" />
+              <span className="w-0.5 h-4 bg-white animate-pulse rounded-full delay-75" />
+              <span className="w-0.5 h-2.5 bg-white animate-pulse rounded-full delay-150" />
+            </span>
           </>
         ) : (
           <>
-            <Mic className="h-3.5 w-3.5" />
-            {size !== 'icon' && <span>Dictate</span>}
+            <Mic className={cn("h-3.5 w-3.5", variant === 'outline' ? "text-[#D0A348]" : "text-current")} />
+            {displayLabel && <span>{label}</span>}
           </>
         )}
       </Button>
 
       {/* Floating Interim Transcript Tooltip */}
-      {isListening && interimText && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 min-w-[200px] max-w-[300px] bg-slate-900/95 text-white text-xs rounded-lg p-2 shadow-2xl border border-red-500/40 backdrop-blur-md pointer-events-none">
-          <div className="flex items-center gap-1.5 text-[10px] text-red-400 font-semibold mb-0.5 uppercase tracking-wider">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping" />
-            Speaking...
+      {isListening && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 min-w-[220px] max-w-[340px] bg-slate-900 text-white text-xs rounded-xl p-3 shadow-2xl border border-red-500/50 backdrop-blur-md pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between gap-1.5 text-[10px] text-red-400 font-bold mb-1 uppercase tracking-wider">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+              Listening to voice...
+            </span>
+            <span className="text-[9px] text-slate-400 font-normal">Tap to finish</span>
           </div>
-          <p className="italic text-slate-200 line-clamp-2">"{interimText}"</p>
+          {interimText ? (
+            <p className="italic text-slate-100 font-medium leading-relaxed">"{interimText}"</p>
+          ) : (
+            <p className="text-slate-400 text-[11px] italic">Speak clearly into your microphone...</p>
+          )}
         </div>
       )}
 
       {/* Error Tooltip */}
       {errorMessage && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 min-w-[220px] max-w-[280px] bg-red-950 text-red-200 text-xs rounded-lg p-2 shadow-xl border border-red-600/40">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 min-w-[220px] max-w-[280px] bg-red-950 text-red-200 text-xs rounded-lg p-2.5 shadow-xl border border-red-600/40">
           <div className="flex items-start justify-between gap-1">
             <span>{errorMessage}</span>
             <button onClick={() => setErrorMessage(null)} className="text-red-300 hover:text-white text-xs ml-1">✕</button>
