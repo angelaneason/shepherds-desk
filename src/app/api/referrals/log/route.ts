@@ -102,7 +102,8 @@ export async function POST(request: Request) {
         pastorName: name,
         referrerName,
         referralCode: finalCode,
-        personalNote
+        personalNote,
+        referrerEmail: user.email
       })
     }
 

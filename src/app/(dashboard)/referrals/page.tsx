@@ -28,8 +28,15 @@ export default function ReferralsPage() {
   const [personalNote, setPersonalNote] = useState('')
   const [inviteSuccessMsg, setInviteSuccessMsg] = useState<string | null>(null)
   const [logging, setLogging] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+
+  const isTiny = userEmail.toLowerCase().includes('tinyneason')
 
   useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user?.email) setUserEmail(data.user.email)
+    })
     fetchReferrals()
   }, [])
 
@@ -111,7 +118,9 @@ export default function ReferralsPage() {
   }
 
   const referralLink = myCode ? `${typeof window !== 'undefined' ? window.location.origin : ''}/login?ref=${myCode}` : ''
-  const shareMessage = `I've been using Shepherd's Desk to organize my sermons, schedule, and pastoral care — and it's been a game-changer. Try it free: ${referralLink}`
+  const shareMessage = isTiny
+    ? `Hey Pastor, this is Bro. Tiny.\n\nSister Angie and I have developed an app called The Shepherd’s Desk to help pastors stay encouraged, organized, and supported in the work of ministry. We built it with pastors like you in mind because we know how much you carry for the church, the people, and the calling God has placed on your life.\n\nI’d love for you to take a look and see if it could be a blessing to you and your ministry: ${referralLink}\n\nBlessings,\nBro. Tiny`
+    : `I've been using Shepherd's Desk to organize my sermons, schedule, and pastoral care — and it's been a game-changer. Try it free: ${referralLink}`
 
   const copyToClipboard = async () => {
     if (!referralLink) return
@@ -194,7 +203,7 @@ export default function ReferralsPage() {
               </div>
 
               <div className="pt-4 border-t border-gray-100 flex flex-wrap gap-4 justify-center">
-                <a href={`mailto:?subject=Try Shepherd's Desk&body=${encodeURIComponent(shareMessage)}`}>
+                <a href={`mailto:?subject=${encodeURIComponent(isTiny ? "A personal note from Bro. Tiny: The Shepherd's Desk" : "Try Shepherd's Desk")}&body=${encodeURIComponent(shareMessage)}`}>
                   <Button variant="outline" className="gap-2 text-[#022d5c]">
                     <Mail className="w-4 h-4" /> Email
                   </Button>

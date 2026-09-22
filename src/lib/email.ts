@@ -6,6 +6,7 @@ interface SendReferralEmailParams {
   referrerName: string
   referralCode: string
   personalNote?: string
+  referrerEmail?: string
 }
 
 interface SendPastorsWifeParams {
@@ -30,7 +31,8 @@ export async function sendReferralInvitationEmail({
   pastorName,
   referrerName,
   referralCode,
-  personalNote
+  personalNote,
+  referrerEmail
 }: SendReferralEmailParams) {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
@@ -43,7 +45,10 @@ export async function sendReferralInvitationEmail({
   const fromEmail = process.env.RESEND_FROM_EMAIL || "Angie & Pastor Tiny <invites@theshepherdsdesk.app>"
 
   const recipientGreeting = pastorName?.trim() ? `Pastor ${pastorName.trim()}` : 'Pastor'
-  const subject = `${referrerName} invited you to try The Shepherd's Desk`
+  const isPastorTiny = (referrerEmail || '').toLowerCase().includes('tinyneason') || referrerName?.toLowerCase().includes('tiny')
+  const subject = isPastorTiny
+    ? `${recipientGreeting}, a personal invitation from Bro. Tiny`
+    : `${referrerName} invited you to try The Shepherd's Desk`
 
   const html = `
 <!DOCTYPE html>
@@ -73,6 +78,17 @@ export async function sendReferralInvitationEmail({
                 Dear ${recipientGreeting},
               </p>
 
+              ${isPastorTiny ? `
+              <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
+                Hey Pastor, this is Bro. Tiny.
+              </p>
+              <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
+                Sister Angie and I have developed an app called <strong>The Shepherd’s Desk</strong> to help pastors stay encouraged, organized, and supported in the work of ministry. We built it with pastors like you in mind because we know how much you carry for the church, the people, and the calling God has placed on your life.
+              </p>
+              <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 18px;">
+                I’d love for you to take a look and see if it could be a blessing to you and your ministry.
+              </p>
+              ` : `
               <p style="font-size: 15px; line-height: 1.6; color: #374151; margin-bottom: 16px;">
                 <strong>${referrerName}</strong> thought you would appreciate a modern tool designed specifically for pastors and ministry leaders.
               </p>
@@ -91,6 +107,7 @@ export async function sendReferralInvitationEmail({
               <p style="font-size: 15px; line-height: 1.6; color: #4B5563; margin-bottom: 24px;">
                 Most church software is built for church secretaries and financial accountants. <strong>The Shepherd's Desk</strong> is built for the pastor's personal workflow, helping you balance hospital visits, crisis care, and weekly sermon preparation without burning out.
               </p>
+              `}
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #FAFAFA; border-radius: 10px; border: 1px solid #EEEEEE; margin-bottom: 28px;">
                 <tr>
@@ -216,21 +233,21 @@ export async function sendPastorsWifeFollowUpEmail({
     ? `${recipientGreeting}, a personal VIP invitation from Pastor Tiny`
     : `${recipientGreeting}, a quick personal note from a pastor's wife`
 
-  const signatoryName = isPastorSender ? (senderName || 'Pastor Tiny Neason') : (senderName || 'Angie')
+  const signatoryName = isPastorSender ? 'Bro. Tiny' : (senderName || 'Angie')
   const signatoryTitle = isPastorSender ? 'Pastor & Co-Founder, The Shepherd\'s Desk' : 'Founder, Tiny Tech & Pastor\'s Wife'
 
   const openingStory = isPastorSender
     ? `
       <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
-        ${referrerName ? `A few days ago, <strong>${referrerName}</strong> recommended The Shepherd's Desk to you. ` : ''}I wanted to reach out to you personally brother to brother and pastor to pastor.
+        Hey Pastor, this is Bro. Tiny.
       </p>
 
       <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 16px;">
-        <strong>As a pastor</strong>, I know firsthand the immense weight and responsibility we carry every single week. Between crisis visits, hospital calls, counseling, and church administration, finding dedicated, uninterrupted time to study and prepare a life-giving Sunday message can feel almost impossible.
+        Sister Angie and I have developed an app called <strong>The Shepherd’s Desk</strong> to help pastors stay encouraged, organized, and supported in the work of ministry. We built it with pastors like you in mind because we know how much you carry for the church, the people, and the calling God has placed on your life.
       </p>
 
       <p style="font-size: 15px; line-height: 1.65; color: #374151; margin-bottom: 18px;">
-        My wife Angie and our team at Tiny Tech built <strong>The Shepherd's Desk</strong> specifically to help pastors protect their sacred study time, stay on top of care visits, and step into the pulpit fully prepared without burning out.
+        I’d love for you to take a look and see if it could be a blessing to you and your ministry.
       </p>
     `
     : `
@@ -308,7 +325,7 @@ export async function sendPastorsWifeFollowUpEmail({
               </div>
 
               <p style="font-size: 15px; line-height: 1.6; color: #374151; margin-top: 24px; margin-bottom: 4px;">
-                May the Lord richly bless your ministry and your family,
+                ${isPastorSender ? 'Blessings,' : 'May the Lord richly bless your ministry and your family,'}
               </p>
               <p style="font-size: 15px; font-weight: 700; color: #022d5c; margin: 0;">
                 ${signatoryName}

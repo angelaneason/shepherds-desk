@@ -647,7 +647,9 @@ export default function AdminPage() {
                           className="h-7 text-xs bg-white border-blue-300 text-blue-800 hover:bg-blue-100 font-semibold cursor-pointer"
                           onClick={() => {
                             const link = `https://theshepherdsdesk.app/gift/redeem?ref=${targetReferral?.referral_code || ''}`
-                            const msg = `Hi Pastor! ${targetReferral?.referrer_name || 'Pastor Tiny'} invited you to try The Shepherd's Desk. We'd love to give you VIP access to all our sermon prep & pastoral care tools: ${link}`
+                            const msg = isPastorTiny
+                              ? `Hey Pastor, this is Bro. Tiny.\n\nSister Angie and I have developed an app called The Shepherd’s Desk to help pastors stay encouraged, organized, and supported in the work of ministry. We built it with pastors like you in mind because we know how much you carry for the church, the people, and the calling God has placed on your life.\n\nI’d love for you to take a look and see if it could be a blessing to you and your ministry: ${link}\n\nBlessings,\nBro. Tiny`
+                              : `Hi Pastor! ${targetReferral?.referrer_name || 'Pastor Tiny'} invited you to try The Shepherd's Desk. We'd love to give you VIP access to all our sermon prep & pastoral care tools: ${link}`
                             navigator.clipboard.writeText(msg)
                             setCopiedSms(true)
                             setTimeout(() => setCopiedSms(false), 2500)
@@ -673,7 +675,12 @@ export default function AdminPage() {
                   <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
                     <strong>Preview of your letter:</strong><br />
                     {isPastorTiny ? (
-                      <em>"As a pastor, I know firsthand the immense weight and responsibility we carry every single week. Between crisis visits, hospital calls, counseling, and sermon prep, finding dedicated time can feel impossible. That's why we built The Shepherd's Desk..."</em>
+                      <div className="mt-1 space-y-1">
+                        <p><em>"Hey Pastor, this is Bro. Tiny.</em></p>
+                        <p><em>Sister Angie and I have developed an app called The Shepherd’s Desk to help pastors stay encouraged, organized, and supported in the work of ministry. We built it with pastors like you in mind because we know how much you carry for the church, the people, and the calling God has placed on your life.</em></p>
+                        <p><em>I’d love for you to take a look and see if it could be a blessing to you and your ministry.</em></p>
+                        <p><em>Blessings,<br />Bro. Tiny"</em></p>
+                      </div>
                     ) : (
                       <em>"As a pastor's wife, I have watched firsthand the heavy load my husband and fellow pastors carry every single day—the hospital waiting rooms, the crisis calls, and late Saturday night sermon prep. That's why I created The Shepherd's Desk..."</em>
                     )}
