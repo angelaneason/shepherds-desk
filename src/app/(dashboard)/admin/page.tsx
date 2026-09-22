@@ -525,6 +525,7 @@ export default function AdminPage() {
                       <TableRow>
                         <TableHead>Invited Pastor</TableHead>
                         <TableHead>Referred By</TableHead>
+                        <TableHead>Referrer Email</TableHead>
                         <TableHead>Date Sent</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Action</TableHead>
@@ -543,13 +544,26 @@ export default function AdminPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-medium text-gray-800">{ref.referrer_name}</span>
-                              {ref.referrer_church && (
-                                <span className="text-xs text-gray-500">{ref.referrer_church}</span>
+                              <span className="font-semibold text-gray-900">{ref.referrer_name}</span>
+                              {ref.referrer_church ? (
+                                <span className="text-xs text-[#8B6A27] font-medium flex items-center gap-1 mt-0.5">
+                                  <span>🏛️</span> {ref.referrer_church}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-400 italic">No church set</span>
                               )}
                             </div>
                           </TableCell>
                           <TableCell>
+                            {ref.referrer_email ? (
+                              <span className="text-xs font-mono text-gray-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                {ref.referrer_email}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-gray-600">
                             {ref.created_at ? format(new Date(ref.created_at), 'MMM d, yyyy') : 'N/A'}
                           </TableCell>
                           <TableCell>

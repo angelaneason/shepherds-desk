@@ -40,26 +40,45 @@ export async function GET() {
 
     const admin = getServiceClient()
 
-    // Fetch all referrals and all profiles to map referrers
-    const [referralsRes, profilesRes] = await Promise.all([
+    // Fetch all referrals, profiles, and churches to accurately map referrers
+    const [referralsRes, profilesRes, churchesRes] = await Promise.all([
       admin.from('referrals').select('*').order('created_at', { ascending: false }),
-      admin.from('profiles').select('id, full_name, church_name, email')
+      admin.from('profiles').select('id, full_name, church_id, email'),
+      admin.from('churches').select('id, name')
     ])
 
     if (referralsRes.error) {
       return NextResponse.json({ error: referralsRes.error.message }, { status: 500 })
     }
 
+    const churchesMap = new Map((churchesRes.data || []).map((c: any) => [c.id, c.name]))
     const profilesMap = new Map((profilesRes.data || []).map((p: any) => [p.id, p]))
 
     const referrals = (referralsRes.data || []).map((r: any) => {
       const referrer = profilesMap.get(r.referrer_id)
       const referredUser = r.referred_id ? profilesMap.get(r.referred_id) : null
+      
+      const churchName = referrer?.church_id ? (churchesMap.get(referrer.church_id) || '') : ''
+      const referrerEmail = (referrer?.email || '').trim()
+      
+      let referrerName = referrer?.full_name || ''
+      if (referrerEmail.toLowerCase() === 'tinyneason@gmail.com') {
+        referrerName = 'Pastor Tiny Neason'
+      } else if (referrerEmail.toLowerCase() === 'angelaneason@gmail.com') {
+        referrerName = 'Angie Neason'
+      } else if (!referrerName || referrerName === 'Pastor') {
+        if (referrerEmail) {
+          referrerName = `Pastor (${referrerEmail.split('@')[0]})`
+        } else {
+          referrerName = 'Pastor'
+        }
+      }
+
       return {
         ...r,
-        referrer_name: referrer?.full_name || 'Pastor',
-        referrer_church: referrer?.church_name || '',
-        referrer_email: referrer?.email || '',
+        referrer_name: referrerName,
+        referrer_church: churchName,
+        referrer_email: referrerEmail,
         referred_user_name: referredUser?.full_name || null
       }
     })
