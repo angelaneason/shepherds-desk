@@ -10,30 +10,57 @@ function getServiceClient() {
   )
 }
 
-// Check if requester is admin
-async function verifyAdmin() {
-  const supabaseServer = await createClient()
-  const { data: { user }, error } = await supabaseServer.auth.getUser()
-  if (error || !user) return null
-
-  const { data: profile } = await supabaseServer
-    .from('profiles')
-    .select('role, full_name')
-    .eq('id', user.id)
-    .single() as any
-
+// Check if requester is admin (supports web cookies and mobile Bearer token)
+async function verifyAdmin(request?: Request) {
   const adminEmails = ['angelaneason@gmail.com', 'tinyneason@gmail.com']
-  const userEmail = (user.email || '').toLowerCase()
-  const isAdminUser = profile?.role === 'admin' || adminEmails.includes(userEmail)
 
-  if (!isAdminUser) return null
-  return { user, profile }
+  // 1. Check Authorization Bearer token (mobile app)
+  if (request) {
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '').trim()
+      const serviceClient = getServiceClient()
+      const { data: { user }, error } = await serviceClient.auth.getUser(token)
+      if (!error && user) {
+        const { data: profile } = await serviceClient
+          .from('profiles')
+          .select('role, full_name')
+          .eq('id', user.id)
+          .single() as any
+        const userEmail = (user.email || '').toLowerCase()
+        const isAdminUser = profile?.role === 'admin' || adminEmails.includes(userEmail)
+        if (isAdminUser) return { user, profile }
+      }
+    }
+  }
+
+  // 2. Check cookie-based session (web app)
+  try {
+    const supabaseServer = await createClient()
+    const { data: { user }, error } = await supabaseServer.auth.getUser()
+    if (!error && user) {
+      const { data: profile } = await supabaseServer
+        .from('profiles')
+        .select('role, full_name')
+        .eq('id', user.id)
+        .single() as any
+
+      const userEmail = (user.email || '').toLowerCase()
+      const isAdminUser = profile?.role === 'admin' || adminEmails.includes(userEmail)
+
+      if (isAdminUser) return { user, profile }
+    }
+  } catch {
+    // ignore
+  }
+
+  return null
 }
 
 // GET - List all pastor referrals across the entire platform
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const auth = await verifyAdmin()
+    const auth = await verifyAdmin(request)
     if (!auth) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -101,7 +128,7 @@ export async function GET() {
 // POST - Send follow-ups or create VIP pastor invites
 export async function POST(request: Request) {
   try {
-    const auth = await verifyAdmin()
+    const auth = await verifyAdmin(request)
     if (!auth) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
