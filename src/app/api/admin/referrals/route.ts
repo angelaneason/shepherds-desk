@@ -125,8 +125,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Referral record not found' }, { status: 404 })
       }
 
-      if (!referral.referred_email || !referral.referred_email.includes('@')) {
-        return NextResponse.json({ error: 'No valid email address recorded for this referral' }, { status: 400 })
+      const targetEmail = (email || referral.referred_email || '').trim()
+      if (!targetEmail || !targetEmail.includes('@')) {
+        return NextResponse.json({ error: 'Please enter a valid email address to send the follow-up note' }, { status: 400 })
       }
 
       // Get referrer profile
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
       const senderRole = isPastorTiny ? 'pastor' as const : 'pastors_wife' as const
 
       const emailResult = await sendPastorsWifeFollowUpEmail({
-        to: referral.referred_email.trim(),
+        to: targetEmail,
         pastorName: name || undefined,
         referrerName,
         referralCode: referral.referral_code,

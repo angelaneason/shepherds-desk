@@ -65,6 +65,8 @@ export default function AdminPage() {
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false)
   const [targetReferral, setTargetReferral] = useState<AdminReferral | null>(null)
   const [followUpNote, setFollowUpNote] = useState('')
+  const [followUpEmail, setFollowUpEmail] = useState('')
+  const [copiedSms, setCopiedSms] = useState(false)
   const [sendingFollowUp, setSendingFollowUp] = useState(false)
   const [followUpSuccess, setFollowUpSuccess] = useState<string | null>(null)
 
@@ -264,6 +266,8 @@ export default function AdminPage() {
   const handleOpenFollowUp = (referral: AdminReferral) => {
     setTargetReferral(referral)
     setFollowUpNote('')
+    setFollowUpEmail(referral.referred_email && referral.referred_email.includes('@') ? referral.referred_email : '')
+    setCopiedSms(false)
     setFollowUpSuccess(null)
     setFollowUpModalOpen(true)
   }
@@ -279,13 +283,14 @@ export default function AdminPage() {
         body: JSON.stringify({
           action: 'send_followup',
           referralId: targetReferral.id,
+          email: followUpEmail.trim() || undefined,
           name: targetReferral.referred_user_name || undefined,
           customNote: followUpNote.trim() || undefined
         })
       })
       const result = await res.json()
       if (res.ok && result.success) {
-        setFollowUpSuccess(`✅ Founder follow-up note sent to ${targetReferral.referred_email}!`)
+        setFollowUpSuccess(`✅ Founder follow-up note sent to ${followUpEmail.trim() || targetReferral.referred_email}!`)
         setTimeout(() => {
           setFollowUpModalOpen(false)
           fetchReferrals()
@@ -578,15 +583,15 @@ export default function AdminPage() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right whitespace-nowrap">
-                            {ref.status === 'pending' && ref.referred_email?.includes('@') ? (
+                            {ref.status === 'pending' ? (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-[#D0A348] text-[#022d5c] hover:bg-[#F8F5EE] text-xs font-semibold"
+                                className="border-[#D0A348] text-[#022d5c] hover:bg-[#F8F5EE] text-xs font-semibold cursor-pointer"
                                 onClick={() => handleOpenFollowUp(ref)}
                               >
                                 <Heart className="w-3.5 h-3.5 mr-1 text-[#D0A348]" />
-                                {isPastorTiny ? 'Send Pastor Follow-Up' : "Send Pastor's Wife Note"}
+                                {isPastorTiny ? 'Send Pastor Follow-Up' : "Send Follow-Up Note"}
                               </Button>
                             ) : (
                               <span className="text-xs text-green-700 font-medium">Activated</span>
@@ -629,6 +634,42 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="space-y-4 py-2">
+                  {(!targetReferral?.referred_email || !targetReferral.referred_email.includes('@')) && (
+                    <div className="space-y-3 p-3 bg-blue-50/80 border border-blue-200 rounded-xl">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-blue-950">
+                          📱 Quick Text Message ({targetReferral?.referred_email}):
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs bg-white border-blue-300 text-blue-800 hover:bg-blue-100 font-semibold cursor-pointer"
+                          onClick={() => {
+                            const link = `https://theshepherdsdesk.app/gift/redeem?ref=${targetReferral?.referral_code || ''}`
+                            const msg = `Hi Pastor! ${targetReferral?.referrer_name || 'Pastor Tiny'} invited you to try The Shepherd's Desk. We'd love to give you VIP access to all our sermon prep & pastoral care tools: ${link}`
+                            navigator.clipboard.writeText(msg)
+                            setCopiedSms(true)
+                            setTimeout(() => setCopiedSms(false), 2500)
+                          }}
+                        >
+                          {copiedSms ? '✓ Copied to Clipboard!' : '📋 Copy SMS Text'}
+                        </Button>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-700">Or enter pastor's email to send official letter:</label>
+                        <Input
+                          type="email"
+                          placeholder="pastor@church.com"
+                          value={followUpEmail}
+                          onChange={e => setFollowUpEmail(e.target.value)}
+                          className="h-8 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
                     <strong>Preview of your letter:</strong><br />
                     {isPastorTiny ? (
@@ -653,10 +694,10 @@ export default function AdminPage() {
                     <Button 
                       onClick={handleSendFollowUp} 
                       disabled={sendingFollowUp}
-                      className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 gap-2"
+                      className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 gap-2 cursor-pointer"
                     >
                       <Send className="w-4 h-4 text-[#D0A348]" />
-                      {sendingFollowUp ? 'Sending Follow-up...' : (isPastorTiny ? 'Send Pastor Follow-Up' : "Send Pastor's Wife Note")}
+                      {sendingFollowUp ? 'Sending Follow-up...' : (isPastorTiny ? 'Send Pastor Follow-Up' : "Send Follow-Up Note")}
                     </Button>
                   </DialogFooter>
                 </div>
