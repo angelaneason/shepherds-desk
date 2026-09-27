@@ -17,6 +17,7 @@ interface SendPastorsWifeParams {
   customNote?: string
   senderName?: string
   senderRole?: 'pastor' | 'pastors_wife'
+  linkType?: 'app' | 'download' | 'gift'
 }
 
 interface SendVipInviteParams {
@@ -217,13 +218,18 @@ export async function sendPastorsWifeFollowUpEmail({
   referralCode,
   customNote,
   senderName,
-  senderRole = 'pastors_wife'
+  senderRole = 'pastors_wife',
+  linkType = 'app'
 }: SendPastorsWifeParams) {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return { success: false, error: 'RESEND_API_KEY missing' }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theshepherdsdesk.app'
-  const inviteUrl = `${appUrl}/login?ref=${encodeURIComponent(referralCode)}`
+  const inviteUrl = linkType === 'download'
+    ? `${appUrl}/download`
+    : linkType === 'gift'
+      ? `${appUrl}/gift/redeem?ref=${encodeURIComponent(referralCode)}`
+      : `${appUrl}/login?ref=${encodeURIComponent(referralCode)}`
   const fromEmail = process.env.RESEND_FROM_EMAIL || "Angie & Pastor Tiny <invites@theshepherdsdesk.app>"
 
   const recipientGreeting = pastorName?.trim() ? `Pastor ${pastorName.trim()}` : 'Pastor'

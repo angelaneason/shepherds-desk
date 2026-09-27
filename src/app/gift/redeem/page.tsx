@@ -21,6 +21,14 @@ function RedeemGiftContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialCode = searchParams.get('code') || '';
+  const refCode = searchParams.get('ref') || '';
+
+  // If someone lands here with a referral code (?ref=), redirect to app registration
+  useEffect(() => {
+    if (refCode && !initialCode) {
+      router.replace(`/login?ref=${encodeURIComponent(refCode)}`);
+    }
+  }, [refCode, initialCode, router]);
 
   const [code, setCode] = useState(initialCode);
   const [gift, setGift] = useState<any>(null);

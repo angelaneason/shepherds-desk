@@ -69,6 +69,7 @@ export default function AdminPage() {
   const [copiedSms, setCopiedSms] = useState(false)
   const [sendingFollowUp, setSendingFollowUp] = useState(false)
   const [followUpSuccess, setFollowUpSuccess] = useState<string | null>(null)
+  const [followUpLinkType, setFollowUpLinkType] = useState<'app' | 'download' | 'gift'>('app')
 
   // VIP Invite Modal
   const [isVipOpen, setIsVipOpen] = useState(false)
@@ -262,11 +263,27 @@ export default function AdminPage() {
     }
   }
 
+  const getFollowUpLink = (type: 'app' | 'download' | 'gift', code?: string) => {
+    const c = code || targetReferral?.referral_code || ''
+    if (type === 'download') return 'https://theshepherdsdesk.app/download'
+    if (type === 'gift') return `https://theshepherdsdesk.app/gift/redeem?ref=${c}`
+    return `https://theshepherdsdesk.app/login?ref=${c}`
+  }
+
+  const getFollowUpMessage = (ref: AdminReferral | null, type: 'app' | 'download' | 'gift') => {
+    const link = getFollowUpLink(type, ref?.referral_code)
+    if (isPastorTiny) {
+      return `Hey Pastor, this is Bro. Tiny.\n\nSister Angie and I have developed an app called The Shepherd’s Desk to help pastors stay encouraged, organized, and supported in the work of ministry. We built it with pastors like you in mind because we know how much you carry for the church, the people, and the calling God has placed on your life.\n\nI’d love for you to take a look and see if it could be a blessing to you and your ministry: ${link}\n\nBlessings,\nBro. Tiny`
+    }
+    return `Hi Pastor! ${ref?.referrer_name || 'Pastor Tiny'} invited you to try The Shepherd's Desk. We'd love to give you VIP access to all our sermon prep & pastoral care tools: ${link}`
+  }
+
   // Handle Sending Pastor's Wife Note
   const handleOpenFollowUp = (referral: AdminReferral) => {
     setTargetReferral(referral)
     setFollowUpNote('')
     setFollowUpEmail(referral.referred_email && referral.referred_email.includes('@') ? referral.referred_email : '')
+    setFollowUpLinkType('app')
     setCopiedSms(false)
     setFollowUpSuccess(null)
     setFollowUpModalOpen(true)
@@ -285,7 +302,8 @@ export default function AdminPage() {
           referralId: targetReferral.id,
           email: followUpEmail.trim() || undefined,
           name: targetReferral.referred_user_name || undefined,
-          customNote: followUpNote.trim() || undefined
+          customNote: followUpNote.trim() || undefined,
+          linkType: followUpLinkType
         })
       })
       const result = await res.json()
@@ -634,43 +652,83 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="space-y-4 py-2">
-                  {(!targetReferral?.referred_email || !targetReferral.referred_email.includes('@')) && (
-                    <div className="space-y-3 p-3 bg-blue-50/80 border border-blue-200 rounded-xl">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-blue-950">
-                          📱 Quick Text Message ({targetReferral?.referred_email}):
-                        </span>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs bg-white border-blue-300 text-blue-800 hover:bg-blue-100 font-semibold cursor-pointer"
-                          onClick={() => {
-                            const link = `https://theshepherdsdesk.app/gift/redeem?ref=${targetReferral?.referral_code || ''}`
-                            const msg = isPastorTiny
-                              ? `Hey Pastor, this is Bro. Tiny.\n\nSister Angie and I have developed an app called The Shepherd’s Desk to help pastors stay encouraged, organized, and supported in the work of ministry. We built it with pastors like you in mind because we know how much you carry for the church, the people, and the calling God has placed on your life.\n\nI’d love for you to take a look and see if it could be a blessing to you and your ministry: ${link}\n\nBlessings,\nBro. Tiny`
-                              : `Hi Pastor! ${targetReferral?.referrer_name || 'Pastor Tiny'} invited you to try The Shepherd's Desk. We'd love to give you VIP access to all our sermon prep & pastoral care tools: ${link}`
-                            navigator.clipboard.writeText(msg)
-                            setCopiedSms(true)
-                            setTimeout(() => setCopiedSms(false), 2500)
-                          }}
-                        >
-                          {copiedSms ? '✓ Copied to Clipboard!' : '📋 Copy SMS Text'}
-                        </Button>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-700">Or enter pastor's email to send official letter:</label>
-                        <Input
-                          type="email"
-                          placeholder="pastor@church.com"
-                          value={followUpEmail}
-                          onChange={e => setFollowUpEmail(e.target.value)}
-                          className="h-8 text-xs bg-white"
-                        />
-                      </div>
+                  {/* Link Destination Option */}
+                  <div className="space-y-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#022d5c]">Link to include in message:</span>
+                      <span className="text-[11px] text-gray-500 font-mono truncate max-w-[240px]">
+                        {getFollowUpLink(followUpLinkType)}
+                      </span>
                     </div>
-                  )}
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setFollowUpLinkType('app')}
+                        className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
+                          followUpLinkType === 'app'
+                            ? 'bg-[#022d5c] text-white border-[#022d5c] shadow-sm'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        📱 Try App Free
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFollowUpLinkType('download')}
+                        className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
+                          followUpLinkType === 'download'
+                            ? 'bg-[#022d5c] text-white border-[#022d5c] shadow-sm'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        📲 Download Stores
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFollowUpLinkType('gift')}
+                        className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
+                          followUpLinkType === 'gift'
+                            ? 'bg-[#022d5c] text-white border-[#022d5c] shadow-sm'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        🎁 Gift Redeem
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 p-3 bg-blue-50/80 border border-blue-200 rounded-xl">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-blue-950">
+                        📱 Quick Text Message {targetReferral?.referred_email ? `(${targetReferral.referred_email})` : ''}:
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs bg-white border-blue-300 text-blue-800 hover:bg-blue-100 font-semibold cursor-pointer"
+                        onClick={() => {
+                          const msg = getFollowUpMessage(targetReferral, followUpLinkType)
+                          navigator.clipboard.writeText(msg)
+                          setCopiedSms(true)
+                          setTimeout(() => setCopiedSms(false), 2500)
+                        }}
+                      >
+                        {copiedSms ? '✓ Copied to Clipboard!' : '📋 Copy SMS Text'}
+                      </Button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-700">Or enter pastor's email to send official letter:</label>
+                      <Input
+                        type="email"
+                        placeholder="pastor@church.com"
+                        value={followUpEmail}
+                        onChange={e => setFollowUpEmail(e.target.value)}
+                        className="h-8 text-xs bg-white"
+                      />
+                    </div>
+                  </div>
 
                   <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
                     <strong>Preview of your letter:</strong><br />
@@ -678,7 +736,7 @@ export default function AdminPage() {
                       <div className="mt-1 space-y-1">
                         <p><em>"Hey Pastor, this is Bro. Tiny.</em></p>
                         <p><em>Sister Angie and I have developed an app called The Shepherd’s Desk to help pastors stay encouraged, organized, and supported in the work of ministry. We built it with pastors like you in mind because we know how much you carry for the church, the people, and the calling God has placed on your life.</em></p>
-                        <p><em>I’d love for you to take a look and see if it could be a blessing to you and your ministry.</em></p>
+                        <p><em>I’d love for you to take a look and see if it could be a blessing to you and your ministry: <span className="underline font-mono text-blue-800">{getFollowUpLink(followUpLinkType)}</span></em></p>
                         <p><em>Blessings,<br />Bro. Tiny"</em></p>
                       </div>
                     ) : (

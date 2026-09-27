@@ -133,7 +133,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { action, referralId, name, email, customNote } = await request.json()
+    const { action, referralId, name, email, customNote, linkType } = await request.json()
     const admin = getServiceClient()
 
     // 1. Send Follow-Up Note (From Pastor's Wife)
@@ -177,7 +177,8 @@ export async function POST(request: Request) {
         referralCode: referral.referral_code,
         customNote,
         senderName,
-        senderRole
+        senderRole,
+        linkType
       })
 
       if (!emailResult.success) {
