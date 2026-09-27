@@ -75,41 +75,9 @@ export default function DashboardPage() {
 
       // We wrap calls in try-catch in case tables are missing
       try {
-        // Fetch Calendar Events for current month
         const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString()
         const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59).toISOString()
-        
-        const { data: events } = await supabase
-          .from('calendar_events')
-          .select('*')
-          .gte('start_time', startOfMonth)
-          .lte('start_time', endOfMonth) as any
 
-        if (events) setCalendarEvents(events)
-
-        // Count today's events
-        const todayStr = selectedDay.toISOString().split('T')[0]
-        const todays = events?.filter((e: any) => e.start_time?.startsWith(todayStr)) || []
-        setTodayEventsCount(todays.length)
-        
-        // Fetch profile details & study goal
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, weekly_study_goal_hours')
-          .eq('id', user.id)
-          .single() as any
-        
-        const title = user.user_metadata?.title || 'Pastor'
-        const rawName = profile?.full_name || user.user_metadata?.full_name || ''
-        // Avoid repeating title if full_name already includes it
-        const cleanName = rawName.replace(new RegExp(`^${title}\\s*`, 'i'), '').trim()
-        setPastorDisplay(cleanName ? `${title} ${cleanName}` : (rawName || 'Pastor'))
-        
-        if (profile?.weekly_study_goal_hours) {
-          setStudyGoal(profile.weekly_study_goal_hours)
-        }
-
-        // Calculate study hours for the current week
         const now = new Date()
         const currentDay = now.getDay()
         const startOfWeek = new Date(now)
@@ -120,13 +88,68 @@ export default function DashboardPage() {
         endOfWeek.setDate(startOfWeek.getDate() + 6) // Saturday
         endOfWeek.setHours(23, 59, 59, 999)
 
-        const { data: weekEvents } = await supabase
-          .from('calendar_events')
-          .select('*')
-          .gte('start_time', startOfWeek.toISOString())
-          .lte('start_time', endOfWeek.toISOString())
-          .in('event_type', ['sermon_study', 'personal']) as any
+        // Execute all dashboard queries in parallel
+        const [
+          eventsRes,
+          profileRes,
+          weekEventsRes,
+          sermonsRes,
+          tasksRes,
+        ] = await Promise.all([
+          // 1. Month calendar events
+          supabase
+            .from('calendar_events')
+            .select('id, title, start_time, end_time, event_type, location, all_day')
+            .gte('start_time', startOfMonth)
+            .lte('start_time', endOfMonth),
+          // 2. Profile details
+          supabase
+            .from('profiles')
+            .select('full_name, weekly_study_goal_hours')
+            .eq('id', user.id)
+            .single(),
+          // 3. Weekly study events
+          supabase
+            .from('calendar_events')
+            .select('start_time, end_time')
+            .gte('start_time', startOfWeek.toISOString())
+            .lte('start_time', endOfWeek.toISOString())
+            .in('event_type', ['sermon_study', 'personal']),
+          // 4. Next Sermon (lightweight summary)
+          supabase
+            .from('sermons')
+            .select('id, title, status, preach_date, scripture_primary')
+            .gte('preach_date', new Date().toISOString())
+            .order('preach_date', { ascending: true })
+            .limit(1),
+          // 5. Pending Care Tasks
+          supabase
+            .from('care_tasks')
+            .select('*, members(id, full_name, phone, email)')
+            .eq('status', 'pending')
+            .limit(10),
+        ])
 
+        const events = eventsRes.data as any
+        if (events) setCalendarEvents(events)
+
+        // Count today's events
+        const todayStr = selectedDay.toISOString().split('T')[0]
+        const todays = events?.filter((e: any) => e.start_time?.startsWith(todayStr)) || []
+        setTodayEventsCount(todays.length)
+
+        // Profile details & title
+        const profile = profileRes.data as any
+        const title = user.user_metadata?.title || 'Pastor'
+        const rawName = profile?.full_name || user.user_metadata?.full_name || ''
+        const cleanName = rawName.replace(new RegExp(`^${title}\\s*`, 'i'), '').trim()
+        setPastorDisplay(cleanName ? `${title} ${cleanName}` : (rawName || 'Pastor'))
+        if (profile?.weekly_study_goal_hours) {
+          setStudyGoal(profile.weekly_study_goal_hours)
+        }
+
+        // Calculate study hours for the current week
+        const weekEvents = weekEventsRes.data as any
         if (weekEvents) {
           let totalHours = 0
           weekEvents.forEach((e: any) => {
@@ -139,29 +162,20 @@ export default function DashboardPage() {
           setStudyHours(Math.round(totalHours * 10) / 10)
         }
 
-        // Fetch Next Sermon
-        const { data: sermons } = await supabase
-          .from('sermons')
-          .select('*')
-          .gte('preach_date', new Date().toISOString())
-          .order('preach_date', { ascending: true })
-          .limit(1) as any
-        
+        // Next sermon
+        const sermons = sermonsRes.data as any
         if (sermons && sermons.length > 0) {
           setNextSermon(sermons[0])
+        } else {
+          setNextSermon(null)
         }
 
-        // Fetch pending care tasks
-        const { data: tasks } = await supabase
-          .from('care_tasks')
-          .select('*, members(*)')
-          .eq('status', 'pending') as any
-        
+        // Pending care tasks
+        const tasks = tasksRes.data as any
         if (tasks) {
           setCareTasks(tasks)
           setPendingCareCount(tasks.length)
         }
-        
       } catch (e) {
         console.error('Error fetching dashboard data', e)
       } finally {
