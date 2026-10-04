@@ -1,10 +1,22 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Mic, MicOff, Loader2, Check, Calendar, User, X, Sparkles, Keyboard, Camera, Send } from 'lucide-react'
+import Link from 'next/link'
+import { Mic, MicOff, Loader2, Check, Calendar, User, X, Sparkles, Keyboard, Camera, Send, BookOpen, Lightbulb, Heart, Bell } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
+type AssistantAction = 'reminder' | 'sermon' | 'idea' | 'prayer'
+
 interface ParsedReminder {
+  action?: AssistantAction
+  sermonTitle?: string | null
+  scripture?: string | null
+  preachDate?: string | null
+  seriesName?: string | null
+  ideaText?: string | null
+  prayerPerson?: string | null
+  prayerRequest?: string | null
+  prayerCategory?: string | null
   task: string
   person: string | null
   date: string
@@ -19,6 +31,20 @@ interface ParsedReminder {
 
 type InputMode = 'choose' | 'voice' | 'type' | 'photo'
 
+const ACTIONS: { value: AssistantAction; label: string; icon: typeof Bell }[] = [
+  { value: 'reminder', label: 'Reminder', icon: Bell },
+  { value: 'sermon', label: 'New Sermon', icon: BookOpen },
+  { value: 'idea', label: 'Idea', icon: Lightbulb },
+  { value: 'prayer', label: 'Prayer', icon: Heart },
+]
+
+const PRAYER_CATEGORIES = ['Health', 'Family', 'Financial', 'Spiritual', 'Other']
+
+const localToday = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function SmartReminder() {
   const [isOpen, setIsOpen] = useState(false)
   const [mode, setMode] = useState<InputMode>('choose')
@@ -28,9 +54,13 @@ export function SmartReminder() {
   const [typedText, setTypedText] = useState('')
   const [parsed, setParsed] = useState<ParsedReminder | null>(null)
   const [saved, setSaved] = useState(false)
+  const [savedMessage, setSavedMessage] = useState({ title: '', detail: '' })
+  const [newSermonId, setNewSermonId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
+
+  const action: AssistantAction = parsed?.action || 'reminder'
 
   const startListening = () => {
     setError('')
@@ -79,11 +109,11 @@ export function SmartReminder() {
       const res = await fetch('/api/reminders/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, today: localToday() }),
       })
       if (!res.ok) throw new Error('Failed to parse')
       const data = await res.json()
-      setParsed(data)
+      setParsed({ action: 'reminder', ...data })
     } catch {
       setError('Could not understand. Please try again.')
     } finally {
@@ -102,7 +132,7 @@ export function SmartReminder() {
       const reader = new FileReader()
       reader.onload = async () => {
         const base64 = (reader.result as string).split(',')[1]
-        
+
         // Send to OCR endpoint
         const ocrRes = await fetch('/api/ocr', {
           method: 'POST',
@@ -129,14 +159,97 @@ export function SmartReminder() {
     }
   }
 
+  const finishSave = (title: string, detail: string, keepOpen = false) => {
+    setSavedMessage({ title, detail })
+    setSaved(true)
+    if (!keepOpen) {
+      setTimeout(() => {
+        setIsOpen(false)
+        setTimeout(() => { reset() }, 300)
+      }, 2000)
+    }
+  }
+
+  const saveSermon = async (userId: string) => {
+    if (!parsed) return
+    const title = (parsed.sermonTitle || parsed.task || '').trim()
+    if (!title) { setError('Please enter a sermon title.'); return }
+
+    const { data: sermon, error: sermonError } = await (supabase.from('sermons').insert({
+      author_id: userId,
+      title,
+      status: 'draft',
+      scripture_primary: parsed.scripture || null,
+      preach_date: parsed.preachDate || null,
+      series_name: parsed.seriesName || null,
+    }).select('id').single() as any)
+    if (sermonError) throw sermonError
+
+    if (parsed.preachDate) {
+      const preachEvent = {
+        profile_id: userId,
+        sermon_id: sermon.id,
+        title: `Preach: ${title}`,
+        event_type: 'sermon_preach',
+        start_time: new Date(`${parsed.preachDate}T10:00:00`).toISOString(),
+        end_time: new Date(`${parsed.preachDate}T11:00:00`).toISOString(),
+        all_day: false,
+      }
+      const { error: eventError } = await (supabase.from('calendar_events').insert(preachEvent as any) as any)
+      if (eventError) {
+        await (supabase.from('calendar_events').insert({ ...preachEvent, event_type: 'service' } as any) as any)
+      }
+    }
+
+    setNewSermonId(sermon.id)
+    finishSave('Sermon Created! 📖', `"${title}" was added to your sermons as a draft.`, true)
+  }
+
+  const saveIdea = async (userId: string) => {
+    if (!parsed) return
+    const text = (parsed.ideaText || parsed.task || '').trim()
+    if (!text) { setError('Please enter your idea.'); return }
+    const content = parsed.scripture && !text.includes(parsed.scripture) ? `${text} (${parsed.scripture})` : text
+    const { error: ideaError } = await (supabase.from('ideas').insert({
+      profile_id: userId,
+      content,
+      source_type: mode === 'type' ? 'typed' : 'voice',
+      archived: false,
+    }) as any)
+    if (ideaError) throw ideaError
+    finishSave('Idea Saved! 💡', 'Added to your Ideas Inbox.')
+  }
+
+  const savePrayer = async (userId: string) => {
+    if (!parsed) return
+    const person = (parsed.prayerPerson || parsed.person || '').trim()
+    const req = (parsed.prayerRequest || parsed.task || '').trim()
+    if (!person || !req) { setError('Please enter a name and prayer request.'); return }
+    const { error: prayerError } = await (supabase.from('prayer_requests').insert({
+      profile_id: userId,
+      person_name: person,
+      request: req,
+      category: PRAYER_CATEGORIES.includes(parsed.prayerCategory || '') ? parsed.prayerCategory : 'Other',
+      priority: parsed.priority === 'urgent' ? 'Urgent' : 'Normal',
+      status: 'active',
+    }) as any)
+    if (prayerError) throw prayerError
+    finishSave('Added to Prayer List! 🙏', `${person} was added to your prayer list.`)
+  }
+
   const saveReminder = async () => {
     if (!parsed) return
     setIsProcessing(true)
+    setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      if (parsed.createCalendarEvent) {
+      if (action === 'sermon') { await saveSermon(user.id); return }
+      if (action === 'idea') { await saveIdea(user.id); return }
+      if (action === 'prayer') { await savePrayer(user.id); return }
+
+      if (parsed.createCalendarEvent !== false) {
         const startDate = parsed.time
           ? new Date(`${parsed.date}T${parsed.time}:00`)
           : new Date(`${parsed.date}T09:00:00`)
@@ -151,8 +264,8 @@ export function SmartReminder() {
         }
 
         // Determine event type
-        const eventType = parsed.isStudyTime || parsed.category === 'study' ? 'sermon_study' : 
-          parsed.category === 'visit' ? 'visit' : 
+        const eventType = parsed.isStudyTime || parsed.category === 'study' ? 'sermon_study' :
+          parsed.category === 'visit' ? 'visit' :
           parsed.category === 'personal' ? 'personal' : 'meeting'
 
         const isStudy = parsed.isStudyTime || parsed.category === 'study'
@@ -181,11 +294,7 @@ export function SmartReminder() {
         }) as any)
       }
 
-      setSaved(true)
-      setTimeout(() => {
-        setIsOpen(false)
-        setTimeout(() => { reset() }, 300)
-      }, 2000)
+      finishSave('Reminder Set! ✅', 'Added to your calendar and tasks.')
     } catch {
       setError('Failed to save. Please try again.')
     } finally {
@@ -196,6 +305,7 @@ export function SmartReminder() {
   const reset = () => {
     setParsed(null)
     setSaved(false)
+    setNewSermonId(null)
     setTranscript('')
     setTypedText('')
     setError('')
@@ -206,6 +316,9 @@ export function SmartReminder() {
     const date = new Date(dateStr + 'T12:00:00')
     return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   }
+
+  const inputClass = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-[#D0A348] focus:ring-1 focus:ring-[#D0A348]'
+  const labelClass = 'text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block'
 
   // Collapsed state
   if (!isOpen) {
@@ -218,10 +331,10 @@ export function SmartReminder() {
           <Mic className="w-5 h-5" />
         </div>
         <div className="text-left">
-          <p className="font-semibold text-sm">Smart Reminder</p>
-          <p className="text-xs text-white/70">Speak, type, or snap a photo to set a reminder</p>
+          <p className="font-semibold text-sm">Smart Assistant</p>
+          <p className="text-xs text-white/70">Speak or type: set a reminder, start a sermon, save an idea, or add a prayer request</p>
         </div>
-        <Sparkles className="w-5 h-5 text-[#D0A348] ml-auto" />
+        <Sparkles className="w-5 h-5 text-[#D0A348] ml-auto shrink-0" />
       </button>
     )
   }
@@ -232,7 +345,7 @@ export function SmartReminder() {
       <div className="bg-[#022d5c] text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-[#D0A348]" />
-          <span className="font-semibold text-sm">Smart Reminder</span>
+          <span className="font-semibold text-sm">Smart Assistant</span>
         </div>
         <button onClick={() => { setIsOpen(false); stopListening(); reset() }} className="p-1 hover:bg-white/10 rounded-full">
           <X className="w-4 h-4" />
@@ -246,15 +359,31 @@ export function SmartReminder() {
             <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
               <Check className="w-7 h-7 text-green-600" />
             </div>
-            <p className="font-semibold text-gray-800">Reminder Set! ✅</p>
-            <p className="text-sm text-gray-500 mt-1">Added to your calendar and tasks.</p>
+            <p className="font-semibold text-gray-800">{savedMessage.title}</p>
+            <p className="text-sm text-gray-500 mt-1">{savedMessage.detail}</p>
+            {newSermonId && (
+              <div className="flex gap-2 justify-center mt-4">
+                <Link
+                  href={`/sermons/${newSermonId}`}
+                  className="px-4 py-2 rounded-xl bg-[#022d5c] text-white text-sm font-medium hover:bg-[#022d5c]/90"
+                >
+                  Open Sermon
+                </Link>
+                <button
+                  onClick={() => { setIsOpen(false); setTimeout(() => reset(), 300) }}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Done
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {/* Choose Mode */}
         {!saved && !parsed && mode === 'choose' && (
           <>
-            <p className="text-sm text-gray-500 mb-4 text-center">How would you like to set your reminder?</p>
+            <p className="text-sm text-gray-500 mb-4 text-center">What can I help with? Speak, type, or snap a photo.</p>
             <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={() => { setMode('voice'); startListening() }}
@@ -292,9 +421,12 @@ export function SmartReminder() {
               className="hidden"
               onChange={handlePhotoCapture}
             />
-            <p className="text-[11px] text-gray-400 text-center mt-4">
-              Example: &ldquo;Remind me to call Sister Mary about her prayer request on Thursday&rdquo;
-            </p>
+            <div className="text-[11px] text-gray-400 text-center mt-4 space-y-0.5">
+              <p>Try: &ldquo;Remind me to call Sister Mary on Thursday&rdquo;</p>
+              <p>&ldquo;Add a new sermon titled Walking by Faith for next Sunday&rdquo;</p>
+              <p>&ldquo;Sermon idea: the eagle renews its strength&rdquo;</p>
+              <p>&ldquo;Add Brother John to the prayer list for his surgery&rdquo;</p>
+            </div>
           </>
         )}
 
@@ -302,7 +434,7 @@ export function SmartReminder() {
         {!saved && !parsed && mode === 'voice' && (
           <>
             <p className="text-sm text-gray-500 mb-4 text-center">
-              {isListening ? 'Listening... speak your reminder' : 'Tap the mic to try again'}
+              {isListening ? 'Listening... tell me what you need' : 'Tap the mic to try again'}
             </p>
             <div className="flex justify-center mb-4">
               <button
@@ -327,7 +459,7 @@ export function SmartReminder() {
                 disabled={isProcessing}
                 className="w-full flex items-center justify-center gap-2 bg-[#D0A348] text-white py-3 rounded-xl font-medium text-sm hover:bg-[#D0A348]/90 disabled:opacity-50 transition-colors"
               >
-                {isProcessing ? <><Loader2 className="w-4 h-4 animate-spin" /> Understanding...</> : <><Sparkles className="w-4 h-4" /> Set Reminder</>}
+                {isProcessing ? <><Loader2 className="w-4 h-4 animate-spin" /> Understanding...</> : <><Sparkles className="w-4 h-4" /> Continue</>}
               </button>
             )}
             <button onClick={() => setMode('choose')} className="w-full text-xs text-gray-400 mt-3 hover:text-gray-600">← Back</button>
@@ -337,14 +469,14 @@ export function SmartReminder() {
         {/* Type Mode */}
         {!saved && !parsed && mode === 'type' && (
           <>
-            <p className="text-sm text-gray-500 mb-3">Type your reminder naturally:</p>
+            <p className="text-sm text-gray-500 mb-3">Type what you need naturally:</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={typedText}
                 onChange={(e) => setTypedText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && parseReminder(typedText)}
-                placeholder="e.g., Call Sister Mary on Thursday..."
+                placeholder="e.g., New sermon titled Grace Upon Grace..."
                 className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#D0A348] focus:ring-1 focus:ring-[#D0A348]"
                 autoFocus
               />
@@ -364,102 +496,190 @@ export function SmartReminder() {
         {!saved && !parsed && isProcessing && mode === 'choose' && (
           <div className="text-center py-6">
             <Loader2 className="w-8 h-8 animate-spin text-[#022d5c] mx-auto mb-3" />
-            <p className="text-sm text-gray-600">Reading image and setting reminder...</p>
+            <p className="text-sm text-gray-600">Reading image...</p>
           </div>
         )}
 
         {/* Parsed Confirmation */}
         {!saved && parsed && (
           <>
-            <p className="text-sm font-semibold text-gray-800 mb-3">Here&apos;s what I understood:</p>
-            <div className="space-y-3 mb-4">
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-                <Check className="w-5 h-5 text-[#022d5c] mt-0.5 shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">{parsed.task}</p>
+            <p className="text-sm font-semibold text-gray-800 mb-2">Here&apos;s what I understood:</p>
+
+            {/* Action switcher - lets the pastor correct what kind of item this is */}
+            <div className="grid grid-cols-4 gap-1.5 mb-4">
+              {ACTIONS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setParsed({ ...parsed, action: value })}
+                  className={`flex flex-col items-center gap-1 py-2 rounded-lg text-[11px] font-medium transition-all ${
+                    action === value
+                      ? 'bg-[#022d5c] text-white'
+                      : 'bg-gray-50 border border-gray-200 text-gray-600 hover:border-[#022d5c]'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Sermon */}
+            {action === 'sermon' && (
+              <div className="space-y-3 mb-4">
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <label className={labelClass}>Sermon Title</label>
+                  <input className={inputClass} value={parsed.sermonTitle ?? parsed.task ?? ''} onChange={(e) => setParsed({ ...parsed, sermonTitle: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <label className={labelClass}>Scripture</label>
+                    <input className={inputClass} placeholder="Optional" value={parsed.scripture ?? ''} onChange={(e) => setParsed({ ...parsed, scripture: e.target.value || null })} />
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-xl">
+                    <label className={labelClass}>Preach Date</label>
+                    <input type="date" className={inputClass} value={parsed.preachDate ?? ''} onChange={(e) => setParsed({ ...parsed, preachDate: e.target.value || null })} />
+                  </div>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <label className={labelClass}>Series</label>
+                  <input className={inputClass} placeholder="Optional" value={parsed.seriesName ?? ''} onChange={(e) => setParsed({ ...parsed, seriesName: e.target.value || null })} />
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                <Calendar className="w-5 h-5 text-[#D0A348] shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">{formatDate(parsed.date)}</p>
+            )}
+
+            {/* Idea */}
+            {action === 'idea' && (
+              <div className="p-3 bg-gray-50 rounded-xl mb-4">
+                <label className={labelClass}>Idea</label>
+                <textarea rows={3} className={inputClass} value={parsed.ideaText ?? parsed.task ?? ''} onChange={(e) => setParsed({ ...parsed, ideaText: e.target.value })} />
+                <p className="text-[11px] text-gray-400 mt-1.5">This will be saved to your Ideas Inbox.</p>
+              </div>
+            )}
+
+            {/* Prayer */}
+            {action === 'prayer' && (
+              <div className="space-y-3 mb-4">
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <label className={labelClass}>Name</label>
+                  <input className={inputClass} value={parsed.prayerPerson ?? parsed.person ?? ''} onChange={(e) => setParsed({ ...parsed, prayerPerson: e.target.value })} />
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <label className={labelClass}>Prayer Request</label>
+                  <textarea rows={2} className={inputClass} value={parsed.prayerRequest ?? parsed.task ?? ''} onChange={(e) => setParsed({ ...parsed, prayerRequest: e.target.value })} />
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <label className={labelClass}>Category</label>
+                  <div className="flex flex-wrap gap-2">
+                    {PRAYER_CATEGORIES.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setParsed({ ...parsed, prayerCategory: c })}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          (parsed.prayerCategory || 'Other') === c
+                            ? 'bg-[#022d5c] text-white'
+                            : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]'
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              {/* Time Picker */}
-              <div className="p-3 bg-gray-50 rounded-xl">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Time</label>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setParsed({ ...parsed, time: null })}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      !parsed.time
-                        ? 'bg-[#022d5c] text-white'
-                        : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]'
-                    }`}
-                  >
-                    All Day
-                  </button>
-                  <button
-                    onClick={() => setParsed({ ...parsed, time: parsed.time || '09:00' })}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      parsed.time
-                        ? 'bg-[#022d5c] text-white'
-                        : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]'
-                    }`}
-                  >
-                    Set Time
-                  </button>
-                  {parsed.time && (
-                    <>
-                      <input
-                        type="time"
-                        value={parsed.time}
-                        onChange={(e) => setParsed({ ...parsed, time: e.target.value })}
-                        className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D0A348]"
-                      />
-                      <span className="text-xs text-gray-400">to</span>
-                      <input
-                        type="time"
-                        value={parsed.endTime || ''}
-                        onChange={(e) => setParsed({ ...parsed, endTime: e.target.value || null })}
-                        className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D0A348]"
-                      />
-                    </>
-                  )}
+            )}
+
+            {/* Reminder */}
+            {action === 'reminder' && (
+              <div className="space-y-3 mb-4">
+                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                  <Check className="w-5 h-5 text-[#022d5c] mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">{parsed.task}</p>
+                  </div>
                 </div>
-              </div>
-              {parsed.person && (
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <User className="w-5 h-5 text-[#022d5c] shrink-0" />
-                  <p className="text-sm font-medium text-gray-800">{parsed.person}</p>
+                  <Calendar className="w-5 h-5 text-[#D0A348] shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">{formatDate(parsed.date)}</p>
+                  </div>
                 </div>
-              )}
-              {/* Type Picker */}
-              <div className="p-3 bg-gray-50 rounded-xl">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Type</label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: 'call', label: '📞 Call', },
-                    { value: 'visit', label: '🏠 Visit' },
-                    { value: 'hospital', label: '🏥 Hospital' },
-                    { value: 'study', label: '📚 Study' },
-                    { value: 'other', label: '📋 Other' },
-                  ].map((type) => (
+                {/* Time Picker */}
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <label className={labelClass}>Time</label>
+                  <div className="flex items-center gap-3 flex-wrap">
                     <button
-                      key={type.value}
-                      onClick={() => setParsed({ ...parsed, category: type.value })}
+                      onClick={() => setParsed({ ...parsed, time: null })}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                        parsed.category === type.value
+                        !parsed.time
                           ? 'bg-[#022d5c] text-white'
                           : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]'
                       }`}
                     >
-                      {type.label}
+                      All Day
                     </button>
-                  ))}
+                    <button
+                      onClick={() => setParsed({ ...parsed, time: parsed.time || '09:00' })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        parsed.time
+                          ? 'bg-[#022d5c] text-white'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]'
+                      }`}
+                    >
+                      Set Time
+                    </button>
+                    {parsed.time && (
+                      <>
+                        <input
+                          type="time"
+                          value={parsed.time}
+                          onChange={(e) => setParsed({ ...parsed, time: e.target.value })}
+                          className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D0A348]"
+                        />
+                        <span className="text-xs text-gray-400">to</span>
+                        <input
+                          type="time"
+                          value={parsed.endTime || ''}
+                          onChange={(e) => setParsed({ ...parsed, endTime: e.target.value || null })}
+                          className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#D0A348]"
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+                {parsed.person && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <User className="w-5 h-5 text-[#022d5c] shrink-0" />
+                    <p className="text-sm font-medium text-gray-800">{parsed.person}</p>
+                  </div>
+                )}
+                {/* Type Picker */}
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <label className={labelClass}>Type</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: 'call', label: '📞 Call', },
+                      { value: 'visit', label: '🏠 Visit' },
+                      { value: 'hospital', label: '🏥 Hospital' },
+                      { value: 'study', label: '📚 Study' },
+                      { value: 'other', label: '📋 Other' },
+                    ].map((type) => (
+                      <button
+                        key={type.value}
+                        onClick={() => setParsed({ ...parsed, category: type.value })}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          parsed.category === type.value
+                            ? 'bg-[#022d5c] text-white'
+                            : 'bg-white border border-gray-200 text-gray-600 hover:border-[#022d5c]'
+                        }`}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 onClick={reset}
@@ -473,7 +693,7 @@ export function SmartReminder() {
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#022d5c] text-white text-sm font-medium hover:bg-[#022d5c]/90 disabled:opacity-50"
               >
                 {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Confirm
+                {action === 'sermon' ? 'Create Sermon' : action === 'idea' ? 'Save Idea' : action === 'prayer' ? 'Add to Prayer List' : 'Confirm'}
               </button>
             </div>
           </>

@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 export async function POST(request: Request) {
   try {
-    const { text } = await request.json()
+    const { text, today: clientToday } = await request.json()
 
     if (!text) {
       return NextResponse.json({ error: 'No text provided' }, { status: 400 })
@@ -13,20 +13,37 @@ export async function POST(request: Request) {
 
     const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' })
 
-    const today = new Date()
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    const todayName = dayNames[today.getDay()]
-    const todayStr = today.toISOString().split('T')[0]
+    // Prefer the user's local date (sent by the app) so late-evening requests aren't off by a day
+    const todayStr = typeof clientToday === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(clientToday)
+      ? clientToday
+      : new Date().toISOString().split('T')[0]
+    const todayName = dayNames[new Date(`${todayStr}T12:00:00`).getDay()]
 
-    const prompt = `You are a smart reminder parser for a pastoral ministry app. Parse the following spoken reminder into structured data.
+    const prompt = `You are a smart voice assistant for a pastoral ministry app. The pastor spoke or typed a request. Figure out WHAT they want and parse it into structured data.
 
 Today is ${todayName}, ${todayStr}.
 
 Input: "${text}"
 
+First decide the "action":
+- "sermon": they want to CREATE / ADD / START a new sermon (e.g. "add a new sermon titled Walking by Faith", "new sermon called The Prodigal Returns from Luke 15", "start a sermon on grace for next Sunday")
+- "idea": they want to SAVE / JOT DOWN a sermon idea, illustration, thought, or note (e.g. "sermon idea: the eagle renews its strength", "note that I want to preach on patience", "save an idea about...")
+- "prayer": they want to ADD someone to the PRAYER LIST (e.g. "add Sister Mary to the prayer list for her surgery", "pray for Brother John's job")
+- "reminder": anything else - reminders, calls, visits, appointments, meetings, study time, things to do on a date
+
 Return ONLY valid JSON with these fields:
 {
-  "task": "the action to do (e.g., 'Call Sister Mary regarding her prayer request')",
+  "action": "reminder | sermon | idea | prayer",
+  "sermonTitle": "for action=sermon: the sermon title in Title Case, without words like 'titled' or 'called'. Otherwise null",
+  "scripture": "for action=sermon or idea: a scripture reference if mentioned (e.g. 'Luke 15:11-32'), else null",
+  "preachDate": "for action=sermon: YYYY-MM-DD if they mention when they will preach it (e.g. 'next Sunday'), else null",
+  "seriesName": "for action=sermon: series name if mentioned, else null",
+  "ideaText": "for action=idea: the idea itself, cleaned up into a clear sentence (drop 'sermon idea' / 'save an idea' wording). Otherwise null",
+  "prayerPerson": "for action=prayer: the person's name. Otherwise null",
+  "prayerRequest": "for action=prayer: what to pray for (e.g. 'Healing after surgery'). Otherwise null",
+  "prayerCategory": "for action=prayer: one of Health, Family, Financial, Spiritual, Other. Otherwise null",
+  "task": "the action to do (e.g., 'Call Sister Mary regarding her prayer request'). For non-reminder actions, a short summary of the request",
   "person": "the person's name if mentioned, or null",
   "date": "YYYY-MM-DD format. If they say 'tomorrow', calculate it. If they say a day like 'Thursday', use the NEXT occurrence of that day. If they say 'next week', use 7 days from today. If no date mentioned, use tomorrow.",
   "time": "HH:MM in 24h LOCAL time if a specific START time is mentioned. Return null if NO specific time is mentioned.",
@@ -74,6 +91,9 @@ Return ONLY the JSON, no markdown, no backticks.`
     }
     
     const parsed = JSON.parse(cleanJson)
+    if (!['reminder', 'sermon', 'idea', 'prayer'].includes(parsed.action)) {
+      parsed.action = 'reminder'
+    }
 
     return NextResponse.json(parsed)
   } catch (error) {
