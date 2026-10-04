@@ -316,6 +316,30 @@ export default function AdminPage() {
     setSmsPreset(preset)
     setSmsText(buildSms(preset, targetReferral, followUpLinkType))
   }
+
+  // Adds a dated line to the referral's notes so we know who was texted, when, and with what
+  const [loggedThisOpen, setLoggedThisOpen] = useState(false)
+  const logTextFollowUp = async () => {
+    if (!targetReferral || loggedThisOpen) return
+    setLoggedThisOpen(true)
+    const label = smsPreset === 'vip' ? 'VIP Gift Reminder' : smsPreset === 'blank' ? 'Custom text' : 'Standard text'
+    const who = isPastorTiny ? 'Pastor Tiny' : 'Angie'
+    const line = `📱 ${format(new Date(), 'MMM d, yyyy')}: ${label} texted by ${who}`
+    const notes = [targetReferral.notes, line].filter(Boolean).join('\n')
+    try {
+      const res = await fetch('/api/admin/referrals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_referral', referralId: targetReferral.id, notes })
+      })
+      if (res.ok) {
+        setReferrals(prev => prev.map(r => r.id === targetReferral.id ? { ...r, notes } : r))
+        setTargetReferral({ ...targetReferral, notes })
+      }
+    } catch {
+      // logging is best-effort; never block sending
+    }
+  }
   const handleOpenFollowUp = (referral: AdminReferral) => {
     setTargetReferral(referral)
     setFollowUpNote('')
@@ -323,6 +347,7 @@ export default function AdminPage() {
     setFollowUpLinkType('app')
     setSmsPreset('standard')
     setSmsText(buildSms('standard', referral, 'app'))
+    setLoggedThisOpen(false)
     setCopiedSms(false)
     setFollowUpSuccess(null)
     setFollowUpModalOpen(true)
@@ -348,6 +373,16 @@ export default function AdminPage() {
       const result = await res.json()
       if (res.ok && result.success) {
         setFollowUpSuccess(`✅ Founder follow-up note sent to ${followUpEmail.trim() || targetReferral.referred_email}!`)
+        try {
+          const who = isPastorTiny ? 'Pastor Tiny' : 'Angie'
+          const line = `✉️ ${format(new Date(), 'MMM d, yyyy')}: Follow-up email sent by ${who}`
+          const notes = [targetReferral.notes, line].filter(Boolean).join('\n')
+          await fetch('/api/admin/referrals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'update_referral', referralId: targetReferral.id, notes })
+          })
+        } catch {}
         setTimeout(() => {
           setFollowUpModalOpen(false)
           fetchReferrals()
@@ -945,6 +980,7 @@ export default function AdminPage() {
                         className="h-8 text-xs bg-white border-blue-300 text-blue-800 hover:bg-blue-100 font-semibold cursor-pointer"
                         onClick={() => {
                           navigator.clipboard.writeText(smsText)
+                          logTextFollowUp()
                           setCopiedSms(true)
                           setTimeout(() => setCopiedSms(false), 2500)
                         }}
@@ -954,6 +990,7 @@ export default function AdminPage() {
                       {extractPhone(targetReferral?.referred_email) && (
                         <a
                           href={`sms:${extractPhone(targetReferral?.referred_email)}?&body=${encodeURIComponent(smsText)}`}
+                          onClick={() => logTextFollowUp()}
                           className={`inline-flex items-center h-8 px-3 rounded-md text-xs font-semibold bg-[#022d5c] text-white hover:bg-[#022d5c]/90 ${!smsText.trim() ? 'pointer-events-none opacity-50' : ''}`}
                         >
                           💬 Open in My Texts
