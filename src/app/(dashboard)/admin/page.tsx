@@ -14,6 +14,8 @@ import {
   Mail, Send, Sparkles, Heart, Clock, Gift, Crown, CalendarPlus
 } from 'lucide-react'
 import { format } from 'date-fns'
+import BroadcastCard from '@/components/admin/BroadcastCard'
+import ReferralTemplatesManager from '@/components/admin/ReferralTemplatesManager'
 
 type UserData = {
   id: string
@@ -36,12 +38,14 @@ type AdminReferral = {
   referrer_id: string
   referral_code: string
   referred_email: string | null
-  status: 'pending' | 'signed_up' | 'subscribed'
+  status: 'pending' | 'signed_up' | 'subscribed' | 'not_interested'
   created_at: string
   referrer_name: string
   referrer_church: string
   referrer_email: string
   referred_user_name: string | null
+  notes?: string | null
+  signup_email?: string | null
 }
 
 export default function AdminPage() {
@@ -363,6 +367,46 @@ export default function AdminPage() {
     }
   }
 
+  // Referral note / Not Interested editor
+  const [noteTarget, setNoteTarget] = useState<AdminReferral | null>(null)
+  const [noteText, setNoteText] = useState('')
+  const [noteNotInterested, setNoteNotInterested] = useState(false)
+  const [savingNote, setSavingNote] = useState(false)
+
+  const handleOpenNote = (ref: AdminReferral) => {
+    setNoteTarget(ref)
+    setNoteText(ref.notes || '')
+    setNoteNotInterested(ref.status === 'not_interested')
+  }
+
+  const handleSaveNote = async () => {
+    if (!noteTarget) return
+    setSavingNote(true)
+    try {
+      const payload: Record<string, any> = { action: 'update_referral', referralId: noteTarget.id, notes: noteText }
+      // Only flip between pending <-> not_interested; never downgrade a signed-up pastor
+      if (noteTarget.status === 'pending' || noteTarget.status === 'not_interested') {
+        payload.status = noteNotInterested ? 'not_interested' : 'pending'
+      }
+      const res = await fetch('/api/admin/referrals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const result = await res.json()
+      if (res.ok && result.success) {
+        setNoteTarget(null)
+        fetchReferrals()
+      } else {
+        alert(result.error || 'Failed to save note')
+      }
+    } catch {
+      alert('Error saving note')
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
   const handleDeleteReferral = async (id: string) => {
     if (!confirm('Remove this referral record?')) return
     try {
@@ -410,6 +454,10 @@ export default function AdminPage() {
           <TabsTrigger value="users" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c] font-semibold">
             <Users className="w-4 h-4 mr-2 text-[#022d5c]" />
             Active Users Directory ({totalUsers})
+          </TabsTrigger>
+          <TabsTrigger value="messages" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c] font-semibold">
+            <Send className="w-4 h-4 mr-2 text-[#022d5c]" />
+            Messages &amp; Broadcast
           </TabsTrigger>
         </TabsList>
 
@@ -563,6 +611,12 @@ export default function AdminPage() {
                               {ref.referred_user_name && (
                                 <span className="text-xs text-gray-500">{ref.referred_user_name}</span>
                               )}
+                              {ref.signup_email && ref.status !== 'pending' && ref.status !== 'not_interested' && (
+                                <span className="text-xs text-blue-700 mt-0.5">Signed up as: {ref.signup_email}</span>
+                              )}
+                              {ref.notes && (
+                                <span className="text-xs text-gray-600 italic mt-1 max-w-[260px] whitespace-pre-wrap">📝 {ref.notes}</span>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -593,14 +647,25 @@ export default function AdminPage() {
                             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                               ref.status === 'subscribed' ? 'bg-green-100 text-green-800' :
                               ref.status === 'signed_up' ? 'bg-blue-100 text-blue-800' :
+                              ref.status === 'not_interested' ? 'bg-gray-200 text-gray-700' :
                               'bg-amber-100 text-amber-800'
                             }`}>
                               {ref.status === 'subscribed' ? '🎉 Subscribed' :
                                ref.status === 'signed_up' ? '✅ Signed Up' :
+                               ref.status === 'not_interested' ? '🚫 Not Interested' :
                                '⏳ Pending Activation'}
                             </span>
                           </TableCell>
                           <TableCell className="text-right whitespace-nowrap">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs text-gray-600 hover:text-[#022d5c] mr-1"
+                              onClick={() => handleOpenNote(ref)}
+                              title="Add a note or mark Not Interested"
+                            >
+                              📝 Note
+                            </Button>
                             {ref.status === 'pending' ? (
                               <Button
                                 size="sm"
@@ -611,6 +676,8 @@ export default function AdminPage() {
                                 <Heart className="w-3.5 h-3.5 mr-1 text-[#D0A348]" />
                                 {isPastorTiny ? 'Send Pastor Follow-Up' : "Send Follow-Up Note"}
                               </Button>
+                            ) : ref.status === 'not_interested' ? (
+                              <span className="text-xs text-gray-500 font-medium">No follow-ups</span>
                             ) : (
                               <span className="text-xs text-green-700 font-medium">Activated</span>
                             )}
@@ -632,6 +699,47 @@ export default function AdminPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Referral Note Dialog */}
+          <Dialog open={!!noteTarget} onOpenChange={(open) => { if (!open) setNoteTarget(null) }}>
+            <DialogContent className="sm:max-w-[480px]">
+              <DialogHeader>
+                <DialogTitle className="text-xl text-[#022d5c]">📝 Referral Note</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold text-gray-900">{noteTarget?.referred_email}</span>
+                  {noteTarget?.referrer_name ? <> — invited by {noteTarget.referrer_name}</> : null}
+                </p>
+                <Textarea
+                  placeholder="e.g. Talked on the phone 10/3 — said he's really not interested right now."
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  className="min-h-[110px]"
+                />
+                {(noteTarget?.status === 'pending' || noteTarget?.status === 'not_interested') && (
+                  <label className="flex items-start gap-2 text-sm cursor-pointer p-3 rounded-md border bg-gray-50">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4"
+                      checked={noteNotInterested}
+                      onChange={e => setNoteNotInterested(e.target.checked)}
+                    />
+                    <span>
+                      <span className="font-semibold">🚫 Mark as Not Interested</span>
+                      <span className="block text-xs text-gray-500">Stops follow-ups and reminders for this person.</span>
+                    </span>
+                  </label>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setNoteTarget(null)}>Cancel</Button>
+                <Button onClick={handleSaveNote} disabled={savingNote} className="bg-[#022d5c] hover:bg-[#033a75] text-white">
+                  {savingNote ? 'Saving...' : 'Save'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Follow-Up Modal */}
           <Dialog open={followUpModalOpen} onOpenChange={setFollowUpModalOpen}>
@@ -998,6 +1106,12 @@ export default function AdminPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ----------------- TAB 3: MESSAGES & BROADCAST ----------------- */}
+        <TabsContent value="messages" className="space-y-6">
+          <BroadcastCard />
+          <ReferralTemplatesManager />
         </TabsContent>
       </Tabs>
     </div>

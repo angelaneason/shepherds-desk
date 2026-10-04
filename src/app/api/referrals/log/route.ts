@@ -33,6 +33,7 @@ export async function POST(request: Request) {
         .from('referrals')
         .select('referral_code')
         .eq('referrer_id', user.id)
+        .is('referred_email', null)
         .limit(1)
         .single() as any,
       admin
@@ -52,15 +53,20 @@ export async function POST(request: Request) {
 
     // Create a tracked share record
     const displayEmail = email || name
-    let finalCode = existing.referral_code
+    const inviteFields = {
+      invite_name: name ? String(name).trim() : null,
+      invite_email: email && email.includes('@') ? String(email).trim().toLowerCase() : null
+    }
+    let finalCode = existing.referral_code + '-' + Math.random().toString(36).substring(2, 6).toUpperCase()
     let savedRecord = null
 
     const { data: referral, error } = await admin
       .from('referrals')
       .insert({
         referrer_id: user.id,
-        referral_code: existing.referral_code,
+        referral_code: finalCode,
         referred_email: displayEmail,
+        ...inviteFields,
         status: 'pending'
       } as any)
       .select()
@@ -69,13 +75,14 @@ export async function POST(request: Request) {
     if (error) {
       // If unique constraint on referral_code, generate a variant
       if (error.code === '23505') {
-        finalCode = existing.referral_code + Math.random().toString(36).substring(2, 4).toUpperCase()
+        finalCode = existing.referral_code + '-' + Math.random().toString(36).substring(2, 8).toUpperCase()
         const { data: r2, error: e2 } = await admin
           .from('referrals')
           .insert({
             referrer_id: user.id,
             referral_code: finalCode,
             referred_email: displayEmail,
+            ...inviteFields,
             status: 'pending'
           } as any)
           .select()

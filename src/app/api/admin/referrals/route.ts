@@ -106,7 +106,8 @@ export async function GET(request: Request) {
         referrer_name: referrerName,
         referrer_church: churchName,
         referrer_email: referrerEmail,
-        referred_user_name: referredUser?.full_name || null
+        referred_user_name: referredUser?.full_name || null,
+        signup_email: r.signup_email || referredUser?.email || null
       }
     })
 
@@ -115,7 +116,8 @@ export async function GET(request: Request) {
       total: tracked.length,
       pending: tracked.filter((r: any) => r.status === 'pending').length,
       signedUp: tracked.filter((r: any) => r.status === 'signed_up' || r.status === 'subscribed').length,
-      subscribed: tracked.filter((r: any) => r.status === 'subscribed').length
+      subscribed: tracked.filter((r: any) => r.status === 'subscribed').length,
+      notInterested: tracked.filter((r: any) => r.status === 'not_interested').length
     }
 
     return NextResponse.json({ referrals, stats })
@@ -133,7 +135,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { action, referralId, name, email, customNote, linkType } = await request.json()
+    const body = await request.json()
+    const { action, referralId, name, email, customNote, linkType } = body
     const admin = getServiceClient()
 
     // 1. Send Follow-Up Note (From Pastor's Wife)
@@ -150,6 +153,13 @@ export async function POST(request: Request) {
 
       if (refErr || !referral) {
         return NextResponse.json({ error: 'Referral record not found' }, { status: 404 })
+      }
+
+      if (referral.status === 'not_interested') {
+        return NextResponse.json(
+          { error: 'This pastor is marked Not Interested. Follow-ups are turned off for them.' },
+          { status: 400 }
+        )
       }
 
       const targetEmail = (email || referral.referred_email || '').trim()
@@ -202,6 +212,8 @@ export async function POST(request: Request) {
           referrer_id: auth.user.id,
           referral_code: randomCode,
           referred_email: email.trim(),
+          invite_email: email.trim().toLowerCase(),
+          invite_name: name?.trim() || null,
           status: 'pending'
         } as any)
         .select()
@@ -242,6 +254,28 @@ export async function POST(request: Request) {
       if (!referralId) return NextResponse.json({ error: 'Referral ID is required' }, { status: 400 })
       await admin.from('referrals').delete().eq('id', referralId)
       return NextResponse.json({ success: true })
+    }
+
+    // 4. Update notes / status (e.g. mark Not Interested)
+    if (action === 'update_referral') {
+      if (!referralId) return NextResponse.json({ error: 'Referral ID is required' }, { status: 400 })
+      const { notes, status } = body
+      const update: Record<string, any> = { updated_at: new Date().toISOString() }
+      if (typeof notes === 'string') update.notes = notes.trim() || null
+      if (status) {
+        if (!['pending', 'not_interested', 'signed_up', 'subscribed'].includes(status)) {
+          return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+        }
+        update.status = status
+      }
+      const { data, error: updErr } = await admin
+        .from('referrals')
+        .update(update as any)
+        .eq('id', referralId)
+        .select()
+        .single()
+      if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
+      return NextResponse.json({ success: true, referral: data })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })

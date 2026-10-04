@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { notifyUsers } from '@/lib/push'
 
 function getServiceClient() {
   return createServiceClient(
@@ -116,19 +117,81 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Referral code not found' }, { status: 404 })
     }
 
-    // Update with the new user's info
-    const { error: updateError } = await admin
+    // If this new account was already matched to an invite (e.g. by email at sign-up), stop here
+    if (userId) {
+      const { data: alreadyLinked } = await admin
+        .from('referrals')
+        .select('id')
+        .eq('referred_id', userId)
+        .limit(1) as any
+      if (alreadyLinked && alreadyLinked.length > 0) {
+        return NextResponse.json({ success: true, alreadyMatched: true })
+      }
+    }
+
+    // The pastor's personal/group link (no specific invitee) or a link that was already
+    // used by someone else: record this sign-up as its own row so the original stays intact.
+    const isSharedLink = !referral.referred_email || (referral.referred_id && referral.referred_id !== userId)
+    let targetId = referral.id
+
+    if (isSharedLink) {
+      const suffix = Math.random().toString(36).substring(2, 6).toUpperCase()
+      const { data: created, error: insertError } = await admin
+        .from('referrals')
+        .insert({
+          referrer_id: referral.referrer_id,
+          referral_code: `${referral.referral_code}-${suffix}`,
+          referred_email: email,
+          invite_email: String(email).trim().toLowerCase(),
+          signup_email: email,
+          referred_id: userId || null,
+          status: 'signed_up',
+          converted_at: new Date().toISOString()
+        } as any)
+        .select('id')
+        .single() as any
+      if (insertError || !created) {
+        console.error('Error recording shared-link signup:', insertError?.message)
+        return NextResponse.json({ error: 'Failed to update referral' }, { status: 500 })
+      }
+      targetId = created.id
+    }
+
+    // Update with the new user's info.
+    // Keep the original invite label (e.g. "Pastor David (555-123-4567)") and store
+    // the address they actually signed up with separately.
+    const { error: updateError } = isSharedLink ? { error: null } : await admin
       .from('referrals')
       .update({
-        referred_email: email,
+        referred_email: referral.referred_email || email,
+        signup_email: email,
         referred_id: userId || null,
-        status: 'signed_up'
+        status: referral.status === 'subscribed' ? 'subscribed' : 'signed_up',
+        converted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       } as any)
       .eq('id', referral.id)
 
     if (updateError) {
       console.error('Error updating referral:', updateError.message)
       return NextResponse.json({ error: 'Failed to update referral' }, { status: 500 })
+    }
+
+    // Instantly let the referring pastor know
+    try {
+      const who = referral.invite_name || email
+      await notifyUsers(
+        [referral.referrer_id],
+        {
+          type: 'referral',
+          title: '🎉 Your referral signed up!',
+          body: `${who} just joined The Shepherd's Desk. Thank you for sharing!`,
+          link: 'Referrals'
+        },
+        { dedupeKey: `referral:${targetId}` }
+      )
+    } catch (notifyErr: any) {
+      console.error('Referral notify failed:', notifyErr?.message || notifyErr)
     }
 
     return NextResponse.json({ success: true })

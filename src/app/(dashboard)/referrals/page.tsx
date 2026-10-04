@@ -11,8 +11,10 @@ interface Referral {
   id: string
   referral_code: string
   referred_email: string | null
-  status: 'pending' | 'signed_up' | 'subscribed'
+  status: 'pending' | 'signed_up' | 'subscribed' | 'not_interested'
   created_at: string
+  notes?: string | null
+  signup_email?: string | null
 }
 
 export default function ReferralsPage() {
@@ -32,12 +34,31 @@ export default function ReferralsPage() {
 
   const isTiny = userEmail.toLowerCase().includes('tinyneason')
 
+  // Saved referral messages (managed in Admin)
+  const [templates, setTemplates] = useState<{ id: string; name: string; subject: string | null; body: string }[]>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+  const [editedMessage, setEditedMessage] = useState<string | null>(null)
+  const [senderName, setSenderName] = useState('')
+
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (data?.user?.email) setUserEmail(data.user.email)
+      if (data?.user?.id) {
+        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', data.user.id).single()
+        if (profile?.full_name) setSenderName(profile.full_name)
+      }
     })
     fetchReferrals()
+    fetch('/api/referral-templates')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (d?.templates?.length) {
+          setTemplates(d.templates)
+          setSelectedTemplateId(d.defaultId || d.templates[0].id)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const fetchReferrals = async () => {
@@ -47,9 +68,10 @@ export default function ReferralsPage() {
         const data = await response.json()
         if (Array.isArray(data)) {
           setReferrals(data)
-          // Find the pastor's code from any referral record
+          // The pastor's reusable code is the record with no invitee attached
           if (data.length > 0) {
-            setMyCode(data[0].referral_code)
+            const base = data.find((r: Referral) => !r.referred_email)
+            setMyCode(base ? base.referral_code : String(data[0].referral_code).split('-')[0])
           }
         }
       }
@@ -118,9 +140,18 @@ export default function ReferralsPage() {
   }
 
   const referralLink = myCode ? `${typeof window !== 'undefined' ? window.location.origin : ''}/login?ref=${myCode}` : ''
-  const shareMessage = isTiny
+  const fallbackMessage = isTiny
     ? `Hey Pastor, this is Bro. Tiny.\n\nSister Angie and I have developed an app called The Shepherd’s Desk to help pastors stay encouraged, organized, and supported in the work of ministry. We built it with pastors like you in mind because we know how much you carry for the church, the people, and the calling God has placed on your life.\n\nI’d love for you to take a look and see if it could be a blessing to you and your ministry: ${referralLink}\n\nBlessings,\nBro. Tiny`
     : `I've been using Shepherd's Desk to organize my sermons, schedule, and pastoral care — and it's been a game-changer. Try it free: ${referralLink}`
+  const selectedTemplate = templates.find(t => t.id === selectedTemplateId)
+  const templateMessage = selectedTemplate
+    ? selectedTemplate.body
+        .replaceAll('{name}', 'Pastor')
+        .replaceAll('{link}', referralLink)
+        .replaceAll('{sender}', senderName || 'a fellow pastor')
+    : fallbackMessage
+  const shareMessage = editedMessage ?? templateMessage
+  const shareSubject = selectedTemplate?.subject || (isTiny ? "A personal note from Bro. Tiny: The Shepherd's Desk" : "Try Shepherd's Desk")
 
   const copyToClipboard = async () => {
     if (!referralLink) return
@@ -133,12 +164,46 @@ export default function ReferralsPage() {
     }
   }
 
+  // Notes / Not Interested on my own referrals
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [notInterestedDraft, setNotInterestedDraft] = useState(false)
+  const [savingNote, setSavingNote] = useState(false)
+
+  const openNoteEditor = (referral: Referral) => {
+    setEditingNoteId(referral.id)
+    setNoteDraft(referral.notes || '')
+    setNotInterestedDraft(referral.status === 'not_interested')
+  }
+
+  const saveNote = async (referral: Referral) => {
+    setSavingNote(true)
+    try {
+      const update: Record<string, any> = { notes: noteDraft.trim() || null, updated_at: new Date().toISOString() }
+      if (referral.status === 'pending' || referral.status === 'not_interested') {
+        update.status = notInterestedDraft ? 'not_interested' : 'pending'
+      }
+      const supabase = createClient()
+      const { error } = await supabase.from('referrals').update(update as any).eq('id', referral.id)
+      if (error) throw error
+      setReferrals(prev => prev.map(r => (r.id === referral.id ? { ...r, ...update } : r)))
+      setEditingNoteId(null)
+    } catch (err) {
+      console.error('Error saving note:', err)
+      alert('Could not save the note. Please try again.')
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'signed_up':
         return <span className="px-2.5 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">✅ Signed Up</span>
       case 'subscribed':
         return <span className="px-2.5 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">🎉 Subscribed</span>
+      case 'not_interested':
+        return <span className="px-2.5 py-1 bg-gray-200 text-gray-700 text-xs rounded-full font-medium">🚫 Not Interested</span>
       default:
         return <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs rounded-full font-medium">⏳ Pending</span>
     }
@@ -202,8 +267,30 @@ export default function ReferralsPage() {
                 </Button>
               </div>
 
-              <div className="pt-4 border-t border-gray-100 flex flex-wrap gap-4 justify-center">
-                <a href={`mailto:?subject=${encodeURIComponent(isTiny ? "A personal note from Bro. Tiny: The Shepherd's Desk" : "Try Shepherd's Desk")}&body=${encodeURIComponent(shareMessage)}`}>
+              <div className="pt-4 border-t border-gray-100 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-sm font-medium text-gray-700">Your message</label>
+                  {templates.length > 0 && (
+                    <select
+                      className="border rounded-md px-2 py-1.5 text-sm bg-white"
+                      value={selectedTemplateId}
+                      onChange={e => { setSelectedTemplateId(e.target.value); setEditedMessage(null) }}
+                    >
+                      {templates.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <textarea
+                  className="w-full min-h-[120px] rounded-md border border-gray-200 p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#D0A348]/40"
+                  value={shareMessage}
+                  onChange={e => setEditedMessage(e.target.value)}
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-4 justify-center">
+                <a href={`mailto:?subject=${encodeURIComponent(shareSubject)}&body=${encodeURIComponent(shareMessage)}`}>
                   <Button variant="outline" className="gap-2 text-[#022d5c]">
                     <Mail className="w-4 h-4" /> Email
                   </Button>
@@ -331,18 +418,51 @@ export default function ReferralsPage() {
           ) : (
             <div className="space-y-3">
               {trackedShares.map((referral) => (
-                <div key={referral.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex flex-col">
-                    <span className="font-medium text-gray-900">
-                      {referral.referred_email || 'Unknown'}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      Shared on {new Date(referral.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
+                <div key={referral.id} className="p-4 bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium text-gray-900">
+                        {referral.referred_email || 'Unknown'}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        Shared on {new Date(referral.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      {referral.signup_email && (referral.status === 'signed_up' || referral.status === 'subscribed') && (
+                        <span className="text-xs text-blue-700 mt-0.5">Signed up as: {referral.signup_email}</span>
+                      )}
+                      {referral.notes && editingNoteId !== referral.id && (
+                        <span className="text-xs text-gray-600 italic mt-1 whitespace-pre-wrap">📝 {referral.notes}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {getStatusBadge(referral.status)}
+                      <Button variant="ghost" size="sm" className="text-xs text-gray-600" onClick={() => openNoteEditor(referral)}>
+                        📝 Note
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    {getStatusBadge(referral.status)}
-                  </div>
+                  {editingNoteId === referral.id && (
+                    <div className="mt-3 space-y-2 border-t pt-3">
+                      <textarea
+                        className="w-full min-h-[80px] rounded-md border border-gray-200 p-2 text-sm"
+                        placeholder="e.g. Said he's not interested right now."
+                        value={noteDraft}
+                        onChange={e => setNoteDraft(e.target.value)}
+                      />
+                      {(referral.status === 'pending' || referral.status === 'not_interested') && (
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input type="checkbox" className="h-4 w-4" checked={notInterestedDraft} onChange={e => setNotInterestedDraft(e.target.checked)} />
+                          🚫 Not interested — stop reminders for this person
+                        </label>
+                      )}
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setEditingNoteId(null)}>Cancel</Button>
+                        <Button size="sm" className="bg-[#022d5c] text-white hover:bg-[#033a75]" disabled={savingNote} onClick={() => saveNote(referral)}>
+                          {savingNote ? 'Saving...' : 'Save'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
