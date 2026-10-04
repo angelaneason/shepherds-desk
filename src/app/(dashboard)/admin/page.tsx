@@ -71,6 +71,8 @@ export default function AdminPage() {
   const [followUpNote, setFollowUpNote] = useState('')
   const [followUpEmail, setFollowUpEmail] = useState('')
   const [copiedSms, setCopiedSms] = useState(false)
+  const [smsPreset, setSmsPreset] = useState<'standard' | 'vip' | 'blank'>('standard')
+  const [smsText, setSmsText] = useState('')
   const [sendingFollowUp, setSendingFollowUp] = useState(false)
   const [followUpSuccess, setFollowUpSuccess] = useState<string | null>(null)
   const [followUpLinkType, setFollowUpLinkType] = useState<'app' | 'download' | 'gift'>('app')
@@ -285,12 +287,42 @@ export default function AdminPage() {
     return `Hi Pastor! ${ref?.referrer_name || 'Pastor Tiny'} invited you to try The Shepherd's Desk. We'd love to give you VIP access to all our sermon prep & pastoral care tools: ${link}`
   }
 
+  // Reminder for pastors who were gifted Lifetime VIP but haven't created their account yet
+  const getVipGiftMessage = (ref: AdminReferral | null, type: 'app' | 'download' | 'gift') => {
+    const link = getFollowUpLink(type, ref?.referral_code)
+    const from = isPastorTiny ? 'Bro. Tiny' : 'Angie'
+    return `Hi Pastor! It's ${from} from The Shepherd's Desk 🙏\n\nYou were GIFTED a Lifetime VIP Membership — full Pro access, free forever (a $179.88/year value). No credit card, no charges, ever.\n\nThere's just one step: I can't turn on your VIP status until you create your account. Sign up here (takes 1 minute):\n👉 ${link}\n\nThen reply with the email you used and I'll activate your VIP right away.\n\nHere's what's waiting for you, including brand-new features:\n🎙️ NEW Smart Assistant – just speak: "Remind me to call Sister Mary Thursday," "Add a new sermon titled Walking by Faith," or "Add Brother John to the prayer list" and it's done\n🔔 NEW Phone alerts for visits, follow-ups & sermon prep\n📖 Sermon builder, Pulpit Mode & study tools\n❤️ Prayer list, hospital visits & member care\n📅 Ministry calendar\n\nWorks on iPhone, Android, and your computer. God bless!\n— ${from}`
+  }
+
+  const buildSms = (preset: 'standard' | 'vip' | 'blank', ref: AdminReferral | null, type: 'app' | 'download' | 'gift') =>
+    preset === 'vip' ? getVipGiftMessage(ref, type) : preset === 'blank' ? '' : getFollowUpMessage(ref, type)
+
+  // Pull a phone number out of the invite label, e.g. "Contractor Barry ((214) 708-2802)"
+  const extractPhone = (label?: string | null) => {
+    if (!label) return ''
+    const m = label.match(/\+?\d[\d\s().-]{8,}\d/)
+    if (!m) return ''
+    const digits = m[0].replace(/[^\d+]/g, '')
+    return digits.replace(/\D/g, '').length >= 10 ? digits : ''
+  }
+
   // Handle Sending Pastor's Wife Note
+  const changeLinkType = (type: 'app' | 'download' | 'gift') => {
+    setFollowUpLinkType(type)
+    if (smsPreset !== 'blank') setSmsText(buildSms(smsPreset, targetReferral, type))
+  }
+
+  const changeSmsPreset = (preset: 'standard' | 'vip' | 'blank') => {
+    setSmsPreset(preset)
+    setSmsText(buildSms(preset, targetReferral, followUpLinkType))
+  }
   const handleOpenFollowUp = (referral: AdminReferral) => {
     setTargetReferral(referral)
     setFollowUpNote('')
     setFollowUpEmail(referral.referred_email && referral.referred_email.includes('@') ? referral.referred_email : '')
     setFollowUpLinkType('app')
+    setSmsPreset('standard')
+    setSmsText(buildSms('standard', referral, 'app'))
     setCopiedSms(false)
     setFollowUpSuccess(null)
     setFollowUpModalOpen(true)
@@ -808,7 +840,7 @@ export default function AdminPage() {
 
           {/* Follow-Up Modal */}
           <Dialog open={followUpModalOpen} onOpenChange={setFollowUpModalOpen}>
-            <DialogContent className="sm:max-w-[550px]">
+            <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-xl text-[#022d5c] flex items-center gap-2">
                   <Heart className="w-5 h-5 text-[#D0A348]" />
@@ -836,7 +868,7 @@ export default function AdminPage() {
                     <div className="grid grid-cols-3 gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() => setFollowUpLinkType('app')}
+                        onClick={() => changeLinkType('app')}
                         className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
                           followUpLinkType === 'app'
                             ? 'bg-[#022d5c] text-white border-[#022d5c] shadow-sm'
@@ -847,7 +879,7 @@ export default function AdminPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setFollowUpLinkType('download')}
+                        onClick={() => changeLinkType('download')}
                         className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
                           followUpLinkType === 'download'
                             ? 'bg-[#022d5c] text-white border-[#022d5c] shadow-sm'
@@ -858,7 +890,7 @@ export default function AdminPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setFollowUpLinkType('gift')}
+                        onClick={() => changeLinkType('gift')}
                         className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
                           followUpLinkType === 'gift'
                             ? 'bg-[#022d5c] text-white border-[#022d5c] shadow-sm'
@@ -871,25 +903,64 @@ export default function AdminPage() {
                   </div>
 
                   <div className="space-y-3 p-3 bg-blue-50/80 border border-blue-200 rounded-xl">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-blue-950">
-                        📱 Quick Text Message {targetReferral?.referred_email ? `(${targetReferral.referred_email})` : ''}:
-                      </span>
+                    <span className="text-xs font-bold text-blue-950 block">
+                      📱 Text Message {targetReferral?.referred_email ? `(${targetReferral.referred_email})` : ''}:
+                    </span>
+
+                    {/* Message picker */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { value: 'standard', label: '💬 Standard' },
+                        { value: 'vip', label: '🎁 VIP Gift Reminder' },
+                        { value: 'blank', label: '✍️ Write My Own' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => changeSmsPreset(opt.value)}
+                          className={`px-2 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
+                            smsPreset === opt.value
+                              ? 'bg-[#022d5c] text-white border-[#022d5c] shadow-sm'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <Textarea
+                      value={smsText}
+                      onChange={e => setSmsText(e.target.value)}
+                      placeholder="Type your text message here..."
+                      className="min-h-[140px] text-xs bg-white"
+                    />
+
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 text-xs bg-white border-blue-300 text-blue-800 hover:bg-blue-100 font-semibold cursor-pointer"
+                        disabled={!smsText.trim()}
+                        className="h-8 text-xs bg-white border-blue-300 text-blue-800 hover:bg-blue-100 font-semibold cursor-pointer"
                         onClick={() => {
-                          const msg = getFollowUpMessage(targetReferral, followUpLinkType)
-                          navigator.clipboard.writeText(msg)
+                          navigator.clipboard.writeText(smsText)
                           setCopiedSms(true)
                           setTimeout(() => setCopiedSms(false), 2500)
                         }}
                       >
-                        {copiedSms ? '✓ Copied to Clipboard!' : '📋 Copy SMS Text'}
+                        {copiedSms ? '✓ Copied to Clipboard!' : '📋 Copy Text'}
                       </Button>
+                      {extractPhone(targetReferral?.referred_email) && (
+                        <a
+                          href={`sms:${extractPhone(targetReferral?.referred_email)}?&body=${encodeURIComponent(smsText)}`}
+                          className={`inline-flex items-center h-8 px-3 rounded-md text-xs font-semibold bg-[#022d5c] text-white hover:bg-[#022d5c]/90 ${!smsText.trim() ? 'pointer-events-none opacity-50' : ''}`}
+                        >
+                          💬 Open in My Texts
+                        </a>
+                      )}
                     </div>
+                    <p className="text-[11px] text-gray-500">&ldquo;Open in My Texts&rdquo; works when you&apos;re on your phone. On a computer, use Copy Text and paste it into your messages.</p>
 
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-gray-700">Or enter pastor's email to send official letter:</label>
