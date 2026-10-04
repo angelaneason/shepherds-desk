@@ -10,7 +10,8 @@ import {
   Sparkles,
   CheckCircle2,
   ChevronRight,
-  Gift
+  Gift,
+  LogIn
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -22,6 +23,13 @@ export default function WelcomePage() {
       <section className="relative text-white overflow-hidden py-20 lg:py-32" style={{ backgroundColor: '#022d5c' }}>
         {/* Subtle background decoration - only behind text, not logo */}
         <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
+
+        {/* Top-right Log In for existing users */}
+        <div className="absolute top-5 right-5 md:top-6 md:right-8 z-20">
+          <Link href="/login" className="inline-flex items-center justify-center border border-white/40 hover:bg-white/10 text-white font-semibold text-sm h-10 px-5 rounded-full transition-all">
+            <LogIn className="mr-2 h-4 w-4" /> Log In
+          </Link>
+        </div>
         
         <div className="container mx-auto px-6 relative z-10 flex flex-col items-center text-center">
           <div className="mb-8">
@@ -44,7 +52,7 @@ export default function WelcomePage() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center">
-            <Link href="/login" className="inline-flex items-center justify-center bg-gold hover:bg-gold/90 text-navy font-semibold text-base h-14 px-8 rounded-full shadow-lg shadow-gold/20">
+            <Link href="/login?mode=signup" className="inline-flex items-center justify-center bg-gold hover:bg-gold/90 text-navy font-semibold text-base h-14 px-8 rounded-full shadow-lg shadow-gold/20">
               Start Free Trial <ChevronRight className="ml-2 h-5 w-5" />
             </Link>
             <Link href="/gift" className="inline-flex items-center justify-center bg-white/15 hover:bg-white/25 border border-gold/60 text-white font-semibold text-base h-14 px-8 rounded-full transition-all">
@@ -54,6 +62,13 @@ export default function WelcomePage() {
               See Features
             </a>
           </div>
+
+          <p className="mt-5 mb-4 text-sm text-white/70">
+            Already have an account?{" "}
+            <Link href="/login" className="text-gold font-semibold hover:underline">
+              Log in to the web app
+            </Link>
+          </p>
 
           {/* App Store & Google Play Badges */}
           <div className="flex items-center gap-3 pt-2">
@@ -317,9 +332,13 @@ export default function WelcomePage() {
           <p className="text-white/80 text-lg md:text-xl mb-10">
             Join pastors who are spending less time on admin and more time in ministry.
           </p>
-          <Link href="/login" className="inline-flex items-center justify-center bg-gold hover:bg-gold/90 text-navy font-semibold text-base h-14 px-10 rounded-full shadow-lg shadow-gold/20">
+          <Link href="/login?mode=signup" className="inline-flex items-center justify-center bg-gold hover:bg-gold/90 text-navy font-semibold text-base h-14 px-10 rounded-full shadow-lg shadow-gold/20">
             Start Free Trial
           </Link>
+          <p className="mt-5 text-sm text-white/70">
+            Already a member?{" "}
+            <Link href="/login" className="text-gold font-semibold hover:underline">Log in</Link>
+          </p>
         </div>
       </section>
 
