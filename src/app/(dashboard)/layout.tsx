@@ -26,6 +26,20 @@ export default function DashboardLayout({
   } | null>(null)
   const [moreOpen, setMoreOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // Pulsing dot on the phone "Menu" button until the user opens it once
+  const [menuSeen, setMenuSeen] = useState(true)
+
+  useEffect(() => {
+    try { setMenuSeen(localStorage.getItem('sd_menu_seen') === '1') } catch {}
+  }, [])
+
+  const openDrawer = () => {
+    setDrawerOpen(true)
+    if (!menuSeen) {
+      setMenuSeen(true)
+      try { localStorage.setItem('sd_menu_seen', '1') } catch {}
+    }
+  }
 
   const supabase = createClient()
   
@@ -253,14 +267,7 @@ export default function DashboardLayout({
             </div>
             
             <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-              {[
-                { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-                { name: 'Sermons', href: '/sermons', icon: BookOpen },
-                { name: 'Ideas', href: '/ideas', icon: Lightbulb },
-                { name: 'Calendar', href: '/calendar', icon: CalendarDays },
-                { name: 'Ministry Care', href: '/care', icon: Heart },
-                { name: 'Refer a Pastor', href: '/referrals', icon: Gift },
-              ].map((item) => {
+              {navItems.filter((item) => item.name !== 'Settings').map((item) => {
                 const Icon = item.icon
                 return (
                   <Link
@@ -326,10 +333,20 @@ export default function DashboardLayout({
         <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setDrawerOpen(true)}
-              className="md:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100"
+              onClick={openDrawer}
+              aria-label="Open menu"
+              className="md:hidden flex items-center gap-1.5 pl-1.5 pr-2.5 py-1.5 -ml-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 active:bg-gray-100"
             >
-              <Menu className="w-6 h-6" style={{ color: churchBrand?.primaryColor || '#022d5c' }} />
+              <span className="relative">
+                <Menu className="w-6 h-6" style={{ color: churchBrand?.primaryColor || '#022d5c' }} />
+                {!menuSeen && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D0A348] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-[#D0A348] border-2 border-white" />
+                  </span>
+                )}
+              </span>
+              <span className="text-sm font-semibold" style={{ color: churchBrand?.primaryColor || '#022d5c' }}>Menu</span>
             </button>
             <h2 className="text-xl font-semibold text-gray-800">Dashboard</h2>
           </div>

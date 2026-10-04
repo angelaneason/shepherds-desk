@@ -161,7 +161,7 @@ export function SupportChat() {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 w-10 h-10 md:w-11 md:h-11 rounded-full bg-[#022d5c] text-white shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 border border-[#D0A348]/40 hover:border-[#D0A348]"
+        className="fixed bottom-20 left-4 md:left-auto md:bottom-6 md:right-6 z-40 w-10 h-10 md:w-11 md:h-11 rounded-full bg-[#022d5c] text-white shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 border border-[#D0A348]/40 hover:border-[#D0A348]"
         title="Help & Support"
         aria-label="Help & Support"
       >
