@@ -84,6 +84,9 @@ export default function AdminPage() {
   const [vipSuccess, setVipSuccess] = useState<string | null>(null)
 
   const [currentAdminEmail, setCurrentAdminEmail] = useState('')
+  // Pipeline filter: 'me' = invites I sent, 'all' = everyone, or a referrer's email/name key
+  const [referrerFilter, setReferrerFilter] = useState<string>('me')
+  const [needsFollowUpOnly, setNeedsFollowUpOnly] = useState(false)
   const isPastorTiny = currentAdminEmail.toLowerCase().includes('tinyneason')
 
   const fetchUsers = async () => {
@@ -590,6 +593,45 @@ export default function AdminPage() {
                   No pastor referrals recorded yet. When pastors share their invite link or you send VIP invitations, they will appear here.
                 </div>
               ) : (
+                <>
+                {(() => {
+                  const all = referrals.filter(r => r.referred_email)
+                  const me = (currentAdminEmail || '').toLowerCase()
+                  const groups = new Map<string, { label: string; count: number }>()
+                  all.forEach(r => {
+                    const key = (r.referrer_email || r.referrer_name || 'unknown').toLowerCase()
+                    const g = groups.get(key)
+                    if (g) g.count++
+                    else groups.set(key, { label: r.referrer_name || r.referrer_email || 'Unknown', count: 1 })
+                  })
+                  const mineCount = me ? (groups.get(me)?.count || 0) : 0
+                  const chip = (active: boolean) => `px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${active ? 'bg-[#022d5c] text-white border-[#022d5c]' : 'bg-white text-gray-700 border-gray-200 hover:border-[#022d5c]'}`
+                  return (
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mr-1">Sent by:</span>
+                      {me && (
+                        <button className={chip(referrerFilter === 'me')} onClick={() => setReferrerFilter('me')}>
+                          ⭐ Me ({mineCount})
+                        </button>
+                      )}
+                      <button className={chip(referrerFilter === 'all')} onClick={() => setReferrerFilter('all')}>
+                        Everyone ({all.length})
+                      </button>
+                      {[...groups.entries()]
+                        .filter(([key]) => key !== me)
+                        .sort((a, b) => b[1].count - a[1].count)
+                        .map(([key, g]) => (
+                          <button key={key} className={chip(referrerFilter === key)} onClick={() => setReferrerFilter(key)}>
+                            {g.label} ({g.count})
+                          </button>
+                        ))}
+                      <label className="ml-auto flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
+                        <input type="checkbox" checked={needsFollowUpOnly} onChange={e => setNeedsFollowUpOnly(e.target.checked)} className="accent-[#022d5c]" />
+                        Only show pending (needs follow-up)
+                      </label>
+                    </div>
+                  )
+                })()}
                 <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -603,7 +645,16 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {referrals.filter(r => r.referred_email).map((ref) => (
+                      {referrals
+                        .filter(r => r.referred_email)
+                        .filter(r => {
+                          const key = (r.referrer_email || r.referrer_name || 'unknown').toLowerCase()
+                          if (referrerFilter === 'all') return true
+                          if (referrerFilter === 'me') return key === (currentAdminEmail || '').toLowerCase()
+                          return key === referrerFilter
+                        })
+                        .filter(r => !needsFollowUpOnly || r.status === 'pending')
+                        .map((ref) => (
                         <TableRow key={ref.id}>
                           <TableCell>
                             <div className="flex flex-col">
@@ -695,7 +746,21 @@ export default function AdminPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  {referrals
+                    .filter(r => r.referred_email)
+                    .filter(r => {
+                      const key = (r.referrer_email || r.referrer_name || 'unknown').toLowerCase()
+                      if (referrerFilter === 'all') return true
+                      if (referrerFilter === 'me') return key === (currentAdminEmail || '').toLowerCase()
+                      return key === referrerFilter
+                    })
+                    .filter(r => !needsFollowUpOnly || r.status === 'pending').length === 0 && (
+                    <div className="py-10 text-center text-sm text-gray-500">
+                      No invites match this filter. Try &ldquo;Everyone&rdquo;.
+                    </div>
+                  )}
                 </div>
+                </>
               )}
             </CardContent>
           </Card>
