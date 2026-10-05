@@ -15,7 +15,11 @@ import {
   BookOpen,
   Calendar,
   Clock,
-  Loader2
+  Loader2,
+  Mic,
+  Library,
+  Lightbulb,
+  Smartphone
 } from 'lucide-react';
 
 export default function GiftPage() {
@@ -456,23 +460,24 @@ export default function GiftPage() {
               <h3 className="font-bold text-sm text-[#022d5c] uppercase tracking-wide mb-3 flex items-center gap-2">
                 <Heart className="w-4 h-4 text-[#D0A348]" /> What Your Gift Includes
               </h3>
+              <p className="text-xs text-gray-500 mb-3">{duration} months of full access to every feature:</p>
               <ul className="space-y-2.5 text-xs text-gray-600">
-                <li className="flex items-start gap-2">
-                  <BookOpen className="w-4 h-4 text-[#022d5c] mt-0.5 flex-shrink-0" />
-                  <span><strong>Sermon Studio &amp; Pulpit Mode:</strong> Distraction-free sermon writing with a live preaching prompter clock.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Heart className="w-4 h-4 text-[#022d5c] mt-0.5 flex-shrink-0" />
-                  <span><strong>AI Pastoral Care Assistant:</strong> Hospital visits, grief checks, and pastoral texting tools.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Clock className="w-4 h-4 text-[#022d5c] mt-0.5 flex-shrink-0" />
-                  <span><strong>Sacred Study Time Scheduler:</strong> Guard weekly deep study and sermon prep hours.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Calendar className="w-4 h-4 text-[#022d5c] mt-0.5 flex-shrink-0" />
-                  <span><strong>Mobile &amp; Web Synchronization:</strong> Full access across phone, tablet, and computer.</span>
-                </li>
+                {[
+                  { icon: BookOpen, title: 'Sermon Studio & Pulpit Mode', text: 'Write, organize series, and preach from a distraction-free prompter with a live clock.' },
+                  { icon: Mic, title: 'Live Sermon Capture', text: 'Record a sermon and AI turns it into a full draft with title, outline, scriptures, and key quotes.' },
+                  { icon: Sparkles, title: 'Smart Assistant', text: 'Just speak or type — it sets reminders, starts sermons, saves ideas, and adds prayer requests.' },
+                  { icon: Library, title: 'Study Tools & Reference Library', text: 'Bible lookup, concordance, commentary, cross-references, and classic sermons.' },
+                  { icon: Heart, title: 'Ministry Care & Prayer List', text: 'Track members, hospital visits, follow-ups, and answered prayers — with AI-written caring texts.' },
+                  { icon: Lightbulb, title: 'Ideas Inbox', text: 'Capture sermon ideas by voice, typing, or photo before they slip away.' },
+                  { icon: Clock, title: 'Sacred Study Time', text: 'Protect weekly study hours with a focus timer and progress goals.' },
+                  { icon: Calendar, title: 'Ministry Calendar', text: 'Services, meetings, and visits in one place — syncs with Google & Apple calendars.' },
+                  { icon: Smartphone, title: 'Phone, Tablet & Computer', text: 'iPhone, Android, and web apps that stay in sync.' },
+                ].map(({ icon: Icon, title, text }) => (
+                  <li key={title} className="flex items-start gap-2">
+                    <Icon className="w-4 h-4 text-[#022d5c] mt-0.5 flex-shrink-0" />
+                    <span><strong>{title}:</strong> {text}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
