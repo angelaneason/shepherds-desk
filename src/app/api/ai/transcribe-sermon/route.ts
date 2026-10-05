@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey)
     // Use gemini-2.5-flash or gemini-2.0-flash / gemini-1.5-flash
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' })
 
     const prompt = `
 You are an expert pastoral assistant, theologian, and sermon transcription specialist for "The Shepherd's Desk".
