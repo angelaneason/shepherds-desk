@@ -229,8 +229,8 @@ export function SmartReminder() {
       profile_id: userId,
       person_name: person,
       request: req,
-      category: PRAYER_CATEGORIES.includes(parsed.prayerCategory || '') ? parsed.prayerCategory : 'Other',
-      priority: parsed.priority === 'urgent' ? 'Urgent' : 'Normal',
+      category: (PRAYER_CATEGORIES.includes(parsed.prayerCategory || '') ? parsed.prayerCategory! : 'Other').toLowerCase(),
+      priority: parsed.priority === 'urgent' ? 'urgent' : 'normal',
       status: 'active',
     }) as any)
     if (prayerError) throw prayerError

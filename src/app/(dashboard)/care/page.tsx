@@ -297,7 +297,12 @@ export default function CarePage() {
 
     const { data, error } = await supabase
       .from('prayer_requests')
-      .insert([{ ...newPrayer, profile_id: userProfileId }])
+      .insert([{
+        ...newPrayer,
+        category: (newPrayer.category || 'other').toLowerCase(),
+        priority: (newPrayer.priority || 'normal').toLowerCase(),
+        profile_id: userProfileId,
+      } as any])
       .select()
 
     if (data && !error) {
@@ -1215,7 +1220,7 @@ export default function CarePage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {filteredPrayers.map((prayer) => (
-                <Card key={prayer.id} className={`overflow-hidden ${prayer.status === 'answered' ? 'opacity-90 bg-[#F8F5EE]/50' : 'bg-white'} border-l-4 ${prayer.priority === 'Urgent' && prayer.status !== 'answered' ? 'border-l-red-500' : 'border-l-[#D0A348]'}`}>
+                <Card key={prayer.id} className={`overflow-hidden ${prayer.status === 'answered' ? 'opacity-90 bg-[#F8F5EE]/50' : 'bg-white'} border-l-4 ${String(prayer.priority).toLowerCase() === 'urgent' && prayer.status !== 'answered' ? 'border-l-red-500' : 'border-l-[#D0A348]'}`}>
                   <div className="p-5 flex flex-col gap-3">
                     <div className="flex justify-between items-start">
                       <h3 className="font-semibold text-lg text-gray-900">{prayer.person_name}</h3>
@@ -1225,7 +1230,7 @@ export default function CarePage() {
                             🙏 Answered
                           </Badge>
                         )}
-                        <Badge variant="outline">{prayer.category}</Badge>
+                        <Badge variant="outline" className="capitalize">{prayer.category}</Badge>
                       </div>
                     </div>
                     
