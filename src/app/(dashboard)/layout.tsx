@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare, Mic } from 'lucide-react'
+import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare, Mic, Globe } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 import { SupportChat } from '@/components/support/SupportChat'
 import { CompleteProfilePrompt } from '@/components/onboarding/CompleteProfilePrompt'
@@ -231,6 +231,17 @@ export default function DashboardLayout({
               Admin
             </Link>
           )}
+          {isAdmin && (
+            <a
+              href="/welcome"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 hover:text-[#D0A348] transition-colors text-[#D0A348]"
+            >
+              <Globe className="w-5 h-5" />
+              View Website
+            </a>
+          )}
         </nav>
 
         {/* Powered by Tiny Tech */}
@@ -300,6 +311,18 @@ export default function DashboardLayout({
                   <Shield className="w-5 h-5" />
                   <span className="text-sm font-medium">Admin</span>
                 </Link>
+              )}
+              {isAdmin && (
+                <a
+                  href="/welcome"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setDrawerOpen(false)}
+                  className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/10 transition-all text-[#D0A348]"
+                >
+                  <Globe className="w-5 h-5" />
+                  <span className="text-sm font-medium">View Website</span>
+                </a>
               )}
             </nav>
 
