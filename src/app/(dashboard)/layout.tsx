@@ -32,6 +32,14 @@ export default function DashboardLayout({
 
   useEffect(() => {
     try { setMenuSeen(localStorage.getItem('sd_menu_seen') === '1') } catch {}
+    // Gift recipients who just confirmed their email: continue to gift redemption
+    try {
+      const pendingGift = localStorage.getItem('sd_pending_gift')
+      if (pendingGift) {
+        localStorage.removeItem('sd_pending_gift')
+        window.location.href = `/gift/redeem?code=${encodeURIComponent(pendingGift)}`
+      }
+    } catch {}
   }, [])
 
   const openDrawer = () => {

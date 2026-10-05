@@ -23,6 +23,7 @@ function LoginContent() {
   const [phone, setPhone] = useState('')
   const [churchName, setChurchName] = useState('')
   const [invitedBy, setInvitedBy] = useState('')
+  const [confirmSentTo, setConfirmSentTo] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -78,6 +79,7 @@ function LoginContent() {
           email,
           password,
           options: {
+            emailRedirectTo: 'https://theshepherdsdesk.app/auth/callback',
             // Read by the database on account creation (profile name, church name, invite matching by phone)
             data: {
               full_name: fullName.trim(),
@@ -105,6 +107,15 @@ function LoginContent() {
             console.error('Referral tracking error:', refErr)
           }
         }
+
+        // Email confirmation is required: no session until they click the link in their email
+        if (!signUpData.session) {
+          if (giftCode) {
+            try { localStorage.setItem('sd_pending_gift', giftCode) } catch {}
+          }
+          setConfirmSentTo(email)
+          return
+        }
       } else {
         const { error: authError } = await supabase.auth.signInWithPassword({
           email,
@@ -120,10 +131,54 @@ function LoginContent() {
       }
       router.refresh()
     } catch (err: any) {
-      setError(err.message || 'An error occurred during sign in.')
+      const msg = err?.message || ''
+      setError(/email not confirmed/i.test(msg)
+        ? 'Please confirm your email first - check your inbox (and Spam) for the link we sent.'
+        : (msg || 'An error occurred during sign in.'))
     } finally {
       setLoading(false)
     }
+  }
+
+  if (confirmSentTo) {
+    return (
+      <div className="space-y-6 text-center">
+        <div className="flex flex-col items-center">
+          <img src="/logo-clean.png" alt="The Shepherd's Desk" className="h-24 w-auto object-contain" />
+        </div>
+        <div className="text-5xl">📧</div>
+        <h2 className="text-xl font-bold text-[#022d5c]">Check your email</h2>
+        <p className="text-sm text-gray-600">
+          We sent a confirmation link to <strong>{confirmSentTo}</strong>.<br />
+          Tap the link in that email to finish creating your account.
+        </p>
+        <p className="text-xs text-gray-400">Don&apos;t see it? Check your Spam or Promotions folder.</p>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const supabase = createClient()
+              const { error: resendError } = await supabase.auth.resend({ type: 'signup', email: confirmSentTo })
+              if (resendError) throw resendError
+              setMessage('Sent again! Check your inbox.')
+            } catch {
+              setMessage('Could not resend. Please try again in a minute.')
+            }
+          }}
+          className="text-sm text-[#022d5c] hover:text-[#D0A348] underline"
+        >
+          Resend the email
+        </button>
+        {message && <p className="text-sm text-green-600">{message}</p>}
+        <button
+          type="button"
+          onClick={() => { setConfirmSentTo(null); setIsSignUp(false); setMessage(null) }}
+          className="block w-full text-sm text-gray-500 hover:text-gray-700 mt-2"
+        >
+          Back to Sign In
+        </button>
+      </div>
+    )
   }
 
   return (
