@@ -145,7 +145,7 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
                 onClick={() => { setIsAIPanelOpen(!isAIPanelOpen); setIsBibleOpen(false); setIsStudyPanelOpen(false); }}
               >
                 <Sparkles className="h-4 w-4 text-[#D0A348]" />
-                <span className="hidden sm:inline">AI Assistant</span>
+                <span className="hidden sm:inline">Sermon Assistant</span>
               </Button>
             </div>
           </div>

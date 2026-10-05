@@ -86,10 +86,10 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
         <div>
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-[#D0A348]" />
-            AI Assistant
+            Sermon Assistant
           </h2>
           <p className="text-sm mt-1 text-gray-200">Your calling. Your voice. God's Message.</p>
-          <p className="text-xs mt-1 text-gray-300 italic">AI simply helps you organize and develop what God has placed on your heart.</p>
+          <p className="text-xs mt-1 text-gray-300 italic">This assistant simply helps you organize and develop what God has placed on your heart.</p>
         </div>
         <button onClick={onClose} className="text-gray-300 hover:text-white">
           <X className="h-5 w-5" />

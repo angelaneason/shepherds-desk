@@ -667,7 +667,7 @@ export default function CommunicationPage() {
                     className="h-8 text-xs border-[#D0A348] text-[#022d5c] hover:bg-[#D0A348]/10 flex items-center gap-1.5 cursor-pointer"
                   >
                     <Sparkles className={cn("w-3.5 h-3.5 text-[#D0A348]", isGeneratingAi && "animate-spin")} />
-                    <span>{isGeneratingAi ? 'Generating...' : 'AI Compose'}</span>
+                    <span>{isGeneratingAi ? 'Generating...' : 'Help Me Write'}</span>
                   </Button>
                 </div>
                 <CardDescription className="text-xs text-gray-500">

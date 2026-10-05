@@ -464,10 +464,10 @@ export default function GiftPage() {
               <ul className="space-y-2.5 text-xs text-gray-600">
                 {[
                   { icon: BookOpen, title: 'Sermon Studio & Pulpit Mode', text: 'Write, organize series, and preach from a distraction-free prompter with a live clock.' },
-                  { icon: Mic, title: 'Live Sermon Capture', text: 'Record a sermon and AI turns it into a full draft with title, outline, scriptures, and key quotes.' },
+                  { icon: Mic, title: 'Live Sermon Capture', text: 'Record a sermon and it’s turned into a full draft with title, outline, scriptures, and key quotes.' },
                   { icon: Sparkles, title: 'Smart Assistant', text: 'Just speak or type — it sets reminders, starts sermons, saves ideas, and adds prayer requests.' },
                   { icon: Library, title: 'Study Tools & Reference Library', text: 'Bible lookup, concordance, commentary, cross-references, and classic sermons.' },
-                  { icon: Heart, title: 'Ministry Care & Prayer List', text: 'Track members, hospital visits, follow-ups, and answered prayers — with AI-written caring texts.' },
+                  { icon: Heart, title: 'Ministry Care & Prayer List', text: 'Track members, hospital visits, follow-ups, and answered prayers — with help writing caring texts.' },
                   { icon: Lightbulb, title: 'Ideas Inbox', text: 'Capture sermon ideas by voice, typing, or photo before they slip away.' },
                   { icon: Clock, title: 'Sacred Study Time', text: 'Protect weekly study hours with a focus timer and progress goals.' },
                   { icon: Calendar, title: 'Ministry Calendar', text: 'Services, meetings, and visits in one place — syncs with Google & Apple calendars.' },

@@ -7,8 +7,8 @@ type ChatView = 'menu' | 'question' | 'bug' | 'enhancement' | 'faq'
 
 const FAQ_ITEMS = [
   { q: 'How do I create a sermon?', a: 'Go to Sermons → click "New Sermon". Fill in your title, scripture, and start writing. You can also use voice dictation!' },
-  { q: 'How do I scan a handwritten sermon?', a: 'Go to Sermons → click "Scan Sermon". Take photos of each page and the AI will transcribe them.' },
-  { q: 'How does the AI assistant work?', a: 'In the sermon editor, click the AI button (sparkles icon). It helps brainstorm, outline, find illustrations, and polish — but never writes for you.' },
+  { q: 'How do I scan a handwritten sermon?', a: 'Go to Sermons → click "Scan Sermon". Take photos of each page and they’ll be transcribed automatically.' },
+  { q: 'How does the Sermon Assistant work?', a: 'In the sermon editor, click the Sermon Assistant button (sparkles icon). It helps brainstorm, outline, find illustrations, and polish — but never writes for you.' },
   { q: 'How do I add recurring events?', a: 'Go to Calendar → Add Event → set the Repeat dropdown to Weekly, Bi-Weekly, or Monthly.' },
   { q: 'What is the Study Time Guardian?', a: 'It tracks your study/preparation hours and gently reminds you to protect your personal development time.' },
 ]

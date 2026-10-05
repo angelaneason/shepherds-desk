@@ -215,7 +215,7 @@ export default function StudyTools() {
           <BookOpen className="w-5 h-5" />
           Study Tools
         </CardTitle>
-        <p className="text-sm text-gray-500 mt-1">AI-powered research tools for sermon preparation</p>
+        <p className="text-sm text-gray-500 mt-1">Research tools for sermon preparation</p>
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Tool Tabs */}

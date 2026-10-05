@@ -171,7 +171,7 @@ export default function AiTextComposerModal({
               </div>
               <div>
                 <DialogTitle className="text-xl font-playfair font-bold text-white">
-                  AI Pastoral Text Assistant
+                  Pastoral Text Assistant
                 </DialogTitle>
                 <p className="text-xs text-white/80 mt-0.5">
                   Send a warm, personal text to{" "}
@@ -265,7 +265,7 @@ export default function AiTextComposerModal({
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-[#D0A348]" />
-                  {message ? "Regenerate Message with AI" : "Generate Pastoral Message"}
+                  {message ? "Write a New Version" : "Generate Pastoral Message"}
                 </>
               )}
             </Button>

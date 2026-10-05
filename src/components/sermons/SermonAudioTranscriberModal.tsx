@@ -334,13 +334,13 @@ ${result.transcript}
           <div className="relative z-10">
             <div className="flex items-center gap-2 text-[#D0A348] text-xs font-semibold uppercase tracking-wider mb-1">
               <Sparkles size={14} />
-              <span>AI Audio Intelligence</span>
+              <span>Sermon Audio Capture</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-playfair font-bold text-white">
               Sermon Audio Transcriber
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-              Upload a sermon audio file or record live preaching. AI will transcribe the audio, detect biblical scriptures, and extract a structured outline.
+              Upload a sermon audio file or record live preaching. We'll transcribe the audio, detect biblical scriptures, and extract a structured outline.
             </p>
           </div>
           <button
@@ -516,7 +516,7 @@ ${result.transcript}
                   className="bg-[#D0A348] hover:bg-[#b8892e] text-white font-semibold px-6 py-2.5 rounded-xl flex items-center gap-2 cursor-pointer shadow-md shadow-[#D0A348]/20"
                 >
                   <Sparkles size={16} />
-                  <span>Transcribe & Analyze with AI</span>
+                  <span>Transcribe & Analyze</span>
                 </Button>
               </div>
             </div>
@@ -538,7 +538,7 @@ ${result.transcript}
                 </h3>
                 <p className="text-xs text-slate-500">
                   {processingStep === 1 && 'Ingesting audio stream and parsing speech patterns...'}
-                  {processingStep === 2 && 'Transcribing spoken words and punctuation with Gemini AI...'}
+                  {processingStep === 2 && 'Transcribing spoken words and punctuation...'}
                   {processingStep === 3 && 'Detecting biblical Scripture references and building outline...'}
                   {processingStep >= 4 && 'Finalizing pastoral notes and summary...'}
                 </p>

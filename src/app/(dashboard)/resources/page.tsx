@@ -508,7 +508,7 @@ export default function ResourcesPage() {
   const handleSaveAiAsResource = () => {
     setIsAiModalOpen(false);
     handleOpenModal();
-    setTitle('AI Counsel: ' + aiSituation.substring(0, 30) + '...');
+    setTitle('Counsel: ' + aiSituation.substring(0, 30) + '...');
     setContent(aiResponse);
   };
 
@@ -560,7 +560,7 @@ export default function ResourcesPage() {
           {activeSection === 'counseling' && (
             <Button onClick={() => setIsAiModalOpen(true)} className="bg-[#D0A348] hover:bg-[#b88c3a] text-white">
               <Sparkles className="w-4 h-4 mr-2" />
-              AI Quick Counsel
+              Quick Counsel
             </Button>
           )}
           <Button onClick={() => {
@@ -1240,7 +1240,7 @@ export default function ResourcesPage() {
               <X className="w-5 h-5" />
             </button>
             <h2 className="text-2xl font-playfair text-[#D0A348] font-bold mb-2 flex items-center gap-2">
-              <Sparkles className="w-6 h-6" /> AI Quick Counsel
+              <Sparkles className="w-6 h-6" /> Quick Counsel
             </h2>
             <p className="text-gray-500 mb-6 text-sm">Describe a situation to receive biblically sound, practical guidance and talking points.</p>
             
@@ -1262,7 +1262,7 @@ export default function ResourcesPage() {
 
               {aiResponse && (
                 <div className="mt-6">
-                  <h3 className="font-semibold text-[#022d5c] mb-2">AI Guidance</h3>
+                  <h3 className="font-semibold text-[#022d5c] mb-2">Suggested Guidance</h3>
                   <div className="p-4 bg-[#F8F5EE] rounded-lg text-sm text-gray-800 whitespace-pre-wrap border border-[#e0dac8]">
                     {aiResponse}
                   </div>

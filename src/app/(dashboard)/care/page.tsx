@@ -679,10 +679,10 @@ export default function CarePage() {
                                   defaultCustomPrompt: task.description || task.notes || ''
                                 })
                               }}
-                              title="Compose personalized pastoral text with AI"
+                              title="Write a personal pastoral text"
                             >
                               <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
-                              AI Text
+                              Write Text
                             </Button>
                           )
                         })()}
@@ -1006,10 +1006,10 @@ export default function CarePage() {
                                   })
                                 }}
                                 className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-[#022d5c] text-white hover:bg-[#022d5c]/90 font-medium transition-colors shadow-xs"
-                                title="Compose personalized text with AI"
+                                title="Write a personal text"
                               >
                                 <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
-                                AI Text
+                                Write Text
                               </button>
                               <a
                                 href={`sms:${member.phone}`}
@@ -1270,7 +1270,7 @@ export default function CarePage() {
                                 title="Send encouraging text about this prayer request"
                               >
                                 <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
-                                AI Text
+                                Write Text
                               </Button>
                             )}
                             <Button 

@@ -133,7 +133,7 @@ function RedeemGiftContent() {
             })}
           </p>
           <p className="text-xs text-gray-600 mt-2">
-            No credit card will be charged. All Pro tools—including Sermon Studio, AI Pastoral Texts, and Sacred Study Time—are unlocked.
+            No credit card will be charged. All Pro tools—including Sermon Studio, Pastoral Care Texts, and Sacred Study Time—are unlocked.
           </p>
         </div>
 

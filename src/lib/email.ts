@@ -485,7 +485,7 @@ export async function sendGiftPastorNotificationEmail({
                 </h4>
                 <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #4B5563; line-height: 1.6;">
                   <li>Full <strong>Sermon Studio</strong> with Pulpit Mode &amp; Preaching Clock</li>
-                  <li><strong>AI Pastoral Care &amp; Text Assistant</strong> for hospital visits &amp; crisis check-ins</li>
+                  <li><strong>Pastoral Care &amp; Text Assistant</strong> for hospital visits &amp; crisis check-ins</li>
                   <li><strong>Sacred Study Time Scheduler</strong> with Biblical Illustrations library</li>
                   <li>Complete Ministry Calendar &amp; Member Care Directory</li>
                 </ul>

@@ -114,7 +114,7 @@ export default function WelcomePage() {
             {
               icon: BookOpen,
               title: "Sermon Studio",
-              description: "Write, organize, and polish your sermons with a beautiful distraction-free editor. AI-powered tools help you brainstorm, outline, and refine your message."
+              description: "Write, organize, and polish your sermons with a beautiful distraction-free editor. Smart writing tools help you brainstorm, outline, and refine your message."
             },
             {
               icon: Book,
@@ -124,7 +124,7 @@ export default function WelcomePage() {
             {
               icon: Camera,
               title: "Snap & Digitize",
-              description: "Photograph handwritten notes, napkin scribbles, or book highlights. Our AI reads your handwriting and converts it to searchable digital text."
+              description: "Photograph handwritten notes, napkin scribbles, or book highlights. The app reads your handwriting and converts it to searchable digital text."
             },
             {
               icon: CalendarDays,
@@ -161,9 +161,9 @@ export default function WelcomePage() {
               <div className="inline-flex items-center gap-2 bg-gold/10 text-navy px-4 py-2 rounded-full text-sm font-semibold mb-6">
                 <Sparkles className="h-4 w-4" /> Built-in Assistant
               </div>
-              <h2 className="text-3xl md:text-4xl font-[family-name:var(--font-playfair)] text-navy mb-6">AI That Respects Your Voice</h2>
+              <h2 className="text-3xl md:text-4xl font-[family-name:var(--font-playfair)] text-navy mb-6">Tools That Respect Your Voice</h2>
               <p className="text-charcoal/80 mb-6 leading-relaxed text-lg">
-                The Shepherd's Desk AI doesn't write your sermons - it helps you develop what God has already placed on your heart. Brainstorm titles, generate outlines, find illustrations, and polish your prose.
+                The Shepherd's Desk doesn't write your sermons - it helps you develop what God has already placed on your heart. Brainstorm titles, generate outlines, find illustrations, and polish your prose.
               </p>
               <p className="font-[family-name:var(--font-playfair)] text-xl text-navy italic">
                 Your calling. Your voice. God's message.
