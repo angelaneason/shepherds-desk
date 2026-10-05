@@ -8,6 +8,7 @@ import { CalendarDays, Users, BookOpen, Clock, ChevronLeft, ChevronRight, ArrowR
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { expandEvent, localDayKey } from '@/lib/recurrence'
 import { SmartReminder } from '@/components/reminders/SmartReminder'
 import { WelcomeGuide } from '@/components/onboarding/WelcomeGuide'
 
@@ -43,8 +44,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [showWelcome, setShowWelcome] = useState(false)
   
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 8, 1)) // Sep 1, 2026 based on requirements
-  const [selectedDay, setSelectedDay] = useState(new Date(2026, 8, 1))
+  const [currentDate, setCurrentDate] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
+  const [selectedDay, setSelectedDay] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()) })
   
   const [todayEventsCount, setTodayEventsCount] = useState(0)
   const [pendingCareCount, setPendingCareCount] = useState(0)
@@ -96,12 +97,11 @@ export default function DashboardPage() {
           sermonsRes,
           tasksRes,
         ] = await Promise.all([
-          // 1. Month calendar events
+          // 1. Month calendar events (plus repeating events that started earlier)
           supabase
             .from('calendar_events')
-            .select('id, title, start_time, end_time, event_type, location, all_day')
-            .gte('start_time', startOfMonth)
-            .lte('start_time', endOfMonth),
+            .select('id, title, start_time, end_time, event_type, location, all_day, recurrence_rule')
+            .or(`and(start_time.gte."${startOfMonth}",start_time.lte."${endOfMonth}"),and(recurrence_rule.not.is.null,start_time.lte."${endOfMonth}")`),
           // 2. Profile details
           supabase
             .from('profiles')
@@ -130,13 +130,17 @@ export default function DashboardPage() {
             .limit(10),
         ])
 
-        const events = eventsRes.data as any
-        if (events) setCalendarEvents(events)
+        const rawEvents = (eventsRes.data as any[]) || []
+        const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+        const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
+        const events = rawEvents.flatMap((e: any) => expandEvent(e, monthStart, monthEnd))
+        setCalendarEvents(events)
 
-        // Count today's events
-        const todayStr = selectedDay.toISOString().split('T')[0]
-        const todays = events?.filter((e: any) => e.start_time?.startsWith(todayStr)) || []
-        setTodayEventsCount(todays.length)
+        // Count today's events (actual today, local time)
+        const todayKey = localDayKey(new Date())
+        const todays = events.filter((e: any) => e.start_time && localDayKey(e.start_time) === todayKey)
+        const nowD = new Date()
+        if (currentDate.getFullYear() === nowD.getFullYear() && currentDate.getMonth() === nowD.getMonth()) setTodayEventsCount(todays.length)
 
         // Profile details & title
         const profile = profileRes.data as any
@@ -187,9 +191,9 @@ export default function DashboardPage() {
   }, [supabase, currentDate, selectedDay])
 
   const days = getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth())
-  const todayStr = selectedDay.toISOString().split('T')[0]
+  const todayStr = localDayKey(selectedDay)
 
-  const selectedDayEvents = calendarEvents.filter(e => e.start_time?.startsWith(todayStr))
+  const selectedDayEvents = calendarEvents.filter(e => e.start_time && localDayKey(e.start_time) === todayStr)
   
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
@@ -359,8 +363,8 @@ export default function DashboardPage() {
                 if (!day) return <div key={`empty-${idx}`} className="h-16 rounded-md bg-gray-50/50" />
                 
                 const isSelected = day.getTime() === selectedDay.getTime()
-                const dayStr = day.toISOString().split('T')[0]
-                const dayEvents = calendarEvents.filter(e => e.start_time?.startsWith(dayStr))
+                const dayStr = localDayKey(day)
+                const dayEvents = calendarEvents.filter(e => e.start_time && localDayKey(e.start_time) === dayStr)
                 
                 return (
                   <div 
