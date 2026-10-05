@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare, Mic } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 import { SupportChat } from '@/components/support/SupportChat'
+import { CompleteProfilePrompt } from '@/components/onboarding/CompleteProfilePrompt'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -156,6 +157,7 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+      <CompleteProfilePrompt />
       <PhotoCapture
         isOpen={isCaptureOpen}
         onClose={() => setIsCaptureOpen(false)}

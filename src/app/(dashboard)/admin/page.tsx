@@ -1163,7 +1163,13 @@ export default function AdminPage() {
                       ) : (
                         users.map((user) => (
                           <TableRow key={user.id}>
-                            <TableCell className="font-medium">{user.full_name || 'N/A'}</TableCell>
+                            <TableCell className="font-medium">
+                          <div className="flex flex-col">
+                            <span>{user.full_name || 'N/A'}</span>
+                            {(user as any).phone && <span className="text-xs text-gray-500 font-normal">📞 {(user as any).phone}</span>}
+                            {(user as any).invited_by && <span className="text-xs text-[#8B6A27] font-normal">Invited by: {(user as any).invited_by}</span>}
+                          </div>
+                        </TableCell>
                             <TableCell>{user.email}</TableCell>
                             <TableCell>
                               <select

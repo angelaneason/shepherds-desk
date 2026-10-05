@@ -19,6 +19,10 @@ export default function LoginPage() {
 function LoginContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [churchName, setChurchName] = useState('')
+  const [invitedBy, setInvitedBy] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,9 +72,20 @@ function LoginContent() {
       const supabase = createClient()
 
       if (isSignUp) {
+        if (!fullName.trim()) throw new Error('Please enter your name.')
+        if (phone.replace(/\D/g, '').length < 10) throw new Error('Please enter your mobile number (10 digits).')
         const { data: signUpData, error: authError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            // Read by the database on account creation (profile name, church name, invite matching by phone)
+            data: {
+              full_name: fullName.trim(),
+              phone: phone.trim(),
+              church_name: churchName.trim() || undefined,
+              invited_by: invitedBy.trim() || undefined,
+            },
+          },
         })
         if (authError) throw authError
 
@@ -134,6 +149,58 @@ function LoginContent() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 text-left">
+        {isSignUp && !isForgotPassword && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="fullName" className="text-gray-700">Your Name *</Label>
+              <Input
+                id="fullName"
+                placeholder="Pastor John Smith"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                autoComplete="name"
+                className="focus-visible:ring-[#022d5c]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-gray-700">Mobile Phone *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="(214) 555-1234"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                autoComplete="tel"
+                className="focus-visible:ring-[#022d5c]"
+              />
+              <p className="text-[11px] text-gray-500">Use the number you were invited at so we can connect any gift or VIP membership.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="churchName" className="text-gray-700">Church Name</Label>
+              <Input
+                id="churchName"
+                placeholder="Grace Fellowship"
+                value={churchName}
+                onChange={(e) => setChurchName(e.target.value)}
+                className="focus-visible:ring-[#022d5c]"
+              />
+            </div>
+            {!refCode && (
+              <div className="space-y-2">
+                <Label htmlFor="invitedBy" className="text-gray-700">Who invited you? <span className="text-gray-400 font-normal">(optional)</span></Label>
+                <Input
+                  id="invitedBy"
+                  placeholder="e.g. Pastor Tiny, Sister Angie"
+                  value={invitedBy}
+                  onChange={(e) => setInvitedBy(e.target.value)}
+                  className="focus-visible:ring-[#022d5c]"
+                />
+              </div>
+            )}
+          </>
+        )}
         <div className="space-y-2">
           <Label htmlFor="email" className="text-gray-700">Email Address</Label>
           <Input 

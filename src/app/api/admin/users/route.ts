@@ -119,6 +119,8 @@ export async function GET(request: Request) {
         created_at: u.created_at,
         email_confirmed_at: u.email_confirmed_at,
         full_name: p?.full_name || '',
+        phone: (u.user_metadata?.phone as string) || u.phone || '',
+        invited_by: (u.user_metadata?.invited_by as string) || '',
         role: p?.role || 'pastor',
         church_name: p?.churches && !Array.isArray(p.churches) ? p.churches.name : '',
         sermon_count: sermonCounts[u.id] || 0,
