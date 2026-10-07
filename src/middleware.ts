@@ -19,7 +19,8 @@ export async function middleware(request: NextRequest) {
     pathname === '/privacy' ||
     pathname === '/terms' ||
     pathname === '/gift' ||
-    pathname.startsWith('/gift/')
+    pathname.startsWith('/gift/') ||
+    pathname.startsWith('/open/')
 
   if (isPublicStatic) {
     return NextResponse.next({ request })

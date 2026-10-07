@@ -18,6 +18,7 @@ import {
   Download, Smartphone, MessageSquare, Upload, Sparkles, Pencil
 } from 'lucide-react'
 import { downloadVCard, parseVCardText, parseCSVContacts } from '@/lib/vcard'
+import { QRCodeSVG } from 'qrcode.react'
 import { format, isPast, parseISO, addHours } from 'date-fns'
 import AiTextComposerModal from '@/components/care/AiTextComposerModal'
 import { VoiceDictation } from '@/components/voice/VoiceDictation'
@@ -871,6 +872,20 @@ function CarePageInner() {
                     <p className="text-sm text-gray-600">
                       Easily bring your contacts into your directory—completely free, private, and with no Google API setup required.
                     </p>
+
+                    {/* Recommended: continue in the mobile app (Phase 2 contact import) */}
+                    <div className="p-4 bg-[#F8F5EE] border border-[#D0A348]/60 rounded-xl flex flex-col sm:flex-row items-center gap-4">
+                      <div className="bg-white p-2 rounded-lg border border-gray-200 shrink-0">
+                        <QRCodeSVG value="https://theshepherdsdesk.app/open/import-contacts" size={112} fgColor="#022d5c" />
+                      </div>
+                      <div className="space-y-1 text-center sm:text-left">
+                        <span className="text-xs font-bold uppercase tracking-wider bg-[#022d5c] text-white px-2 py-0.5 rounded">Easiest</span>
+                        <p className="text-sm font-bold text-gray-900">Continue on your phone</p>
+                        <p className="text-xs text-gray-700">
+                          Scan with your phone camera. The Shepherd&apos;s Desk app opens and you can pick people from your contacts. Only the ones you choose are saved.
+                        </p>
+                      </div>
+                    </div>
 
                     {/* Method 2: Mobile Browser 1-Tap Picker (Only on Android Chrome) */}
                     {hasNativeContactPicker ? (
