@@ -24,7 +24,7 @@ import AiTextComposerModal from '@/components/care/AiTextComposerModal'
 import { VoiceDictation } from '@/components/voice/VoiceDictation'
 import {
   type Person, type MemberFilter, type DeleteHistoryMode,
-  visiblePeople, sortByName, canText, setArchived, setMemberStar, taskPersonName,
+  visiblePeople, sortByName, canText, setArchived, setMemberStar, taskPersonName, skipExistingPeople,
 } from '@/lib/people'
 import {
   MemberStar, ArchivedTag, DoNotTextTag, UndoToast, type ToastState,
@@ -279,12 +279,18 @@ function CarePageInner() {
         source: 'csv_import' as const
       }))
 
-      const { data, error } = await supabase.from('members').insert(rows).select()
+      const { fresh, skipped } = await skipExistingPeople(supabase, rows)
+      if (fresh.length === 0) {
+        alert(`Everyone in this file is already in People (${skipped} skipped). Nothing new to add.`)
+        return
+      }
+
+      const { data, error } = await supabase.from('members').insert(fresh).select()
       if (error) throw error
 
       if (data) {
         setMembers(prev => [...prev, ...(data as any)].sort((a, b) => a.full_name.localeCompare(b.full_name)))
-        alert(`Successfully imported ${data.length} contacts into your church directory!`)
+        alert(`Added ${data.length} new ${data.length === 1 ? 'person' : 'people'}.` + (skipped ? ` Skipped ${skipped} already in People.` : ''))
       }
     } catch (err: any) {
       console.error(err)
@@ -310,11 +316,16 @@ function CarePageInner() {
             address: Array.isArray(c.address) ? c.address[0] : (c.address || null),
             source: 'phone_import' as const
           }))
-          const { data, error } = await supabase.from('members').insert(rows).select()
+          const { fresh, skipped } = await skipExistingPeople(supabase, rows as { phone: string | null; email: string | null }[])
+          if (fresh.length === 0) {
+            alert('Everyone you picked is already in People.')
+            return
+          }
+          const { data, error } = await supabase.from('members').insert(fresh).select()
           if (error) throw error
           if (data) {
             setMembers(prev => [...prev, ...(data as any)].sort((a, b) => a.full_name.localeCompare(b.full_name)))
-            alert(`Successfully imported ${data.length} contacts directly from your phone!`)
+            alert(`Added ${data.length} new ${data.length === 1 ? 'person' : 'people'}.` + (skipped ? ` Skipped ${skipped} already in People.` : ''))
           }
         }
       } catch (err) {

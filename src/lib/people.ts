@@ -135,3 +135,46 @@ export async function setMemberStar(supabase: SupabaseClient, personId: string, 
 /** Display name for a care task whose person may have been deleted. */
 export const taskPersonName = (task: { members?: { full_name: string } | null; member_name_snapshot?: string | null }) =>
   task.members?.full_name || (task.member_name_snapshot ? `${task.member_name_snapshot} (deleted)` : null)
+
+/** Mirrors public.to_e164() from migration 009 (US default country code). */
+export const toE164 = (p: string | null | undefined, defaultCc = '1'): string | null => {
+  if (!p || !p.trim()) return null
+  const digits = p.replace(/\D/g, '')
+  if (p.trim().startsWith('+') && digits.length >= 8 && digits.length <= 15) return '+' + digits
+  if (digits.length === 10) return '+' + defaultCc + digits
+  if (digits.length === 11 && digits.startsWith(defaultCc)) return '+' + digits
+  return null
+}
+
+const normEmail = (e: string | null | undefined) => (e || '').trim().toLowerCase() || null
+
+/**
+ * Splits import rows into new people and ones already in People (matched by
+ * phone_e164 or email, archived people included), and also drops repeats
+ * inside the same file. Used by the web file upload and browser picker.
+ */
+export async function skipExistingPeople<T extends { phone?: string | null; email?: string | null }>(
+  supabase: SupabaseClient,
+  rows: T[],
+) {
+  const { data, error } = await supabase.from('members').select('phone_e164, email')
+  if (error) throw error
+  const phones = new Set<string>()
+  const emails = new Set<string>()
+  for (const m of (data || []) as { phone_e164: string | null; email: string | null }[]) {
+    if (m.phone_e164) phones.add(m.phone_e164)
+    const e = normEmail(m.email)
+    if (e) emails.add(e)
+  }
+  const fresh: T[] = []
+  let skipped = 0
+  for (const r of rows) {
+    const p = toE164(r.phone)
+    const e = normEmail(r.email)
+    if ((p && phones.has(p)) || (e && emails.has(e))) { skipped++; continue }
+    if (p) phones.add(p)
+    if (e) emails.add(e)
+    fresh.push(r)
+  }
+  return { fresh, skipped }
+}
