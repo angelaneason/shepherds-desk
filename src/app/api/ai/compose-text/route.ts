@@ -11,6 +11,17 @@ const CATEGORY_PROMPTS: Record<string, string> = {
   general: 'Send a caring pastoral check-in text asking how they are doing and letting them know they are in our prayers.'
 };
 
+// Member-facing messages must never contain em/en dashes (see AGENTS.md).
+// Number ranges ("8–10") become a plain hyphen; any other dash becomes a comma.
+function removeDashes(text: string): string {
+  return text
+    .replace(/(\d)\s*[–—]\s*(\d)/g, '$1-$2')
+    .replace(/\s*[–—]+\s*/g, ', ')
+    .replace(/,\s*([,.!?])/g, '$1')
+    .replace(/^,\s*/, '')
+    .trim();
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -39,7 +50,8 @@ CRITICAL RULES:
 2. Conciseness: Keep it short! An SMS text message should ideally be 1 to 3 sentences (roughly 120-280 characters, maximum 320 characters).
 3. No Placeholders: NEVER output bracketed placeholders like [Name], [Church], or [Your Name]. If recipient name is given ("${recipientName || ''}"), use their first name naturally. If pastor name is given ("${pastorName || ''}"), sign off with it (or "Pastor" / "Pastor Tiny" / "Pastor & Angie").
 4. Emojis: Use 1-2 warm emojis naturally if appropriate (e.g. 🙏, 💛, ✝️), but keep it dignified.
-5. Return ONLY the final text message itself. Do not include quotes, greetings like "Here is your text:", or any explanations.`;
+5. Natural Punctuation: NEVER use em dashes (—) or en dashes (–). Real people don't type them in texts. Use a comma, a period, or "and" instead.
+6. Return ONLY the final text message itself. Do not include quotes, greetings like "Here is your text:", or any explanations.`;
 
     const userPrompt = `Compose an SMS text message.
 Recipient: ${recipientName || 'Church Member'}
@@ -62,6 +74,7 @@ Write the SMS message now:`;
     if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
       text = text.slice(1, -1).trim();
     }
+    text = removeDashes(text);
 
     return NextResponse.json({ text });
   } catch (error: any) {
