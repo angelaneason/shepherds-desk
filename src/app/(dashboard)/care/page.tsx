@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -64,7 +65,31 @@ type PrayerRequest = {
   created_at: string
 }
 
+// Tabs can be opened directly via /care?tab=people|prayers|follow-ups (sidebar "People" link).
+const TAB_FROM_URL: Record<string, string> = { people: 'members', prayers: 'prayers', 'follow-ups': 'follow-ups' }
+const URL_FROM_TAB: Record<string, string> = { members: 'people', prayers: 'prayers', 'follow-ups': 'follow-ups' }
+
 export default function CarePage() {
+  return (
+    <Suspense fallback={null}>
+      <CarePageInner />
+    </Suspense>
+  )
+}
+
+function CarePageInner() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState(TAB_FROM_URL[searchParams.get('tab') || ''] || 'follow-ups')
+  useEffect(() => {
+    const fromUrl = TAB_FROM_URL[searchParams.get('tab') || '']
+    if (fromUrl) setActiveTab(fromUrl)
+  }, [searchParams])
+  const changeTab = (value: string) => {
+    setActiveTab(value)
+    router.replace(`/care?tab=${URL_FROM_TAB[value] || value}`, { scroll: false })
+  }
+
   const supabase = createClient()
   
   const [members, setMembers] = useState<Member[]>([])
@@ -484,7 +509,7 @@ export default function CarePage() {
         <h1 className="text-2xl font-bold text-[#022d5c]">Ministry Care</h1>
       </div>
 
-      <Tabs defaultValue="follow-ups" className="w-full">
+      <Tabs value={activeTab} onValueChange={changeTab} className="w-full">
         <TabsList className="mb-4 bg-gray-100/80 p-1 flex-wrap h-auto">
           <TabsTrigger value="follow-ups" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">Follow-Ups</TabsTrigger>
           <TabsTrigger value="members" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">People</TabsTrigger>
