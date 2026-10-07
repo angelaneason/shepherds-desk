@@ -14,28 +14,28 @@ import {
   Search, Plus, CheckCircle, Trash2, Hospital, Phone, 
   Home, Car, Church, HelpCircle, Mail, Clock, 
   ChevronDown, ChevronUp, AlertCircle, Calendar as CalendarIcon,
-  Download, Smartphone, MessageSquare, Upload, Sparkles
+  Download, Smartphone, MessageSquare, Upload, Sparkles, Pencil
 } from 'lucide-react'
 import { downloadVCard, parseVCardText, parseCSVContacts } from '@/lib/vcard'
 import { format, isPast, parseISO, addHours } from 'date-fns'
 import AiTextComposerModal from '@/components/care/AiTextComposerModal'
 import { VoiceDictation } from '@/components/voice/VoiceDictation'
+import {
+  type Person, type MemberFilter, type DeleteHistoryMode,
+  visiblePeople, sortByName, canText, setArchived, setMemberStar, taskPersonName,
+} from '@/lib/people'
+import {
+  MemberStar, ArchivedTag, DoNotTextTag, UndoToast, type ToastState,
+  PersonFormDialog, DeletePersonDialog,
+} from '@/components/people/PersonDialogs'
 
-type Member = {
-  id: string
-  profile_id: string
-  full_name: string
-  phone: string | null
-  email: string | null
-  address: string | null
-  notes: string | null
-  status: 'active' | 'inactive' | 'visitor'
-  created_at: string
-}
+// A person in the pastor's directory (⭐ = church member; no star = contact).
+type Member = Person
 
 type CareTask = {
   id: string
-  member_id: string
+  member_id: string | null
+  member_name_snapshot?: string | null
   profile_id: string
   task_type: 'visit' | 'hospital' | 'call' | 'ride' | 'deacon_request' | 'other'
   description: string | null
@@ -47,7 +47,7 @@ type CareTask = {
   calendar_event_id: string | null
   prayer_request_id: string | null
   created_at: string
-  members?: Member
+  members?: Member | null
 }
 
 type PrayerRequest = {
@@ -77,9 +77,17 @@ export default function CarePage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   
-  // Members filter
+  // People filter
   const [memberSearch, setMemberSearch] = useState('')
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null)
+  const [memberFilter, setMemberFilter] = useState<MemberFilter>('everyone')
+  const [showArchived, setShowArchived] = useState(false)
+  const [editingPerson, setEditingPerson] = useState<Member | null>(null)
+  const [deletingPerson, setDeletingPerson] = useState<Member | null>(null)
+  const [toast, setToast] = useState<ToastState>(null)
+  // "Show archived" for the person pickers in the Follow-Up and Prayer forms
+  const [taskPickerShowArchived, setTaskPickerShowArchived] = useState(false)
+  const [prayerPickerShowArchived, setPrayerPickerShowArchived] = useState(false)
 
   // Prayer filters
   const [prayerFilter, setPrayerFilter] = useState<'active' | 'answered' | 'all'>('active')
@@ -107,7 +115,6 @@ export default function CarePage() {
   })
   
   // Forms state
-  const [newMember, setNewMember] = useState<Partial<Member>>({ status: 'active' })
   const [newTask, setNewTask] = useState<Partial<CareTask>>({ 
     status: 'pending', 
     priority: 'normal',
@@ -153,19 +160,63 @@ export default function CarePage() {
     setLoading(false)
   }
 
-  const handleAddMember = async () => {
-    if (!newMember.full_name || !userProfileId) return
-    
-    const { data, error } = await supabase
-      .from('members')
-      .insert([{ ...newMember, profile_id: userProfileId }])
-      .select()
-      
-    if (data && !error) {
-      setMembers([...members, data[0] as any].sort((a, b) => a.full_name.localeCompare(b.full_name)))
-      setIsAddMemberOpen(false)
-      setNewMember({ status: 'active' })
+  // ─── People actions ──────────────────────────────────────────────────────
+  const replacePerson = (p: Member) =>
+    setMembers(prev => sortByName(prev.some(m => m.id === p.id) ? prev.map(m => (m.id === p.id ? p : m)) : [...prev, p]))
+
+  const handlePersonSaved = (p: Member, isNew: boolean) => {
+    replacePerson(p)
+    // keep embedded task person data fresh
+    setTasks(prev => prev.map(t => (t.member_id === p.id ? { ...t, members: p } : t)))
+    setToast({ message: isNew ? `${p.full_name} added` : `${p.full_name} updated` })
+  }
+
+  const handleToggleStar = async (p: Member) => {
+    const next = !p.is_member
+    replacePerson({ ...p, is_member: next }) // optimistic
+    try {
+      const saved = await setMemberStar(supabase, p.id, next)
+      replacePerson(saved)
+      if (!next) {
+        setToast({
+          message: `${p.full_name} is no longer marked as a member`,
+          onUndo: () => { handleToggleStar({ ...saved }) },
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      replacePerson(p)
+      setToast({ message: 'Could not update. Please try again.' })
     }
+  }
+
+  const handleArchiveToggle = async (p: Member) => {
+    const archive = !p.archived_at
+    try {
+      const saved = await setArchived(supabase, p.id, archive)
+      replacePerson(saved)
+      setToast({
+        message: archive ? `${p.full_name} archived` : `${p.full_name} restored`,
+        onUndo: () => { handleArchiveToggle(saved) },
+      })
+    } catch (err) {
+      console.error(err)
+      setToast({ message: 'Could not update. Please try again.' })
+    }
+  }
+
+  const handlePersonDeleted = async (personId: string, mode: DeleteHistoryMode) => {
+    const name = members.find(m => m.id === personId)?.full_name || 'Person'
+    setMembers(prev => prev.filter(m => m.id !== personId))
+    if (expandedMemberId === personId) setExpandedMemberId(null)
+    // Reload linked history so tasks/prayers reflect the snapshot or removal
+    const [tasksRes, prayersRes] = await Promise.all([
+      supabase.from('care_tasks').select('*, members(*)').order('due_date', { ascending: true }),
+      supabase.from('prayer_requests').select('*').order('created_at', { ascending: false }),
+    ])
+    if (tasksRes.data) setTasks(tasksRes.data as any)
+    if (prayersRes.data) setPrayers(prayersRes.data as any)
+    setToast({ message: mode === 'delete_all' ? `${name} and their linked history were deleted` : `${name} deleted; history kept` })
   }
 
   const contactFileInputRef = useRef<HTMLInputElement>(null)
@@ -199,7 +250,7 @@ export default function CarePage() {
         email: c.email || null,
         address: c.address || null,
         notes: c.notes || null,
-        status: 'active' as const
+        source: 'csv_import' as const
       }))
 
       const { data, error } = await supabase.from('members').insert(rows).select()
@@ -231,7 +282,7 @@ export default function CarePage() {
             phone: Array.isArray(c.tel) ? c.tel[0] : (c.tel || null),
             email: Array.isArray(c.email) ? c.email[0] : (c.email || null),
             address: Array.isArray(c.address) ? c.address[0] : (c.address || null),
-            status: 'active' as const
+            source: 'phone_import' as const
           }))
           const { data, error } = await supabase.from('members').insert(rows).select()
           if (error) throw error
@@ -399,9 +450,19 @@ export default function CarePage() {
     return true
   })
 
-  const filteredMembers = members.filter(m => 
-    m.full_name.toLowerCase().includes(memberSearch.toLowerCase())
-  )
+  const matchesSearch = (m: Member) => m.full_name.toLowerCase().includes(memberSearch.toLowerCase())
+  const filteredMembers = visiblePeople(members, { showArchived, filter: memberFilter }).filter(matchesSearch)
+  // Archived people matching the search while they are hidden (for the "show" hint)
+  const hiddenArchivedMatches = !showArchived && memberSearch.trim()
+    ? visiblePeople(members, { showArchived: true, filter: memberFilter }).filter(m => m.archived_at && matchesSearch(m)).length
+    : 0
+  const memberCount = members.filter(m => m.is_member && !m.archived_at).length
+  const peopleCount = members.filter(m => !m.archived_at).length
+  const archivedCount = members.filter(m => m.archived_at).length
+
+  // Pickers for new work exclude archived people unless "Show archived" is ticked
+  const taskPickerPeople = visiblePeople(members, { showArchived: taskPickerShowArchived })
+  const prayerPickerPeople = visiblePeople(members, { showArchived: prayerPickerShowArchived })
 
   const filteredPrayers = prayers.filter(p => {
     if (prayerFilter === 'all') return true;
@@ -426,7 +487,7 @@ export default function CarePage() {
       <Tabs defaultValue="follow-ups" className="w-full">
         <TabsList className="mb-4 bg-gray-100/80 p-1 flex-wrap h-auto">
           <TabsTrigger value="follow-ups" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">Follow-Ups</TabsTrigger>
-          <TabsTrigger value="members" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">Members</TabsTrigger>
+          <TabsTrigger value="members" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">People</TabsTrigger>
           <TabsTrigger value="prayers" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c]">Prayer List</TabsTrigger>
         </TabsList>
         
@@ -503,16 +564,30 @@ export default function CarePage() {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="member">Member</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="member">Person</Label>
+                      {archivedCount > 0 && (
+                        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={taskPickerShowArchived}
+                            onChange={(e) => setTaskPickerShowArchived(e.target.checked)}
+                          />
+                          Show archived
+                        </label>
+                      )}
+                    </div>
                     <select
                       id="member"
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={newTask.member_id || ''}
                       onChange={(e) => setNewTask({...newTask, member_id: e.target.value})}
                     >
-                      <option value="" disabled>Select a member...</option>
-                      {members.map(m => (
-                        <option key={m.id} value={m.id}>{m.full_name}</option>
+                      <option value="" disabled>Select a person...</option>
+                      {taskPickerPeople.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.is_member ? '⭐ ' : ''}{m.full_name}{m.archived_at ? ' (archived)' : ''}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -616,9 +691,11 @@ export default function CarePage() {
                       <div className="space-y-3 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h3 className="font-semibold text-lg flex items-center gap-2">
-                              {task.members?.full_name || (task.notes?.startsWith('Person:') ? task.notes.replace('Person: ', '') : task.description)}
+                            <h3 className="font-semibold text-lg flex items-center gap-2 flex-wrap">
+                              {task.members?.is_member && <MemberStar isMember />}
+                              {taskPersonName(task) || (task.notes?.startsWith('Person:') ? task.notes.replace('Person: ', '') : task.description)}
                               <div className={`w-2.5 h-2.5 rounded-full ${getPriorityColor(task.priority)}`} title={`Priority: ${task.priority}`} />
+                              {task.members?.archived_at && <ArchivedTag />}
                             </h3>
                             <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
                               <Badge variant="outline" className="capitalize flex items-center bg-white">
@@ -653,17 +730,22 @@ export default function CarePage() {
                       <div className="flex sm:flex-col gap-2 shrink-0">
                         {task.status !== 'completed' && (() => {
                           const personName = task.members?.full_name || 
+                            task.member_name_snapshot ||
                             (task.notes?.startsWith('Person:') ? task.notes.replace('Person: ', '').trim() : '') || 
                             task.description?.replace(/^(Call|Visit)\s+/i, '').trim() || 
                             'Church Member'
 
-                          const matchedMember = task.members || members.find(m => 
+                          // A deleted person's snapshot must never be matched to someone else.
+                          const matchedMember = task.members || (task.member_name_snapshot ? undefined : members.find(m => 
                             personName && m.full_name && (
                               m.full_name.toLowerCase() === personName.toLowerCase() ||
                               m.full_name.toLowerCase().includes(personName.toLowerCase()) ||
                               personName.toLowerCase().includes(m.full_name.toLowerCase())
                             )
-                          )
+                          ))
+
+                          if (!task.members && task.member_name_snapshot) return null
+                          if (matchedMember?.do_not_text) return <DoNotTextTag />
 
                           return (
                             <Button 
@@ -719,7 +801,7 @@ export default function CarePage() {
             <div className="relative flex-1 w-full max-w-md">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
               <Input
-                placeholder="Search members..."
+                placeholder="Search people..."
                 className="pl-9 bg-white"
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
@@ -865,91 +947,60 @@ export default function CarePage() {
                 Export to Phone (.vcf)
               </Button>
 
-              <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
-                <DialogTrigger {...({ asChild: true } as any)}>
-                  <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs sm:text-sm">
-                    <Plus className="w-4 h-4 mr-1.5" />
-                    Add Member
-                  </Button>
-                </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Add New Member</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={newMember.full_name || ''}
-                      onChange={(e) => setNewMember({...newMember, full_name: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="phone">Phone</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={newMember.phone || ''}
-                        onChange={(e) => setNewMember({...newMember, phone: e.target.value})}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="status">Status</Label>
-                      <select
-                        id="status"
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        value={newMember.status}
-                        onChange={(e) => setNewMember({...newMember, status: e.target.value as Member['status']})}
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="visitor">Visitor</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={newMember.email || ''}
-                      onChange={(e) => setNewMember({...newMember, email: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={newMember.address || ''}
-                      onChange={(e) => setNewMember({...newMember, address: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="member_notes">Notes</Label>
-                    <Textarea
-                      id="member_notes"
-                      value={newMember.notes || ''}
-                      onChange={(e) => setNewMember({...newMember, notes: e.target.value})}
-                      rows={3}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddMemberOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddMember} disabled={!newMember.full_name} className="bg-[#022d5c] text-white">Save Member</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              <Button
+                className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs sm:text-sm"
+                onClick={() => setIsAddMemberOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add Person
+              </Button>
             </div>
           </div>
+
+          {/* Everyone / ⭐ Members filter + Show archived */}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Button
+              size="sm"
+              variant={memberFilter === 'everyone' ? 'default' : 'outline'}
+              className={memberFilter === 'everyone' ? 'bg-[#022d5c] text-white' : ''}
+              onClick={() => setMemberFilter('everyone')}
+            >
+              Everyone ({peopleCount})
+            </Button>
+            <Button
+              size="sm"
+              variant={memberFilter === 'members' ? 'default' : 'outline'}
+              className={memberFilter === 'members' ? 'bg-[#022d5c] text-white' : ''}
+              onClick={() => setMemberFilter('members')}
+            >
+              ⭐ Members ({memberCount})
+            </Button>
+            {archivedCount > 0 && (
+              <label className="flex items-center gap-1.5 ml-1 text-gray-600 cursor-pointer">
+                <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+                Show archived ({archivedCount})
+              </label>
+            )}
+          </div>
+
+          {hiddenArchivedMatches > 0 && (
+            <button
+              type="button"
+              className="text-sm text-[#022d5c] underline underline-offset-2"
+              onClick={() => setShowArchived(true)}
+            >
+              {hiddenArchivedMatches} archived {hiddenArchivedMatches === 1 ? 'person matches' : 'people match'} — show
+            </button>
+          )}
 
           {!loading && filteredMembers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-dashed border-gray-300">
               <p className="text-gray-500 text-center">
-                No members found. Add some to get started!
+                {members.length === 0
+                  ? 'No people yet. Add someone to get started!'
+                  : memberFilter === 'members'
+                    ? 'No ⭐ members match. Tap the star on a person to mark them as a church member.'
+                    : 'No people match your search.'}
               </p>
             </div>
           ) : (
@@ -972,15 +1023,22 @@ export default function CarePage() {
                       onClick={() => setExpandedMemberId(isExpanded ? null : member.id)}
                     >
                       <div className="flex justify-between items-start mb-3">
-                        <h3 className="text-lg font-semibold text-gray-900">{member.full_name}</h3>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={
-                            member.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
-                            member.status === 'visitor' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                            'bg-gray-50 text-gray-700 border-gray-200'
-                          }>
-                            {member.status}
-                          </Badge>
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          <MemberStar isMember={member.is_member} onToggle={() => handleToggleStar(member)} />
+                          <h3 className="text-lg font-semibold text-gray-900">{member.full_name}</h3>
+                          {member.archived_at && <ArchivedTag />}
+                          {member.do_not_text && <DoNotTextTag />}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setEditingPerson(member) }}
+                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-[#022d5c]"
+                            title="Edit, archive or delete"
+                            aria-label={`Edit ${member.full_name}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
                           {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
                         </div>
                       </div>
@@ -993,6 +1051,7 @@ export default function CarePage() {
                               <a href={`tel:${member.phone}`} className="hover:text-[#022d5c] hover:underline font-medium" onClick={(e) => e.stopPropagation()}>{member.phone}</a>
                             </div>
                             <div className="flex items-center gap-2">
+                              {canText(member) && (<>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1020,6 +1079,7 @@ export default function CarePage() {
                                 <MessageSquare className="w-3.5 h-3.5 text-gray-500" />
                                 SMS
                               </a>
+                              </>)}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1144,6 +1204,40 @@ export default function CarePage() {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="prayer_member">Link to person (optional)</Label>
+                      <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5"
+                          checked={prayerPickerShowArchived}
+                          onChange={(e) => setPrayerPickerShowArchived(e.target.checked)}
+                        />
+                        Show archived
+                      </label>
+                    </div>
+                    <select
+                      id="prayer_member"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={newPrayer.member_id || ''}
+                      onChange={(e) => {
+                        const picked = members.find(m => m.id === e.target.value)
+                        setNewPrayer({
+                          ...newPrayer,
+                          member_id: picked ? picked.id : null,
+                          person_name: picked ? picked.full_name : newPrayer.person_name,
+                        })
+                      }}
+                    >
+                      <option value="">— Not linked —</option>
+                      {prayerPickerPeople.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.is_member ? '⭐ ' : ''}{m.full_name}{m.archived_at ? ' (archived)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
                     <Label htmlFor="prayer_person">Person Name *</Label>
                     <Input
                       id="prayer_person"
@@ -1247,13 +1341,18 @@ export default function CarePage() {
                       <span>Added {format(parseISO(prayer.created_at), 'MMM d, yyyy')}</span>
                       
                       {prayer.status === 'active' && (() => {
-                        const matchingMember = members.find(m => 
-                          (prayer.member_id && m.id === prayer.member_id) || 
-                          (m.full_name && prayer.person_name && m.full_name.toLowerCase().trim() === prayer.person_name.toLowerCase().trim())
-                        )
+                        const matchingMember =
+                          (prayer.member_id ? members.find(m => m.id === prayer.member_id) : undefined) ??
+                          (!prayer.member_id
+                            ? members.find(m =>
+                                !m.archived_at && m.full_name && prayer.person_name &&
+                                m.full_name.toLowerCase().trim() === prayer.person_name.toLowerCase().trim()
+                              )
+                            : undefined)
                         return (
                           <div className="flex gap-2 items-center">
-                            {matchingMember?.phone && (
+                            {matchingMember?.do_not_text && <DoNotTextTag />}
+                            {matchingMember && canText(matchingMember) && matchingMember.phone && (
                               <Button 
                                 variant="outline" 
                                 size="sm" 
@@ -1339,6 +1438,30 @@ export default function CarePage() {
         pastorName={pastorProfile.full_name || ''}
         churchName={pastorProfile.church_name || ''}
       />
+
+      {/* People: add / edit / delete */}
+      <PersonFormDialog
+        open={isAddMemberOpen}
+        onOpenChange={setIsAddMemberOpen}
+        profileId={userProfileId}
+        onSaved={handlePersonSaved}
+      />
+      <PersonFormDialog
+        open={!!editingPerson}
+        onOpenChange={(open) => { if (!open) setEditingPerson(null) }}
+        person={editingPerson}
+        profileId={userProfileId}
+        onSaved={handlePersonSaved}
+        onArchiveToggle={(p) => { setEditingPerson(null); handleArchiveToggle(p) }}
+        onDeleteRequest={(p) => { setEditingPerson(null); setDeletingPerson(p) }}
+      />
+      <DeletePersonDialog
+        person={deletingPerson}
+        onClose={() => setDeletingPerson(null)}
+        onArchiveInstead={(p) => { setDeletingPerson(null); handleArchiveToggle(p) }}
+        onDeleted={handlePersonDeleted}
+      />
+      <UndoToast toast={toast} onClose={() => setToast(null)} />
     </div>
   )
 }
