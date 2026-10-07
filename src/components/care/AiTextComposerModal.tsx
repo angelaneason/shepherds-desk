@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { singleSmsHref } from "@/lib/broadcasts";
 import {
   Sparkles,
   MessageSquare,
@@ -141,7 +142,7 @@ export default function AiTextComposerModal({
       alert("Please enter a phone number to send this text.");
       return;
     }
-    const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(message)}`;
+    const smsUrl = singleSmsHref(cleanPhone, message);
     window.location.href = smsUrl;
   };
 

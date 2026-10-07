@@ -104,11 +104,15 @@ export const firstNameOf = (fullName: string) => (fullName || '').trim().split(/
 export const personalize = (body: string, fullName: string) =>
   body.replace(/\{\s*first_name\s*\}/gi, firstNameOf(fullName) || 'friend')
 
+/** Strips em/en dashes from member-facing text (project writing rule). */
+export const stripDashes = (text: string) =>
+  text.replace(/\s*[\u2014\u2013]\s*/g, ', ').replace(/,\s*,/g, ',')
+
 /** sms: link for exactly ONE number. Never pass more than one number. */
 export const singleSmsHref = (phone: string, body: string) => {
   const clean = phone.replace(/[^0-9+]/g, '')
   const isApple = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
-  return `sms:${clean}${isApple ? '&' : '?'}body=${encodeURIComponent(body)}`
+  return `sms:${clean}${isApple ? '&' : '?'}body=${encodeURIComponent(stripDashes(body))}`
 }
 
 const RECIPIENT_SELECT =
@@ -116,7 +120,7 @@ const RECIPIENT_SELECT =
   'members(id, full_name, phone, phone_e164, do_not_text, archived_at)'
 
 export async function createBroadcast(supabase: SupabaseClient, body: string, memberIds: string[]) {
-  const { data, error } = await supabase.rpc('create_broadcast', { p_body: body, p_member_ids: memberIds })
+  const { data, error } = await supabase.rpc('create_broadcast', { p_body: stripDashes(body), p_member_ids: memberIds })
   if (error) throw error
   return data as string
 }
