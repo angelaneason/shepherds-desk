@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,11 +9,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { 
   Copy, Pencil, Trash, Megaphone, PartyPopper, Heart, HandHeart, Zap, 
   ChevronDown, ChevronUp, Plus, X, Sparkles, MessageSquare, Users, Send, 
-  Check, CheckSquare, Square, Phone, Clock, AlertCircle, ExternalLink, RefreshCw 
+  Check, CheckSquare, Square, Phone, Clock, AlertCircle, ExternalLink, RefreshCw,
+  Star, Archive, Search, History, Ban, ShieldCheck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import AiTextComposerModal from '@/components/care/AiTextComposerModal'
 import { VoiceDictation } from '@/components/voice/VoiceDictation'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import HandoffRunner from '@/components/broadcasts/HandoffRunner'
+import BroadcastHistory from '@/components/broadcasts/BroadcastHistory'
+import { errorText, createBroadcast, personalize, smsSegments as countSegments } from '@/lib/broadcasts'
+import { sortByName } from '@/lib/people'
 
 type AnnouncementCategory = 'general' | 'event' | 'prayer' | 'volunteer' | 'celebration' | 'urgent'
 
@@ -30,12 +36,15 @@ interface Announcement {
   updated_at: string
 }
 
-interface ChurchMember {
+// A person who can appear in the broadcast picker (People model, Phase 0).
+interface BroadcastPerson {
   id: string
   full_name: string
   phone: string | null
-  status: 'active' | 'inactive' | 'visitor'
-  notes?: string
+  phone_e164: string | null
+  is_member: boolean
+  archived_at: string | null
+  do_not_text: boolean
 }
 
 const CATEGORY_COLORS: Record<AnnouncementCategory, string> = {
@@ -103,7 +112,7 @@ export default function CommunicationPage() {
   const supabase = createClient()
   
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'announcements' | 'broadcast'>('announcements')
+  const [activeTab, setActiveTab] = useState<'announcements' | 'broadcast' | 'history'>('announcements')
   
   // Announcements State
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
@@ -146,14 +155,23 @@ export default function CommunicationPage() {
     is_active: true
   })
 
-  // Group Texting State
-  const [members, setMembers] = useState<ChurchMember[]>([])
+  // Text Broadcast State (one text per person, never a group text)
+  const [members, setMembers] = useState<BroadcastPerson[]>([])
+  const [noPhoneCount, setNoPhoneCount] = useState(0)
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
-  const [audienceFilter, setAudienceFilter] = useState<'all' | 'active' | 'visitor'>('active')
+  const [audienceFilter, setAudienceFilter] = useState<'members' | 'everyone'>('members')
+  const [showArchived, setShowArchived] = useState(false)
+  const [recipientSearch, setRecipientSearch] = useState('')
   const [broadcastMessage, setBroadcastMessage] = useState('')
   const [broadcastPreset, setBroadcastPreset] = useState('service_reminder')
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
-  const [copiedType, setCopiedType] = useState<'message' | 'numbers' | null>(null)
+  const [copiedType, setCopiedType] = useState<'message' | null>(null)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [creatingBroadcast, setCreatingBroadcast] = useState(false)
+  const [broadcastError, setBroadcastError] = useState<string | null>(null)
+  const [runnerBroadcastId, setRunnerBroadcastId] = useState<string | null>(null)
+  const [historyKey, setHistoryKey] = useState(0)
+  const [historyCount, setHistoryCount] = useState<number | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -179,8 +197,8 @@ export default function CommunicationPage() {
         .eq('id', user.id)
         .single(),
       supabase
-        .from('church_members')
-        .select('id, full_name, phone, status, notes')
+        .from('members')
+        .select('id, full_name, phone, phone_e164, is_member, archived_at, do_not_text')
         .eq('profile_id', user.id)
         .order('full_name')
     ])
@@ -194,40 +212,93 @@ export default function CommunicationPage() {
     }
 
     if (!membersRes.error && membersRes.data) {
-      const validMembers = (membersRes.data as any[] || []).filter(m => m.phone && m.phone.trim().length > 0)
-      setMembers(validMembers)
-      // Default to selecting all active members with phone numbers
-      const activeIds = validMembers.filter(m => m.status === 'active').map(m => m.id)
-      setSelectedMemberIds(activeIds.length > 0 ? activeIds : validMembers.map(m => m.id))
+      const all = sortByName((membersRes.data as BroadcastPerson[]) || [])
+      const withPhone = all.filter(m => m.phone && m.phone.trim().length > 0)
+      setNoPhoneCount(all.filter(m => !m.archived_at).length - withPhone.filter(m => !m.archived_at).length)
+      setMembers(withPhone)
+      // First load only: preselect every ⭐ member who can be texted
+      if (!peopleLoadedRef.current) {
+        peopleLoadedRef.current = true
+        setSelectedMemberIds(withPhone.filter(m => m.is_member && !m.archived_at && !m.do_not_text).map(m => m.id))
+      }
     }
 
     setLoading(false)
   }
 
-  // Filtered members by audience tab
-  const filteredMembers = useMemo(() => {
-    if (audienceFilter === 'all') return members
-    return members.filter(m => m.status === audienceFilter)
-  }, [members, audienceFilter])
+  const peopleLoadedRef = useRef(false)
 
+  // People shown in the picker: ⭐ Members or Everyone; archived only with Show archived
+  const filteredMembers = useMemo(() => {
+    const q = recipientSearch.trim().toLowerCase()
+    return members.filter(m =>
+      (showArchived || !m.archived_at) &&
+      (audienceFilter === 'everyone' || m.is_member) &&
+      (!q || m.full_name.toLowerCase().includes(q))
+    )
+  }, [members, audienceFilter, showArchived, recipientSearch])
+
+  // Selected people who can actually be texted (Do Not Text never counts;
+  // archived only while Show archived is on)
   const selectedMembers = useMemo(() => {
-    return members.filter(m => selectedMemberIds.includes(m.id))
-  }, [members, selectedMemberIds])
+    return members.filter(m =>
+      selectedMemberIds.includes(m.id) && !m.do_not_text && (showArchived || !m.archived_at)
+    )
+  }, [members, selectedMemberIds, showArchived])
 
   const toggleSelectMember = (id: string) => {
+    const person = members.find(m => m.id === id)
+    if (!person || person.do_not_text) return
     setSelectedMemberIds(prev => 
       prev.includes(id) ? prev.filter(mId => mId !== id) : [...prev, id]
     )
   }
 
   const selectAllFiltered = () => {
-    const idsToAdd = filteredMembers.map(m => m.id)
+    const idsToAdd = filteredMembers.filter(m => !m.do_not_text).map(m => m.id)
     setSelectedMemberIds(prev => Array.from(new Set([...prev, ...idsToAdd])))
   }
 
   const deselectAllFiltered = () => {
     const idsToRemove = new Set(filteredMembers.map(m => m.id))
     setSelectedMemberIds(prev => prev.filter(id => !idsToRemove.has(id)))
+  }
+
+  // Preview of who the server will skip (it re-checks everything when saving)
+  const reviewSkips = useMemo(() => {
+    const seen = new Set<string>()
+    const skips: { name: string; reason: string }[] = []
+    let sendCount = 0
+    for (const m of sortByName(selectedMembers)) {
+      if (!m.phone_e164) { skips.push({ name: m.full_name, reason: 'Phone number not valid' }); continue }
+      if (seen.has(m.phone_e164)) { skips.push({ name: m.full_name, reason: 'Same number as someone above' }); continue }
+      seen.add(m.phone_e164)
+      sendCount++
+    }
+    return { skips, sendCount }
+  }, [selectedMembers])
+
+  const openReview = () => {
+    if (selectedMembers.length === 0) { alert('Please select at least one person to text.'); return }
+    if (!broadcastMessage.trim()) { alert('Please enter a message to broadcast.'); return }
+    setBroadcastError(null)
+    setReviewOpen(true)
+  }
+
+  // Save the broadcast (server skips Do Not Text etc.), then step through it
+  const handleStartBroadcast = async () => {
+    setCreatingBroadcast(true)
+    setBroadcastError(null)
+    try {
+      const id = await createBroadcast(supabase, broadcastMessage.trim(), selectedMembers.map(m => m.id))
+      setReviewOpen(false)
+      setRunnerBroadcastId(id)
+      setHistoryKey(k => k + 1)
+    } catch (e: unknown) {
+      setBroadcastError(errorText(e, 'Could not save the broadcast. Nothing was sent.'))
+    } finally {
+      setCreatingBroadcast(false)
+    }
   }
 
   // AI Broadcast Message Generator
@@ -257,7 +328,7 @@ export default function CommunicationPage() {
       if (preset) {
         let msg = preset.prompt
         if (pastorProfile.church_name) msg = msg.replace('church', pastorProfile.church_name)
-        if (pastorProfile.full_name) msg += ` - ${pastorProfile.full_name}`
+        if (pastorProfile.full_name) msg += `\n${pastorProfile.full_name}`
         setBroadcastMessage(msg)
       }
     } finally {
@@ -265,52 +336,14 @@ export default function CommunicationPage() {
     }
   }
 
-  // Send Group SMS via native client
-  const handleSendGroupSms = () => {
-    const cleanNumbers = selectedMembers
-      .map(m => (m.phone || '').replace(/[^0-9+]/g, ''))
-      .filter(Boolean)
-
-    if (cleanNumbers.length === 0) {
-      alert('Please select at least one recipient with a valid phone number.')
-      return
-    }
-
-    if (!broadcastMessage.trim()) {
-      alert('Please enter a message to broadcast.')
-      return
-    }
-
-    const recipientsString = cleanNumbers.join(',')
-    const encodedBody = encodeURIComponent(broadcastMessage.trim())
-
-    const isApple = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
-    const separator = isApple ? '&' : '?'
-    const smsUrl = `sms:${recipientsString}${separator}body=${encodedBody}`
-
-    window.open(smsUrl, '_blank')
-  }
+  // NOTE: the old "Open Group Text" (one sms: link with every number) and
+  // "Copy Numbers" were removed in Phase 1. They exposed everyone's number to
+  // everyone. Broadcasts are now saved and sent one person at a time.
 
   const handleCopyBroadcastMessage = () => {
     if (!broadcastMessage.trim()) return
     navigator.clipboard.writeText(broadcastMessage.trim()).then(() => {
       setCopiedType('message')
-      setTimeout(() => setCopiedType(null), 2500)
-    })
-  }
-
-  const handleCopyPhoneNumbers = () => {
-    const cleanNumbers = selectedMembers
-      .map(m => (m.phone || '').trim())
-      .filter(Boolean)
-
-    if (cleanNumbers.length === 0) {
-      alert('No phone numbers selected.')
-      return
-    }
-
-    navigator.clipboard.writeText(cleanNumbers.join(', ')).then(() => {
-      setCopiedType('numbers')
       setTimeout(() => setCopiedType(null), 2500)
     })
   }
@@ -382,7 +415,7 @@ export default function CommunicationPage() {
   const inactiveAnnouncements = announcements.filter(a => !a.is_active)
 
   const charCount = broadcastMessage.length
-  const smsSegments = Math.ceil(charCount / 160) || 1
+  const smsSegments = countSegments(broadcastMessage) || 1
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -391,7 +424,7 @@ export default function CommunicationPage() {
         <div>
           <h1 className="text-3xl sm:text-4xl font-playfair font-bold text-[#022d5c]">Communication</h1>
           <p className="text-sm sm:text-base text-[#022d5c]/70 mt-1">
-            Create church announcements, compose group text broadcasts, and stay connected with your congregation.
+            Create church announcements, send text broadcasts one person at a time, and stay connected with your congregation.
           </p>
         </div>
 
@@ -407,7 +440,7 @@ export default function CommunicationPage() {
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-[#022d5c]/10 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#022d5c]/10 pb-3">
         <button
           onClick={() => setActiveTab('announcements')}
           className={cn(
@@ -437,15 +470,46 @@ export default function CommunicationPage() {
           )}
         >
           <MessageSquare className="w-4 h-4 text-[#D0A348]" />
-          <span>Group Text Broadcast</span>
+          <span>Text Broadcast</span>
           <span className={cn(
             "text-xs px-2 py-0.5 rounded-full ml-1 font-bold",
             activeTab === 'broadcast' ? "bg-[#D0A348] text-white" : "bg-[#022d5c]/10 text-[#022d5c]"
           )}>
-            {members.length} phones
+            {selectedMembers.length} selected
           </span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('history')}
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer",
+            activeTab === 'history' 
+              ? "bg-[#022d5c] text-white shadow-sm" 
+              : "bg-white text-[#022d5c]/70 hover:text-[#022d5c] hover:bg-white/80 border border-[#022d5c]/10"
+          )}
+        >
+          <History className="w-4 h-4" />
+          <span>Broadcast History</span>
+          {historyCount !== null && (
+            <span className={cn(
+              "text-xs px-2 py-0.5 rounded-full ml-1 font-bold",
+              activeTab === 'history' ? "bg-[#D0A348] text-white" : "bg-[#022d5c]/10 text-[#022d5c]"
+            )}>
+              {historyCount}
+            </span>
+          )}
+        </button>
       </div>
+
+      {/* TAB 3: BROADCAST HISTORY (reloads each time it is opened) */}
+      {activeTab === 'history' && (
+        <BroadcastHistory
+          refreshKey={historyKey}
+          onCountChange={setHistoryCount}
+          onResume={(id) => setRunnerBroadcastId(id)}
+          onReuse={(body) => { setBroadcastMessage(body); setActiveTab('broadcast') }}
+        />
+      )}
 
       {/* TAB 1: CHURCH ANNOUNCEMENTS */}
       {activeTab === 'announcements' && (
@@ -541,7 +605,7 @@ export default function CommunicationPage() {
         </div>
       )}
 
-      {/* TAB 2: GROUP TEXT BROADCAST */}
+      {/* TAB 2: TEXT BROADCAST (one text per person) */}
       {activeTab === 'broadcast' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: Recipient Selector */}
@@ -554,30 +618,30 @@ export default function CommunicationPage() {
                     <span>Recipients</span>
                   </CardTitle>
                   <span className="text-xs font-semibold px-2.5 py-1 bg-[#022d5c]/10 text-[#022d5c] rounded-full">
-                    {selectedMemberIds.length} of {members.length} selected
+                    {selectedMembers.length} selected
                   </span>
                 </div>
                 <CardDescription className="text-xs text-gray-500">
-                  Select church members to receive this text broadcast.
+                  Each person gets their own text. Nobody sees anyone else&apos;s number.
                 </CardDescription>
 
                 {/* Filter Tabs */}
-                <div className="flex gap-1.5 pt-3 border-t border-gray-100">
-                  {[
-                    { id: 'active', label: 'Active' },
-                    { id: 'all', label: 'All' },
-                    { id: 'visitor', label: 'Visitors' },
-                  ].map(f => (
+                <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-gray-100">
+                  {([
+                    { id: 'members', label: 'Members' },
+                    { id: 'everyone', label: 'Everyone' },
+                  ] as const).map(f => (
                     <button
                       key={f.id}
-                      onClick={() => setAudienceFilter(f.id as any)}
+                      onClick={() => setAudienceFilter(f.id)}
                       className={cn(
-                        "text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer",
+                        "text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1",
                         audienceFilter === f.id
                           ? "bg-[#022d5c] text-white"
                           : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                       )}
                     >
+                      {f.id === 'members' && <Star className={cn("w-3 h-3", audienceFilter === f.id ? "fill-[#D0A348] text-[#D0A348]" : "fill-amber-400 text-amber-400")} />}
                       {f.label}
                     </button>
                   ))}
@@ -598,53 +662,103 @@ export default function CommunicationPage() {
                     </button>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <Input
+                      value={recipientSearch}
+                      onChange={(e) => setRecipientSearch(e.target.value)}
+                      placeholder="Search people..."
+                      className="h-8 pl-8 text-xs"
+                    />
+                  </div>
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={showArchived}
+                      onChange={(e) => setShowArchived(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    Show archived
+                  </label>
+                </div>
               </CardHeader>
 
               <CardContent className="pt-0">
                 {members.length === 0 ? (
                   <div className="text-center py-10 text-gray-400 text-sm">
                     <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p className="font-medium text-gray-600">No members with phone numbers</p>
-                    <p className="text-xs mt-1 text-gray-400">Add member phone numbers in Ministry Care to text them.</p>
+                    <p className="font-medium text-gray-600">No people with phone numbers</p>
+                    <p className="text-xs mt-1 text-gray-400">Add phone numbers in People to text them.</p>
+                  </div>
+                ) : filteredMembers.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400 text-sm">
+                    <p className="font-medium text-gray-600">
+                      {audienceFilter === 'members' && !recipientSearch ? 'No ⭐ members with phone numbers yet' : 'No people match'}
+                    </p>
+                    {audienceFilter === 'members' && (
+                      <button onClick={() => setAudienceFilter('everyone')} className="text-xs mt-1 text-[#D0A348] font-semibold hover:underline cursor-pointer">
+                        Show everyone
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="max-h-[420px] overflow-y-auto space-y-1.5 pr-1 divide-y divide-gray-50">
                     {filteredMembers.map(member => {
-                      const isSelected = selectedMemberIds.includes(member.id)
+                      const blocked = member.do_not_text
+                      const isSelected = !blocked && selectedMemberIds.includes(member.id)
                       return (
                         <div
                           key={member.id}
                           onClick={() => toggleSelectMember(member.id)}
+                          title={blocked ? 'Marked Do not text. TSD will not text this person.' : undefined}
                           className={cn(
-                            "flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors pt-2",
-                            isSelected ? "bg-[#022d5c]/5" : "hover:bg-gray-50"
+                            "flex items-center justify-between p-2.5 rounded-lg transition-colors pt-2",
+                            blocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
+                            isSelected ? "bg-[#022d5c]/5" : !blocked && "hover:bg-gray-50"
                           )}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            {isSelected ? (
+                            {blocked ? (
+                              <Ban className="w-4 h-4 text-gray-300 shrink-0" />
+                            ) : isSelected ? (
                               <CheckSquare className="w-4 h-4 text-[#022d5c] shrink-0" />
                             ) : (
                               <Square className="w-4 h-4 text-gray-300 shrink-0" />
                             )}
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold text-[#022d5c] truncate">{member.full_name}</p>
+                              <p className="text-sm font-semibold text-[#022d5c] truncate flex items-center gap-1">
+                                {member.is_member && <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" aria-label="Member" />}
+                                {member.full_name}
+                              </p>
                               <p className="text-xs text-gray-500 flex items-center gap-1 font-mono">
                                 <Phone className="w-3 h-3 text-gray-400" />
                                 {member.phone}
                               </p>
                             </div>
                           </div>
-                          <span className={cn(
-                            "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shrink-0",
-                            member.status === 'active' ? 'bg-green-100 text-green-800' :
-                            member.status === 'visitor' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
-                          )}>
-                            {member.status}
-                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {member.archived_at && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                                <Archive className="w-3 h-3" /> Archived
+                              </span>
+                            )}
+                            {blocked && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-50 text-red-700">
+                                Do not text
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
                   </div>
+                )}
+                {noPhoneCount > 0 && (
+                  <p className="text-[11px] text-gray-400 mt-3">
+                    {noPhoneCount} {noPhoneCount === 1 ? 'person has' : 'people have'} no phone number and {noPhoneCount === 1 ? "isn't" : "aren't"} listed.
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -683,7 +797,7 @@ export default function CommunicationPage() {
                         setBroadcastPreset(preset.id)
                         let msg = preset.prompt
                         if (pastorProfile.church_name) msg = msg.replace('church', pastorProfile.church_name)
-                        if (pastorProfile.full_name) msg += ` - ${pastorProfile.full_name}`
+                        if (pastorProfile.full_name) msg += `\n${pastorProfile.full_name}`
                         setBroadcastMessage(msg)
                       }}
                       className={cn(
@@ -718,7 +832,7 @@ export default function CommunicationPage() {
                       "text-xs font-mono font-medium",
                       charCount > 160 ? "text-amber-600 font-bold" : "text-gray-400"
                     )}>
-                      {charCount} / 160 characters • {smsSegments} segment{smsSegments > 1 ? 's' : ''}
+                      {charCount} characters • {smsSegments} segment{smsSegments > 1 ? 's' : ''}
                     </span>
                   </div>
                   <textarea
@@ -728,25 +842,32 @@ export default function CommunicationPage() {
                     placeholder="Type your church text broadcast here..."
                     className="w-full p-3 text-sm rounded-xl border border-gray-200 focus:outline-hidden focus:ring-2 focus:ring-[#022d5c] resize-none font-sans leading-relaxed text-[#1F2937]"
                   />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Tip: type <button type="button" onClick={() => setBroadcastMessage(prev => prev.startsWith('Hi {first_name}') ? prev : `Hi {first_name}, ${prev}`)} className="font-mono text-[#8B6A27] hover:underline cursor-pointer">{'{first_name}'}</button> to greet each person by name.
+                  </p>
                 </div>
 
                 {/* Live Phone Preview Bubble */}
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <span className="text-[11px] uppercase tracking-wider font-bold text-gray-400 block mb-2">Preview on Phone</span>
-                  <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-xs text-sm max-w-sm shadow-xs leading-relaxed">
-                    {broadcastMessage ? broadcastMessage : <span className="opacity-50 italic">Your message will appear here...</span>}
+                  <span className="text-[11px] uppercase tracking-wider font-bold text-gray-400 block mb-2">
+                    Preview on Phone{selectedMembers[0] && /\{\s*first_name\s*\}/i.test(broadcastMessage) ? ` (as ${selectedMembers[0].full_name})` : ''}
+                  </span>
+                  <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-xs text-sm max-w-sm shadow-xs leading-relaxed whitespace-pre-wrap">
+                    {broadcastMessage
+                      ? personalize(broadcastMessage, selectedMembers[0]?.full_name || 'Friend')
+                      : <span className="opacity-50 italic">Your message will appear here...</span>}
                   </div>
                 </div>
 
                 {/* Primary Action Buttons */}
                 <div className="pt-2 flex flex-col sm:flex-row gap-3">
                   <Button
-                    onClick={handleSendGroupSms}
+                    onClick={openReview}
                     disabled={selectedMembers.length === 0 || !broadcastMessage.trim()}
                     className="flex-1 bg-[#022d5c] hover:bg-[#022d5c]/90 text-white h-11 rounded-xl flex items-center justify-center gap-2 font-semibold shadow-md shadow-[#022d5c]/10 cursor-pointer"
                   >
                     <Send className="w-4 h-4 text-[#D0A348]" />
-                    <span>Open Group Text ({selectedMembers.length} Recipients)</span>
+                    <span>Review and Send ({selectedMembers.length} {selectedMembers.length === 1 ? 'Person' : 'People'})</span>
                   </Button>
 
                   <Button
@@ -758,22 +879,79 @@ export default function CommunicationPage() {
                     {copiedType === 'message' ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                     <span>{copiedType === 'message' ? 'Message Copied!' : 'Copy Message'}</span>
                   </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={handleCopyPhoneNumbers}
-                    disabled={selectedMembers.length === 0}
-                    className="border-gray-200 hover:bg-gray-50 text-gray-700 h-11 rounded-xl flex items-center gap-2 text-xs font-semibold cursor-pointer"
-                  >
-                    {copiedType === 'numbers' ? <Check className="w-4 h-4 text-green-600" /> : <Phone className="w-4 h-4" />}
-                    <span>{copiedType === 'numbers' ? 'Numbers Copied!' : 'Copy Numbers'}</span>
-                  </Button>
                 </div>
+                <p className="text-[11px] text-gray-400 flex items-start gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-green-600 shrink-0 mt-px" />
+                  TSD never sends a group text. Each person gets their own private text, so nobody sees anyone else&apos;s number. People marked Do not text are always left out.
+                </p>
               </CardContent>
             </Card>
           </div>
         </div>
       )}
+
+      {/* Review before sending */}
+      <Dialog open={reviewOpen} onOpenChange={(o) => { if (!o && !creatingBroadcast) setReviewOpen(false) }}>
+        <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#022d5c]">Review your broadcast</DialogTitle>
+            <DialogDescription>
+              {reviewSkips.sendCount} individual {reviewSkips.sendCount === 1 ? 'text' : 'texts'} will be opened in your messaging app, one person at a time.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-xs text-sm whitespace-pre-wrap leading-relaxed">
+            {personalize(broadcastMessage.trim(), selectedMembers[0]?.full_name || 'Friend')}
+          </div>
+          <p className="text-xs text-gray-500">
+            {smsSegments} SMS segment{smsSegments > 1 ? 's' : ''} per person
+            {/\{\s*first_name\s*\}/i.test(broadcastMessage) ? ', personalized with each first name' : ''}.
+          </p>
+
+          <div className="rounded-lg border border-gray-100 p-3 text-sm space-y-1">
+            <p className="font-semibold text-[#022d5c]">{selectedMembers.length} {selectedMembers.length === 1 ? 'person' : 'people'} selected</p>
+            <p className="text-xs text-gray-600 line-clamp-3">{sortByName(selectedMembers).map(m => m.full_name).join(', ')}</p>
+            {selectedMembers.some(m => m.archived_at) && (
+              <p className="text-xs text-gray-500">Includes {selectedMembers.filter(m => m.archived_at).length} archived (they will be tagged Archived in history).</p>
+            )}
+          </div>
+
+          {reviewSkips.skips.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-1">
+              <p className="font-semibold">Will be skipped ({reviewSkips.skips.length})</p>
+              <ul className="space-y-0.5">
+                {reviewSkips.skips.map(s => <li key={s.name + s.reason}>{s.name}: {s.reason}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
+            <p className="font-semibold text-gray-700">How it works</p>
+            <p>1. TSD saves this broadcast in Broadcast History.</p>
+            <p>2. For each person, click Open text. Your messaging app opens with just their number and the message.</p>
+            <p>3. Tap Send there, come back, and click Next person. You can stop and resume any time.</p>
+          </div>
+
+          {broadcastError && <p className="text-sm text-red-600">{broadcastError}</p>}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={creatingBroadcast}>Back</Button>
+            <Button
+              className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90"
+              onClick={handleStartBroadcast}
+              disabled={creatingBroadcast || reviewSkips.sendCount === 0}
+            >
+              {creatingBroadcast ? 'Saving…' : 'Start sending individually'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* One-person-at-a-time handoff */}
+      <HandoffRunner
+        broadcastId={runnerBroadcastId}
+        onClose={() => { setRunnerBroadcastId(null); setHistoryKey(k => k + 1) }}
+      />
 
       {/* Announcement Create/Edit Modal */}
       {isModalOpen && (

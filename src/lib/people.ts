@@ -90,6 +90,8 @@ export type PersonLinkSummary = {
   care_tasks_open: number
   calendar_events: number
   prayer_requests: number
+  /** Saved broadcasts this person was included in (migration 010). */
+  broadcasts?: number
   has_notes: boolean
   is_archived: boolean
 }

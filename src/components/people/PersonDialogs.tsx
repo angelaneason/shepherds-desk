@@ -297,7 +297,7 @@ export function DeletePersonDialog({
 
   if (!person) return null
   const firstName = person.full_name.split(' ')[0] || person.full_name
-  const hasHistory = !!summary && (summary.care_tasks + summary.prayer_requests) > 0
+  const hasHistory = !!summary && (summary.care_tasks + summary.prayer_requests + (summary.broadcasts || 0)) > 0
 
   const runDelete = async () => {
     setBusy(true); setError(null)
@@ -335,6 +335,7 @@ export function DeletePersonDialog({
                   <li>{plural(summary.care_tasks, 'care task')}{summary.care_tasks_open > 0 ? ` (${summary.care_tasks_open} open)` : ''}</li>
                   <li>{plural(summary.prayer_requests, 'prayer request')}</li>
                   {summary.calendar_events > 0 && <li>{plural(summary.calendar_events, 'calendar event')} created from their care tasks</li>}
+                  {(summary.broadcasts || 0) > 0 && <li>Included in {plural(summary.broadcasts || 0, 'saved broadcast')}</li>}
                   <li>{summary.has_notes ? 'Profile notes (always removed with the person)' : 'No profile notes'}</li>
                 </ul>
               )}
@@ -347,7 +348,7 @@ export function DeletePersonDialog({
                   <span>
                     <span className="font-semibold text-gray-900">Keep linked history</span>
                     <span className="block text-gray-600 text-xs">
-                      Care tasks and prayer requests stay, showing only the name &ldquo;{person.full_name} (deleted)&rdquo;. No phone, email, address or notes are kept.
+                      Care tasks, prayer requests and broadcast history stay, showing only the name &ldquo;{person.full_name} (deleted)&rdquo;. No phone, email, address or notes are kept.
                     </span>
                   </span>
                 </label>
@@ -357,6 +358,7 @@ export function DeletePersonDialog({
                     <span className="font-semibold text-red-700">Delete everything</span>
                     <span className="block text-gray-600 text-xs">
                       Also permanently delete {firstName}&apos;s care tasks, prayer requests and the calendar events created from those tasks.
+                      {(summary?.broadcasts || 0) > 0 && ' Saved broadcasts keep their counts but show "Deleted contact" instead of the name.'}
                     </span>
                   </span>
                 </label>
