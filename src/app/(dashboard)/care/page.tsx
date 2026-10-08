@@ -766,7 +766,7 @@ function CarePageInner() {
                       </div>
                       
                       <div className="flex sm:flex-col gap-2 shrink-0">
-                        {task.status !== 'completed' && (() => {
+                        {(() => {
                           const personName = task.members?.full_name || 
                             task.member_name_snapshot ||
                             (task.notes?.startsWith('Person:') ? task.notes.replace('Person: ', '').trim() : '') || 
