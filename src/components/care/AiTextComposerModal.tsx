@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { singleSmsHref } from "@/lib/broadcasts";
+import { BridgeSendButton, useBridgeDevice } from "@/components/bridge/BridgeSendButton";
 import {
   Sparkles,
   MessageSquare,
@@ -33,6 +34,8 @@ export type TextComposerProps = {
   onClose: () => void;
   recipientName: string;
   recipientPhone?: string | null;
+  /** Person id: lets the text go through a connected Phone Bridge phone. */
+  recipientMemberId?: string | null;
   defaultCategory?: string;
   defaultCustomPrompt?: string;
   pastorName?: string;
@@ -77,11 +80,13 @@ export default function AiTextComposerModal({
   onClose,
   recipientName,
   recipientPhone,
+  recipientMemberId,
   defaultCategory = "encouragement",
   defaultCustomPrompt = "",
   pastorName = "",
   churchName = "",
 }: TextComposerProps) {
+  const bridgeDevice = useBridgeDevice(isOpen && !!recipientMemberId);
   const [category, setCategory] = useState(defaultCategory);
   const [customPrompt, setCustomPrompt] = useState(defaultCustomPrompt);
   const [phone, setPhone] = useState(recipientPhone || "");
@@ -136,6 +141,10 @@ export default function AiTextComposerModal({
   };
 
   const cleanPhone = (phone || "").replace(/[^\d+]/g, "");
+  // Phone Bridge texts the number saved on the person, so only offer it
+  // while the number box still shows that saved number.
+  const useBridge = !!bridgeDevice && !!recipientMemberId &&
+    cleanPhone === (recipientPhone || "").replace(/[^\d+]/g, "");
 
   const handleSendSms = () => {
     if (!cleanPhone) {
@@ -354,16 +363,23 @@ export default function AiTextComposerModal({
               Close
             </Button>
 
+            {useBridge && bridgeDevice && recipientMemberId && (
+              <BridgeSendButton device={bridgeDevice} memberId={recipientMemberId} message={message} />
+            )}
+
             <Button
               type="button"
               size="sm"
+              variant={useBridge ? "outline" : "default"}
               onClick={handleSendSms}
               disabled={!cleanPhone || !message.trim()}
-              className="bg-[#25D366] hover:bg-[#1EBE5D] text-white font-semibold text-xs shadow-sm flex-1 sm:flex-none"
+              className={useBridge
+                ? "text-xs border-gray-300 text-gray-700"
+                : "bg-[#25D366] hover:bg-[#1EBE5D] text-white font-semibold text-xs shadow-sm flex-1 sm:flex-none"}
               title="Opens your device's default texting app with contact and message pre-filled"
             >
               <Send className="w-3.5 h-3.5 mr-1.5" />
-              Send via Text (SMS)
+              {useBridge ? "Open in texting app" : "Send via Text (SMS)"}
             </Button>
           </div>
         </div>

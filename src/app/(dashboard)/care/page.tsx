@@ -130,6 +130,7 @@ function CarePageInner() {
     isOpen: boolean
     recipientName: string
     recipientPhone?: string | null
+    recipientMemberId?: string | null
     defaultCategory?: string
     defaultCustomPrompt?: string
   }>({
@@ -794,6 +795,7 @@ function CarePageInner() {
                                   isOpen: true,
                                   recipientName: matchedMember?.full_name || personName,
                                   recipientPhone: matchedMember?.phone || null,
+                                  recipientMemberId: matchedMember?.id || null,
                                   defaultCategory: task.task_type === 'hospital' ? 'hospital' : 'prayer_followup',
                                   defaultCustomPrompt: task.description || task.notes || ''
                                 })
@@ -1111,6 +1113,7 @@ function CarePageInner() {
                                     isOpen: true,
                                     recipientName: member.full_name,
                                     recipientPhone: member.phone,
+                                    recipientMemberId: member.id,
                                     defaultCategory: 'encouragement',
                                     defaultCustomPrompt: member.notes || ''
                                   })
@@ -1413,6 +1416,7 @@ function CarePageInner() {
                                     isOpen: true,
                                     recipientName: matchingMember.full_name,
                                     recipientPhone: matchingMember.phone,
+                                    recipientMemberId: matchingMember.id,
                                     defaultCategory: 'prayer_followup',
                                     defaultCustomPrompt: `Praying for: ${prayer.request}`
                                   })
@@ -1484,6 +1488,7 @@ function CarePageInner() {
         onClose={() => setTextComposer(prev => ({ ...prev, isOpen: false }))}
         recipientName={textComposer.recipientName}
         recipientPhone={textComposer.recipientPhone}
+        recipientMemberId={textComposer.recipientMemberId}
         defaultCategory={textComposer.defaultCategory}
         defaultCustomPrompt={textComposer.defaultCustomPrompt}
         pastorName={pastorProfile.full_name || ''}
