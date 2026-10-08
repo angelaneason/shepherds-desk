@@ -9,11 +9,12 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { History, Play, Copy, Trash, Archive, RefreshCw, MessageSquare } from 'lucide-react'
+import { History, Play, Copy, Trash, Archive, RefreshCw, MessageSquare, Smartphone, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   type Broadcast, type BroadcastRecipient,
   errorText, fetchBroadcasts, fetchRecipients, deleteBroadcast, recipientDisplayName,
+  channelLabel, isBridgeActive,
   BROADCAST_STATUS_LABEL, RECIPIENT_STATUS_LABEL, SKIP_REASON_LABEL,
 } from '@/lib/broadcasts'
 
@@ -34,13 +35,29 @@ const STATUS_CHIP: Record<string, string> = {
 
 const canResume = (b: Broadcast) => b.channel === 'sms_handoff' && b.pending > 0 && (b.status === 'sending' || b.status === 'paused')
 
+/** Summary counts. Handoff: opened/not opened. Phone Bridge: sent/delivered/failed. */
+const countsLine = (b: Broadcast) => {
+  const people = `${b.total} ${b.total === 1 ? 'person' : 'people'}`
+  if (b.channel === 'bridge') {
+    const parts = [`${b.sent} sent`]
+    if (b.delivered > 0) parts.push(`${b.delivered} delivered`)
+    if (b.failed > 0) parts.push(`${b.failed} failed`)
+    parts.push(`${b.skipped} skipped`)
+    if (b.pending > 0) parts.push(`${b.pending} waiting`)
+    return `${people}: ${parts.join(' · ')}`
+  }
+  return `${people}: ${b.opened} opened · ${b.skipped} skipped${b.pending > 0 ? ` · ${b.pending} not opened` : ''}`
+}
+
 export default function BroadcastHistory({
-  refreshKey, onResume, onReuse, onCountChange,
+  refreshKey, onResume, onReuse, onCountChange, onWatchBridge,
 }: {
   refreshKey: number
   onResume: (broadcastId: string) => void
   onReuse: (body: string) => void
   onCountChange?: (n: number) => void
+  /** Opens the live Phone Bridge status for an unfinished bridge broadcast. */
+  onWatchBridge?: (broadcastId: string) => void
 }) {
   const supabase = createClient()
   const [items, setItems] = useState<Broadcast[] | null>(null)
@@ -119,19 +136,23 @@ export default function BroadcastHistory({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500">{fmt(b.created_at)} · Individual texts</p>
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    {b.channel === 'bridge' && <Smartphone className="w-3 h-3 text-[#D0A348]" />}
+                    {fmt(b.created_at)} · {channelLabel(b)}
+                  </p>
                   <p className="text-sm text-[#022d5c] mt-1 line-clamp-2 whitespace-pre-wrap">{b.body}</p>
                 </div>
                 <span className={cn(
                   'text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shrink-0',
-                  b.status === 'completed' ? 'bg-green-100 text-green-800' : canResume(b) ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600',
+                  b.status === 'completed' ? 'bg-green-100 text-green-800'
+                    : canResume(b) || isBridgeActive(b) ? 'bg-amber-100 text-amber-800'
+                    : b.status === 'completed_with_issues' ? 'bg-red-100 text-red-800'
+                    : 'bg-gray-100 text-gray-600',
                 )}>
                   {BROADCAST_STATUS_LABEL[b.status]}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {b.total} {b.total === 1 ? 'person' : 'people'}: {b.opened} opened · {b.skipped} skipped{b.pending > 0 ? ` · ${b.pending} not opened` : ''}
-              </p>
+              <p className="text-xs text-gray-500 mt-2">{countsLine(b)}</p>
             </button>
           ))}
         </div>
@@ -143,10 +164,14 @@ export default function BroadcastHistory({
             <>
               <DialogHeader>
                 <DialogTitle className="text-[#022d5c] flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-[#D0A348]" /> Broadcast
+                  {open.channel === 'bridge'
+                    ? <Smartphone className="w-5 h-5 text-[#D0A348]" />
+                    : <MessageSquare className="w-5 h-5 text-[#D0A348]" />} Broadcast
                 </DialogTitle>
                 <DialogDescription>
-                  {fmt(open.created_at)} · Sent individually from your messaging app · {BROADCAST_STATUS_LABEL[open.status]}
+                  {fmt(open.created_at)} · {open.channel === 'bridge'
+                    ? `Sent from my phone${open.device_label_snapshot ? ` (${open.device_label_snapshot})` : ''}`
+                    : 'Sent individually from your messaging app'} · {BROADCAST_STATUS_LABEL[open.status]}
                 </DialogDescription>
               </DialogHeader>
 
@@ -154,9 +179,7 @@ export default function BroadcastHistory({
                 {open.body}
               </div>
 
-              <div className="text-xs text-gray-500">
-                {open.total} people · {open.opened} opened · {open.skipped} skipped{open.pending > 0 ? ` · ${open.pending} not opened` : ''}
-              </div>
+              <div className="text-xs text-gray-500">{countsLine(open)}</div>
 
               <div className="rounded-lg border border-gray-100 divide-y divide-gray-50 max-h-[320px] overflow-y-auto">
                 {recipients === null ? (
@@ -175,7 +198,7 @@ export default function BroadcastHistory({
                     </div>
                     <div className="text-right shrink-0">
                       <span className={cn('text-[10px] font-bold uppercase px-2 py-0.5 rounded-full', STATUS_CHIP[r.status] || 'bg-gray-100 text-gray-600')}>
-                        {RECIPIENT_STATUS_LABEL[r.status]}
+                        {open.channel === 'bridge' && r.status === 'queued' ? 'Waiting' : RECIPIENT_STATUS_LABEL[r.status]}
                       </span>
                       {r.status === 'skipped' && r.skip_reason && (
                         <p className="text-[10px] text-gray-400 mt-0.5">{SKIP_REASON_LABEL[r.skip_reason]}</p>
@@ -185,7 +208,9 @@ export default function BroadcastHistory({
                 ))}
               </div>
               <p className="text-[11px] text-gray-400">
-                &quot;Opened&quot; means the text was opened in your messaging app. TSD can&apos;t see whether Send was tapped.
+                {open.channel === 'bridge'
+                  ? <>&quot;Sent&quot; means your phone sent the text. &quot;Delivered&quot; means the carrier confirmed it arrived.</>
+                  : <>&quot;Opened&quot; means the text was opened in your messaging app. TSD can&apos;t see whether Send was tapped.</>}
               </p>
 
               {confirmDelete ? (
@@ -200,9 +225,12 @@ export default function BroadcastHistory({
                 </div>
               ) : (
                 <DialogFooter className="gap-2 sm:justify-between">
-                  <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
-                    <Trash className="w-4 h-4 mr-1" /> Delete
-                  </Button>
+                  {/* A Phone Bridge broadcast the phone is still working on can't be deleted; stop it first. */}
+                  {isBridgeActive(open) ? <span /> : (
+                    <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
+                      <Trash className="w-4 h-4 mr-1" /> Delete
+                    </Button>
+                  )}
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => { onReuse(open.body); setOpen(null) }}>
                       <Copy className="w-4 h-4 mr-1" /> Use message again
@@ -210,6 +238,11 @@ export default function BroadcastHistory({
                     {canResume(open) && (
                       <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90" onClick={() => { const id = open.id; setOpen(null); onResume(id) }}>
                         <Play className="w-4 h-4 mr-1" /> Resume ({open.pending})
+                      </Button>
+                    )}
+                    {isBridgeActive(open) && onWatchBridge && (
+                      <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90" onClick={() => { const id = open.id; setOpen(null); onWatchBridge(id) }}>
+                        <Eye className="w-4 h-4 mr-1" /> Show progress
                       </Button>
                     )}
                   </div>

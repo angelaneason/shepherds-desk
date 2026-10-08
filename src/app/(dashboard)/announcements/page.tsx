@@ -10,7 +10,7 @@ import {
   Copy, Pencil, Trash, Megaphone, PartyPopper, Heart, HandHeart, Zap, 
   ChevronDown, ChevronUp, Plus, X, Sparkles, MessageSquare, Users, Send, 
   Check, CheckSquare, Square, Phone, Clock, AlertCircle, ExternalLink, RefreshCw,
-  Star, Archive, Search, History, Ban, ShieldCheck
+  Star, Archive, Search, History, Ban, ShieldCheck, Smartphone
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import AiTextComposerModal from '@/components/care/AiTextComposerModal'
@@ -18,6 +18,9 @@ import { VoiceDictation } from '@/components/voice/VoiceDictation'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import HandoffRunner from '@/components/broadcasts/HandoffRunner'
 import BroadcastHistory from '@/components/broadcasts/BroadcastHistory'
+import BridgeBroadcastPanel, { type BridgeBroadcastStart } from '@/components/broadcasts/BridgeBroadcastPanel'
+import { useBridgeDevice } from '@/components/bridge/BridgeSendButton'
+import { BridgeUnlockInline } from '@/components/bridge/BridgeUnlockInline'
 import { errorText, createBroadcast, personalize, smsSegments as countSegments } from '@/lib/broadcasts'
 import { sortByName } from '@/lib/people'
 
@@ -173,6 +176,15 @@ export default function CommunicationPage() {
   const [historyKey, setHistoryKey] = useState(0)
   const [historyCount, setHistoryCount] = useState<number | null>(null)
 
+  // Phone Bridge (Phase 6): send the whole broadcast from the pastor's own
+  // Android phone. Only offered when a phone is connected; the one-at-a-time
+  // handoff above stays as the fallback.
+  const bridgeDevice = useBridgeDevice(true)
+  const [bridgeNeedUnlock, setBridgeNeedUnlock] = useState(false)
+  const [bridgeError, setBridgeError] = useState<string | null>(null)
+  const [bridgeStart, setBridgeStart] = useState<BridgeBroadcastStart | null>(null)
+  const [bridgeBroadcastId, setBridgeBroadcastId] = useState<string | null>(null)
+
   useEffect(() => {
     fetchData()
   }, [])
@@ -280,6 +292,8 @@ export default function CommunicationPage() {
     if (selectedMembers.length === 0) { alert('Please select at least one person to text.'); return }
     if (!broadcastMessage.trim()) { alert('Please enter a message to broadcast.'); return }
     setBroadcastError(null)
+    setBridgeError(null)
+    setBridgeNeedUnlock(false)
     setReviewOpen(true)
   }
 
@@ -299,6 +313,50 @@ export default function CommunicationPage() {
       setHistoryKey(k => k + 1)
     } catch (e: unknown) {
       setBroadcastError(errorText(e, 'Could not save the broadcast. Nothing was sent.'))
+    } finally {
+      sendingRef.current = false
+      setCreatingBroadcast(false)
+    }
+  }
+
+  // Send from my phone: the server saves the broadcast (skips Do Not Text etc.)
+  // and the phone asks the pastor to approve it before anything is sent.
+  const handleStartBridgeBroadcast = async () => {
+    if (sendingRef.current) return
+    sendingRef.current = true
+    setCreatingBroadcast(true)
+    setBridgeError(null)
+    setBroadcastError(null)
+    try {
+      const r = await fetch('/api/bridge/broadcast', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          body: broadcastMessage.trim(),
+          member_ids: selectedMembers.map(m => m.id),
+          allow_archived: showArchived && selectedMembers.some(m => m.archived_at),
+        }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (r.status === 403 && d.error === 'bridge_locked') { setBridgeNeedUnlock(true); return }
+      if (r.status === 401) { setBridgeError('Please sign in again. Nothing was sent.'); return }
+      if (!r.ok || !d.broadcast_id) {
+        const msg = String(d.message || 'Could not start sending from your phone').trim()
+        const base = /[.!?]$/.test(msg) ? msg : `${msg}.`
+        const extra = d.error === 'max_recipients' && d.max_recipients ? ` Your phone can send to up to ${d.max_recipients} people at a time.` : ''
+        setBridgeError(`${base}${extra} Nothing was sent.`)
+        return
+      }
+      setBridgeNeedUnlock(false)
+      setReviewOpen(false)
+      // Start fresh for the next one. The message is saved in History.
+      setSelectedMemberIds([])
+      setBroadcastMessage('')
+      setBridgeStart(d as BridgeBroadcastStart)
+      setBridgeBroadcastId(d.broadcast_id)
+      setHistoryKey(k => k + 1)
+    } catch {
+      setBridgeError('Could not reach the server. Nothing was sent.')
     } finally {
       sendingRef.current = false
       setCreatingBroadcast(false)
@@ -511,6 +569,7 @@ export default function CommunicationPage() {
           refreshKey={historyKey}
           onCountChange={setHistoryCount}
           onResume={(id) => setRunnerBroadcastId(id)}
+          onWatchBridge={(id) => { setBridgeStart(null); setBridgeBroadcastId(id) }}
           onReuse={(body) => { setBroadcastMessage(body); setActiveTab('broadcast') }}
         />
       )}
@@ -900,7 +959,9 @@ export default function CommunicationPage() {
           <DialogHeader>
             <DialogTitle className="text-[#022d5c]">Review your broadcast</DialogTitle>
             <DialogDescription>
-              {reviewSkips.sendCount} individual {reviewSkips.sendCount === 1 ? 'text' : 'texts'} will be opened in your messaging app, one person at a time.
+              {bridgeDevice
+                ? `${reviewSkips.sendCount} individual ${reviewSkips.sendCount === 1 ? 'text' : 'texts'}, one per person. Send them from your phone, or open them one at a time in your messaging app.`
+                : `${reviewSkips.sendCount} individual ${reviewSkips.sendCount === 1 ? 'text' : 'texts'} will be opened in your messaging app, one person at a time.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -930,7 +991,15 @@ export default function CommunicationPage() {
           )}
 
           <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
-            <p className="font-semibold text-gray-700">How it works</p>
+            {bridgeDevice && (
+              <div className="pb-2 mb-1 border-b border-gray-200 space-y-1">
+                <p className="font-semibold text-gray-700 flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-[#D0A348]" /> Send from my phone
+                </p>
+                <p>{bridgeDevice.display_name} sends each person their own text from your number. Nothing goes out until you approve it on your phone, and you can watch it here.</p>
+              </div>
+            )}
+            <p className="font-semibold text-gray-700">{bridgeDevice ? 'Or send one at a time' : 'How it works'}</p>
             <p>1. TSD saves this broadcast in Broadcast History.</p>
             <p>2. For each person, click Open text. Your messaging app opens with just their number and the message.</p>
             <p>3. Tap Send there, come back, and click Next person. You can stop and resume any time.</p>
@@ -938,15 +1007,44 @@ export default function CommunicationPage() {
 
           {broadcastError && <p className="text-sm text-red-600">{broadcastError}</p>}
 
-          <DialogFooter>
+          {bridgeDevice && bridgeNeedUnlock && (
+            <div className="rounded-lg border border-[#D0A348]/50 bg-[#F8F5EE] p-3 space-y-2">
+              <p className="text-xs text-[#022d5c]">Enter your password to send from your phone. This browser stays unlocked for 8 hours.</p>
+              <BridgeUnlockInline
+                buttonLabel="Unlock and send"
+                disabled={creatingBroadcast}
+                onUnlocked={async () => { setBridgeNeedUnlock(false); await handleStartBridgeBroadcast() }}
+              />
+            </div>
+          )}
+          {bridgeError && (
+            <div className="text-sm text-red-600 space-y-0.5">
+              <p>{bridgeError}</p>
+              <p className="text-xs text-gray-500">You can still use Start sending individually.</p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={creatingBroadcast}>Back</Button>
             <Button
-              className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90"
+              variant={bridgeDevice ? 'outline' : 'default'}
+              className={bridgeDevice ? 'border-[#022d5c]/30 text-[#022d5c]' : 'bg-[#022d5c] text-white hover:bg-[#022d5c]/90'}
               onClick={handleStartBroadcast}
               disabled={creatingBroadcast || reviewSkips.sendCount === 0}
             >
               {creatingBroadcast ? 'Saving…' : 'Start sending individually'}
             </Button>
+            {bridgeDevice && (
+              <Button
+                className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90"
+                onClick={handleStartBridgeBroadcast}
+                disabled={creatingBroadcast || reviewSkips.sendCount === 0 || bridgeNeedUnlock}
+                title="Your phone sends each text from your number"
+              >
+                <Smartphone className="w-4 h-4 mr-1.5 text-[#D0A348]" />
+                {creatingBroadcast ? 'Starting...' : `Send from my phone (${bridgeDevice.display_name})`}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -955,6 +1053,14 @@ export default function CommunicationPage() {
       <HandoffRunner
         broadcastId={runnerBroadcastId}
         onClose={() => { setRunnerBroadcastId(null); setHistoryKey(k => k + 1) }}
+      />
+
+      {/* Phone Bridge broadcast: live status from the phone */}
+      <BridgeBroadcastPanel
+        key={bridgeBroadcastId || 'none'}
+        broadcastId={bridgeBroadcastId}
+        start={bridgeStart}
+        onClose={() => { setBridgeBroadcastId(null); setBridgeStart(null); setHistoryKey(k => k + 1) }}
       />
 
       {/* Announcement Create/Edit Modal */}

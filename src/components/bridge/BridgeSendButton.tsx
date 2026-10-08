@@ -7,10 +7,10 @@
 // When no phone is connected, nothing renders and the normal sms: button is used.
 
 import { useEffect, useRef, useState } from 'react'
-import { Smartphone, Check, AlertCircle, Lock, RefreshCw } from 'lucide-react'
+import { Smartphone, Check, AlertCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
+import { BridgeUnlockInline } from '@/components/bridge/BridgeUnlockInline'
 
 type Device = { id: string; display_name: string }
 type JobStatus = 'queued' | 'awaiting_approval' | 'sending' | 'sent' | 'delivered' | 'failed' | 'expired' | 'rejected' | 'cancelled'
@@ -53,7 +53,6 @@ export function BridgeSendButton({
   const supabase = useRef(createClient()).current
   const [busy, setBusy] = useState(false)
   const [needUnlock, setNeedUnlock] = useState(false)
-  const [password, setPassword] = useState('')
   const [jobId, setJobId] = useState<string | null>(null)
   const [status, setStatus] = useState<JobStatus | null>(null)
   const [error, setError] = useState('')
@@ -97,17 +96,8 @@ export function BridgeSendButton({
     }
   }
 
-  const unlockAndSend = async () => {
-    setBusy(true); setError('')
-    const r = await fetch('/api/bridge/unlock', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    })
-    const d = await r.json().catch(() => ({}))
-    setBusy(false)
-    if (!r.ok) { setError(d.message || 'That password is not correct'); return }
-    setPassword(''); setNeedUnlock(false)
+  const afterUnlock = async () => {
+    setNeedUnlock(false)
     await send()
   }
 
@@ -126,23 +116,7 @@ export function BridgeSendButton({
   }
 
   if (needUnlock) {
-    return (
-      <div className="flex flex-col gap-1.5 w-full">
-        <div className="flex items-center gap-2">
-          <Lock className="w-4 h-4 text-[#D0A348] shrink-0" />
-          <Input
-            type="password" autoFocus placeholder="Your password, to send from your phone"
-            value={password} onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && password) unlockAndSend() }}
-            className="h-8 text-xs bg-white"
-          />
-          <Button type="button" size="sm" onClick={unlockAndSend} disabled={busy || !password} className="bg-[#022d5c] text-white text-xs">
-            Send
-          </Button>
-        </div>
-        {error && <span className="text-xs text-red-600">{error}</span>}
-      </div>
-    )
+    return <BridgeUnlockInline onUnlocked={afterUnlock} disabled={busy} />
   }
 
   return (

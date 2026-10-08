@@ -28,6 +28,8 @@ export type Broadcast = {
   channel: 'sms_handoff' | 'bridge'
   device_label_snapshot: string | null
   status: BroadcastStatus
+  /** Phone Bridge only: when the pastor approved on the phone. */
+  approved_at?: string | null
   started_at: string | null
   completed_at: string | null
   total: number
@@ -176,6 +178,48 @@ export async function setBroadcastStatus(supabase: SupabaseClient, id: string, s
 export async function deleteBroadcast(supabase: SupabaseClient, id: string) {
   const { error } = await supabase.from('broadcasts').delete().eq('id', id)
   if (error) throw error
+}
+
+// ─── Phone Bridge broadcasts (Phase 6) ─────────────────────────────────────
+// Same broadcasts table, channel = 'bridge'. Created only by the server
+// (/api/bridge/broadcast). Status and per-person results come from the phone;
+// the browser may only read them and cancel an unfinished one.
+
+export const BRIDGE_ACTIVE_STATUSES: BroadcastStatus[] = ['awaiting_phone_approval', 'sending', 'paused']
+
+export const isBridgeActive = (b: Pick<Broadcast, 'channel' | 'status'>) =>
+  b.channel === 'bridge' && BRIDGE_ACTIVE_STATUSES.includes(b.status)
+
+/** Short label for how a broadcast was sent. */
+export const channelLabel = (b: Pick<Broadcast, 'channel'>) =>
+  b.channel === 'bridge' ? 'Sent from my phone' : 'Individual texts'
+
+/** Stops an unfinished Phone Bridge broadcast. Everyone still waiting becomes Cancelled. */
+export async function cancelBridgeBroadcast(supabase: SupabaseClient, id: string) {
+  const { error } = await supabase
+    .from('broadcasts')
+    .update({ status: 'cancelled', completed_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('channel', 'bridge')
+    .in('status', BRIDGE_ACTIVE_STATUSES)
+  if (error) throw error
+}
+
+const SKIP_COUNT_TEXT: Record<string, (n: number) => string> = {
+  do_not_text: n => `${n} marked Do not text`,
+  no_phone: n => `${n} with no phone number`,
+  invalid_phone: n => `${n} with a phone number that is not valid`,
+  duplicate_number: n => `${n} sharing a number with someone else on the list`,
+  user_skipped: n => `${n} skipped by you`,
+}
+
+/** "2 marked Do not text and 1 with no phone number" (empty when nobody was skipped). */
+export const skippedSummary = (skipped: Record<string, number> | null | undefined) => {
+  const parts = Object.entries(skipped || {})
+    .filter(([, n]) => n > 0)
+    .map(([reason, n]) => (SKIP_COUNT_TEXT[reason] ? SKIP_COUNT_TEXT[reason](n) : `${n} for another reason`))
+  if (parts.length <= 1) return parts[0] || ''
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
 }
 
 /** Rough SMS segment count (GSM 160/153, Unicode 70/67). */
