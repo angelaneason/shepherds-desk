@@ -216,17 +216,15 @@ export default function CommunicationPage() {
       const withPhone = all.filter(m => m.phone && m.phone.trim().length > 0)
       setNoPhoneCount(all.filter(m => !m.archived_at).length - withPhone.filter(m => !m.archived_at).length)
       setMembers(withPhone)
-      // First load only: preselect every ⭐ member who can be texted
-      if (!peopleLoadedRef.current) {
-        peopleLoadedRef.current = true
-        setSelectedMemberIds(withPhone.filter(m => m.is_member && !m.archived_at && !m.do_not_text).map(m => m.id))
-      }
+      // Nobody is pre-selected: the pastor picks recipients on purpose
+      // (Angie, Oct 8). Select All is one click away.
     }
 
     setLoading(false)
   }
 
-  const peopleLoadedRef = useRef(false)
+  // Blocks a second save if "Start sending" is clicked twice quickly
+  const sendingRef = useRef(false)
 
   // People shown in the picker: ⭐ Members or Everyone; archived only with Show archived
   const filteredMembers = useMemo(() => {
@@ -287,16 +285,22 @@ export default function CommunicationPage() {
 
   // Save the broadcast (server skips Do Not Text etc.), then step through it
   const handleStartBroadcast = async () => {
+    if (sendingRef.current) return
+    sendingRef.current = true
     setCreatingBroadcast(true)
     setBroadcastError(null)
     try {
       const id = await createBroadcast(supabase, broadcastMessage.trim(), selectedMembers.map(m => m.id))
       setReviewOpen(false)
+      // Start fresh for the next one. The message is saved in History.
+      setSelectedMemberIds([])
+      setBroadcastMessage('')
       setRunnerBroadcastId(id)
       setHistoryKey(k => k + 1)
     } catch (e: unknown) {
       setBroadcastError(errorText(e, 'Could not save the broadcast. Nothing was sent.'))
     } finally {
+      sendingRef.current = false
       setCreatingBroadcast(false)
     }
   }
