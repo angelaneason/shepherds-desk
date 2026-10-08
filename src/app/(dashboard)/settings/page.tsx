@@ -12,6 +12,7 @@ import {
   Calendar, BookOpen, Clock, Moon, Volume2, Sparkles, Send, CheckCircle2, ShieldCheck, Sun, HeartHandshake, Megaphone, Smartphone, Check
 } from 'lucide-react'
 import { CalendarSyncCard } from '@/components/calendar/CalendarSyncCard'
+import { PhoneBridgeCard } from '@/components/bridge/PhoneBridgeCard'
 
 const DEFAULT_NOTIFICATION_PREFS = {
   calendar_reminders: true,
@@ -620,6 +621,11 @@ export default function SettingsPage() {
 
       {/* Integrations / Calendar Sync */}
       <CalendarSyncCard className="shadow-sm rounded-xl" />
+
+      {/* Phone Bridge: send texts through the pastor's own Android phone */}
+      <div id="phone-bridge">
+        <PhoneBridgeCard className="shadow-sm rounded-xl" />
+      </div>
 
       <Card>
         <CardHeader>
