@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare, Mic, Globe, Users } from 'lucide-react'
+import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare, Mic, Globe, Users, HelpCircle } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 import { SupportChat } from '@/components/support/SupportChat'
 import { CompleteProfilePrompt } from '@/components/onboarding/CompleteProfilePrompt'
@@ -136,6 +136,7 @@ export default function DashboardLayout({
     { name: 'Study', href: '/study', icon: Clock },
     { name: 'Communication', href: '/announcements', icon: MessageSquare },
     { name: 'Resources', href: '/resources', icon: Library },
+    { name: 'User Manual', href: '/manual', icon: HelpCircle },
     { name: 'Refer a Pastor', href: '/referrals', icon: Gift },
     { name: 'Settings', href: '/settings', icon: Settings },
   ]
@@ -426,6 +427,7 @@ export default function DashboardLayout({
               {[
                 { name: 'Ministry Care', href: '/care', icon: Heart, color: '#e74c3c' },
                 { name: 'People', href: '/care?tab=people', icon: Users, color: '#022d5c' },
+                { name: 'User Manual', href: '/manual', icon: HelpCircle, color: '#022d5c' },
                 { name: 'Refer a Pastor', href: '/referrals', icon: Gift, color: '#D0A348' },
                 { name: 'Settings', href: '/settings', icon: Settings, color: '#6b7280' },
                 ...(isAdmin ? [{ name: 'Admin', href: '/admin', icon: Shield, color: '#D0A348' }] : []),
