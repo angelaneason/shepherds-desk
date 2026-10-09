@@ -955,17 +955,17 @@ export default function CommunicationPage() {
 
       {/* Review before sending */}
       <Dialog open={reviewOpen} onOpenChange={(o) => { if (!o && !creatingBroadcast) setReviewOpen(false) }}>
-        <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="text-[#022d5c]">Review your broadcast</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words">
               {bridgeDevice
                 ? `${reviewSkips.sendCount} individual ${reviewSkips.sendCount === 1 ? 'text' : 'texts'}, one per person. Send them from your phone, or open them one at a time in your messaging app.`
                 : `${reviewSkips.sendCount} individual ${reviewSkips.sendCount === 1 ? 'text' : 'texts'} will be opened in your messaging app, one person at a time.`}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-xs text-sm whitespace-pre-wrap leading-relaxed">
+          <div className="bg-blue-600 text-white p-3.5 rounded-2xl rounded-tr-xs text-sm whitespace-pre-wrap break-words leading-relaxed max-w-full">
             {personalize(broadcastMessage.trim(), selectedMembers[0]?.full_name || 'Friend')}
           </div>
           <p className="text-xs text-gray-500">
@@ -996,7 +996,7 @@ export default function CommunicationPage() {
                 <p className="font-semibold text-gray-700 flex items-center gap-1.5">
                   <Smartphone className="w-3.5 h-3.5 text-[#D0A348]" /> Send from my phone
                 </p>
-                <p>{bridgeDevice.display_name} sends each person their own text from your number. Nothing goes out until you approve it on your phone, and you can watch it here.</p>
+                <p className="break-words">{bridgeDevice.display_name} sends each person their own text from your number. Nothing goes out until you approve it on your phone, and you can watch it here.</p>
               </div>
             )}
             <p className="font-semibold text-gray-700">{bridgeDevice ? 'Or send one at a time' : 'How it works'}</p>
@@ -1024,27 +1024,33 @@ export default function CommunicationPage() {
             </div>
           )}
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={creatingBroadcast}>Back</Button>
-            <Button
-              variant={bridgeDevice ? 'outline' : 'default'}
-              className={bridgeDevice ? 'border-[#022d5c]/30 text-[#022d5c]' : 'bg-[#022d5c] text-white hover:bg-[#022d5c]/90'}
-              onClick={handleStartBroadcast}
-              disabled={creatingBroadcast || reviewSkips.sendCount === 0}
-            >
-              {creatingBroadcast ? 'Saving…' : 'Start sending individually'}
+          <DialogFooter className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-2">
+            <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={creatingBroadcast} className="w-full sm:w-auto">
+              Back
             </Button>
-            {bridgeDevice && (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <Button
-                className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90"
-                onClick={handleStartBridgeBroadcast}
-                disabled={creatingBroadcast || reviewSkips.sendCount === 0 || bridgeNeedUnlock}
-                title="Your phone sends each text from your number"
+                variant={bridgeDevice ? 'outline' : 'default'}
+                className={bridgeDevice ? 'border-[#022d5c]/30 text-[#022d5c]' : 'bg-[#022d5c] text-white hover:bg-[#022d5c]/90'}
+                onClick={handleStartBroadcast}
+                disabled={creatingBroadcast || reviewSkips.sendCount === 0}
               >
-                <Smartphone className="w-4 h-4 mr-1.5 text-[#D0A348]" />
-                {creatingBroadcast ? 'Starting...' : `Send from my phone (${bridgeDevice.display_name})`}
+                {creatingBroadcast ? 'Saving…' : 'Send individually'}
               </Button>
-            )}
+              {bridgeDevice && (
+                <Button
+                  className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 font-medium"
+                  onClick={handleStartBridgeBroadcast}
+                  disabled={creatingBroadcast || reviewSkips.sendCount === 0 || bridgeNeedUnlock}
+                  title={`Send from ${bridgeDevice.display_name}`}
+                >
+                  <Smartphone className="w-4 h-4 mr-1.5 text-[#D0A348] shrink-0" />
+                  <span className="truncate max-w-[200px] sm:max-w-[240px]">
+                    {creatingBroadcast ? 'Starting...' : `Send from my phone (${bridgeDevice.display_name})`}
+                  </span>
+                </Button>
+              )}
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
