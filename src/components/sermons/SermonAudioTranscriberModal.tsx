@@ -330,7 +330,9 @@ export default function SermonAudioTranscriberModal({
         .insert({
           author_id: user.id,
           title: result.title || 'Transcribed Sermon',
-          scripture: result.scriptures.join(', ') || null,
+          subtitle: result.summary || null,
+          scripture_primary: result.scriptures[0] || null,
+          scriptures_all: result.scriptures || [],
           content: contentDoc,
           status: 'draft',
         })
