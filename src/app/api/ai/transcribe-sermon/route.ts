@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
       const lower = storagePath.toLowerCase()
       if (lower.endsWith('.mp3')) mimeType = 'audio/mp3'
-      else if (lower.endsWith('.m4a')) mimeType = 'audio/m4a'
+      else if (lower.endsWith('.m4a') || lower.endsWith('.mp4')) mimeType = 'audio/mp4'
       else if (lower.endsWith('.wav')) mimeType = 'audio/wav'
       else if (lower.endsWith('.webm')) mimeType = 'audio/webm'
       else if (lower.endsWith('.ogg')) mimeType = 'audio/ogg'
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       mimeType = file.type || 'audio/mp3'
       const lower = originalName.toLowerCase()
       if (lower.endsWith('.mp3')) mimeType = 'audio/mp3'
-      else if (lower.endsWith('.m4a')) mimeType = 'audio/m4a'
+      else if (lower.endsWith('.m4a') || lower.endsWith('.mp4')) mimeType = 'audio/mp4'
       else if (lower.endsWith('.wav')) mimeType = 'audio/wav'
       else if (lower.endsWith('.webm')) mimeType = 'audio/webm'
       else if (lower.endsWith('.ogg')) mimeType = 'audio/ogg'

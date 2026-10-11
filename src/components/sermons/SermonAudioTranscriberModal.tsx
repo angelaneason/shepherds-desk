@@ -71,7 +71,22 @@ export default function SermonAudioTranscriberModal({
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
+
+      let preferredMimeType = ''
+      if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          preferredMimeType = 'audio/webm;codecs=opus'
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          preferredMimeType = 'audio/mp4'
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          preferredMimeType = 'audio/webm'
+        } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+          preferredMimeType = 'audio/aac'
+        }
+      }
+
+      const recorderOptions: MediaRecorderOptions = preferredMimeType ? { mimeType: preferredMimeType } : {}
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions)
       mediaRecorderRef.current = mediaRecorder
 
       mediaRecorder.ondataavailable = (event) => {
@@ -81,11 +96,15 @@ export default function SermonAudioTranscriberModal({
       }
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        const actualMime = mediaRecorder.mimeType || preferredMimeType || 'audio/mp4'
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMime })
         const url = URL.createObjectURL(audioBlob)
         setAudioUrl(url)
-        const recordedFile = new File([audioBlob], `sermon-recording-${Date.now()}.webm`, {
-          type: 'audio/webm',
+
+        const isAppleAudio = actualMime.includes('mp4') || actualMime.includes('aac') || actualMime.includes('m4a')
+        const extension = isAppleAudio ? 'm4a' : 'webm'
+        const recordedFile = new File([audioBlob], `sermon-recording-${Date.now()}.${extension}`, {
+          type: actualMime,
         })
         setFile(recordedFile)
         stream.getTracks().forEach((track) => track.stop())
@@ -164,28 +183,52 @@ export default function SermonAudioTranscriberModal({
     const step3Timer = setTimeout(() => setProcessingStep(3), 6000)
 
     try {
-      const ext = file.name.split('.').pop() || 'mp3'
+      const ext = file.name.split('.').pop() || 'm4a'
       const urlRes = await fetch('/api/ai/transcribe-sermon/upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ext }),
       })
       const urlJson = await urlRes.json()
-      if (!urlRes.ok || !urlJson.signedUrl) {
+      if (!urlRes.ok || !urlJson.path) {
         throw new Error(urlJson.error || 'Failed to prepare audio upload.')
       }
 
-      // Upload directly to Supabase storage (bypassing Vercel 4.5MB limit)
-      const uploadRes = await fetch(urlJson.signedUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type || 'audio/mpeg',
-        },
-        body: file,
-      })
+      // Upload directly to Supabase storage signed URL using Supabase client
+      // Handles browser Blob and FormData packaging cleanly across Safari, iOS, Chrome, and Firefox
+      let uploadSuccess = false
+      if (urlJson.path && urlJson.token) {
+        const { error: upErr } = await supabase.storage
+          .from('sermon-audio')
+          .uploadToSignedUrl(urlJson.path, urlJson.token, file, {
+            contentType: file.type || 'audio/mp4',
+            upsert: false,
+          })
 
-      if (!uploadRes.ok) {
-        throw new Error('Failed to upload sermon audio. Please check your internet connection.')
+        if (!upErr) {
+          uploadSuccess = true
+        } else {
+          console.warn('supabase.storage.uploadToSignedUrl notice, trying direct upload:', upErr)
+        }
+      }
+
+      if (!uploadSuccess && urlJson.signedUrl) {
+        const uploadRes = await fetch(urlJson.signedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type || 'audio/mp4',
+          },
+          body: file,
+        })
+
+        if (!uploadRes.ok) {
+          throw new Error('Failed to upload sermon audio. Please check your internet connection.')
+        }
+        uploadSuccess = true
+      }
+
+      if (!uploadSuccess) {
+        throw new Error('Could not upload audio file to server.')
       }
 
       // Process transcription using lightweight JSON payload
@@ -205,7 +248,11 @@ export default function SermonAudioTranscriberModal({
       setProcessingStep(4)
     } catch (err: any) {
       console.error('Transcription error:', err)
-      setError(err.message || 'An error occurred while transcribing your audio.')
+      let message = err?.message || 'An error occurred while transcribing your audio.'
+      if (message.toLowerCase().includes('load failed') || message.toLowerCase().includes('failed to fetch')) {
+        message = 'Connection was interrupted while uploading audio. Please check your network and try again.'
+      }
+      setError(message)
     } finally {
       clearTimeout(step2Timer)
       clearTimeout(step3Timer)
@@ -518,10 +565,17 @@ ${result.transcript}
                   {/* Audio playback preview if recorded */}
                   {audioUrl && !isRecording && (
                     <div className="w-full max-w-md bg-white p-3 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
-                      <audio ref={audioPlayerRef} src={audioUrl} className="w-full h-8" controls />
+                      <audio
+                        ref={audioPlayerRef}
+                        src={audioUrl}
+                        className="w-full h-8"
+                        controls
+                        playsInline
+                        preload="metadata"
+                      />
                       <button
                         onClick={resetRecording}
-                        title="Discard & record again"
+                        title="Discard and record again"
                         className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                       >
                         <RotateCcw size={16} />

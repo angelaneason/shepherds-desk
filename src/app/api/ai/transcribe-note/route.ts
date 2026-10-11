@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     let mimeType = file.type || 'audio/m4a'
     const fileName = file.name ? file.name.toLowerCase() : ''
     if (fileName.endsWith('.mp3')) mimeType = 'audio/mp3'
-    else if (fileName.endsWith('.m4a')) mimeType = 'audio/m4a'
+    else if (fileName.endsWith('.m4a') || fileName.endsWith('.mp4')) mimeType = 'audio/mp4'
     else if (fileName.endsWith('.wav')) mimeType = 'audio/wav'
     else if (fileName.endsWith('.webm')) mimeType = 'audio/webm'
     else if (fileName.endsWith('.ogg')) mimeType = 'audio/ogg'
