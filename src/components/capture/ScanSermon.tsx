@@ -44,16 +44,26 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newPages = Array.from(files).map((file) => ({
-        id: Math.random().toString(36).substring(7),
-        file,
-        previewUrl: URL.createObjectURL(file),
-      }));
-      setPages((prev) => [...prev, ...newPages]);
       setError(null);
+      const newPages = await Promise.all(
+        Array.from(files).map(async (file) => {
+          let processed = file;
+          try {
+            processed = await compressImageForOcr(file);
+          } catch {
+            // fallback to original
+          }
+          return {
+            id: Math.random().toString(36).substring(7),
+            file: processed,
+            previewUrl: URL.createObjectURL(processed),
+          };
+        })
+      );
+      setPages((prev) => [...prev, ...newPages]);
     }
   };
 
@@ -125,7 +135,8 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to process page ${i + 1}`);
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `Failed to process page ${i + 1}`);
         }
 
         const data = await response.json();
@@ -215,7 +226,12 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
               </Button>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-6">
+              {error && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                  {error}
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-[#022d5c] mb-1">Sermon Title *</label>
@@ -354,12 +370,6 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
                   </div>
                 )}
               </div>
-
-              {error && (
-                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
-                  {error}
-                </div>
-              )}
             </div>
           )}
         </div>

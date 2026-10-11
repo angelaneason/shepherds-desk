@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import mammoth from 'mammoth'
-import sharp from 'sharp'
 
 export const maxDuration = 60
 
@@ -15,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     const bytes = await file.arrayBuffer()
-    let buffer = Buffer.from(bytes)
+    const buffer = Buffer.from(bytes)
     let fileType = file.type || 'image/jpeg'
     const fileName = file.name.toLowerCase()
 
@@ -63,26 +62,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle images and PDFs with Gemini AI
-    const apiKey = process.env.GEMINI_API_KEY
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY
     if (!apiKey) {
       return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 })
     }
 
     const isPDF = fileType === 'application/pdf' || fileName.endsWith('.pdf')
-
-    // If it is an image, optimize and resize to max 1600px with sharp for fast OCR
-    if (!isPDF && (fileType.startsWith('image/') || /\.(jpe?g|png|webp|heic|bmp|tiff)$/i.test(fileName))) {
-      try {
-        if (buffer.length > 500 * 1024) {
-          buffer = await sharp(buffer)
-            .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality: 80 })
-            .toBuffer()
-          fileType = 'image/jpeg'
-        }
-      } catch (sharpErr) {
-        console.warn('Sharp optimization skipped, using original buffer:', sharpErr)
-      }
+    if (!isPDF) {
+      if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) fileType = 'image/jpeg'
+      else if (fileName.endsWith('.png')) fileType = 'image/png'
+      else if (fileName.endsWith('.webp')) fileType = 'image/webp'
+      else if (fileName.endsWith('.heic')) fileType = 'image/heic'
+      else if (!fileType.startsWith('image/')) fileType = 'image/jpeg'
     }
 
     const genAI = new GoogleGenerativeAI(apiKey)
@@ -119,10 +110,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ text, confidence })
-  } catch (error) {
+  } catch (error: any) {
     console.error('OCR Error:', error)
     return NextResponse.json(
-      { error: 'Failed to process file for text extraction' },
+      { error: error?.message || 'Failed to process file for text extraction' },
       { status: 500 }
     )
   }
