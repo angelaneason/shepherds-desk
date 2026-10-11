@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleAIFileManager } from '@google/generative-ai/server'
+import { createClient as createAdminSupabase } from '@supabase/supabase-js'
+import fs from 'fs/promises'
+import path from 'path'
+import os from 'os'
 
 export const maxDuration = 120 // Allow up to 2 minutes for processing long audio files
 
 export async function POST(request: NextRequest) {
+  let storagePathToDelete: string | null = null
+  let adminSupabase: any = null
+
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY
     if (!apiKey) {
@@ -13,22 +21,75 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
+    let buffer: Buffer
+    let mimeType = 'audio/m4a'
+    let originalName = 'sermon_audio'
 
-    if (!file) {
-      return NextResponse.json({ error: 'No audio file was provided.' }, { status: 400 })
+    const contentType = request.headers.get('content-type') || ''
+
+    if (contentType.includes('application/json')) {
+      const body = await request.json()
+      const storagePath = body?.storagePath
+      if (!storagePath) {
+        return NextResponse.json({ error: 'No storagePath provided.' }, { status: 400 })
+      }
+
+      storagePathToDelete = storagePath
+      adminSupabase = createAdminSupabase(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+
+      const { data: fileData, error: downloadError } = await adminSupabase.storage
+        .from('sermon-audio')
+        .download(storagePath)
+
+      if (downloadError || !fileData) {
+        console.error('Storage download error:', downloadError)
+        return NextResponse.json(
+          { error: `Could not retrieve audio from storage: ${downloadError?.message || 'File missing'}` },
+          { status: 400 }
+        )
+      }
+
+      const arrayBuffer = await fileData.arrayBuffer()
+      buffer = Buffer.from(arrayBuffer)
+      originalName = storagePath.split('/').pop() || 'sermon_audio'
+
+      const lower = storagePath.toLowerCase()
+      if (lower.endsWith('.mp3')) mimeType = 'audio/mp3'
+      else if (lower.endsWith('.m4a')) mimeType = 'audio/m4a'
+      else if (lower.endsWith('.wav')) mimeType = 'audio/wav'
+      else if (lower.endsWith('.webm')) mimeType = 'audio/webm'
+      else if (lower.endsWith('.ogg')) mimeType = 'audio/ogg'
+      else if (lower.endsWith('.aac')) mimeType = 'audio/aac'
+    } else {
+      // Fallback for multipart form uploads (< 4MB)
+      const formData = await request.formData()
+      const file = formData.get('file') as File | null
+
+      if (!file) {
+        return NextResponse.json({ error: 'No audio file was provided.' }, { status: 400 })
+      }
+
+      const bytes = await file.arrayBuffer()
+      buffer = Buffer.from(bytes)
+      originalName = file.name || 'sermon_audio'
+
+      mimeType = file.type || 'audio/mp3'
+      const lower = originalName.toLowerCase()
+      if (lower.endsWith('.mp3')) mimeType = 'audio/mp3'
+      else if (lower.endsWith('.m4a')) mimeType = 'audio/m4a'
+      else if (lower.endsWith('.wav')) mimeType = 'audio/wav'
+      else if (lower.endsWith('.webm')) mimeType = 'audio/webm'
+      else if (lower.endsWith('.ogg')) mimeType = 'audio/ogg'
+      else if (lower.endsWith('.aac')) mimeType = 'audio/aac'
     }
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    // Verify file is not empty
     if (buffer.length === 0) {
       return NextResponse.json({ error: 'The provided audio file is empty.' }, { status: 400 })
     }
 
-    // 50MB limit check
     const MAX_FILE_SIZE = 50 * 1024 * 1024
     if (buffer.length > MAX_FILE_SIZE) {
       return NextResponse.json(
@@ -37,25 +98,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Determine MIME type
-    let mimeType = file.type || 'audio/mp3'
-    const fileName = file.name ? file.name.toLowerCase() : ''
-    if (fileName.endsWith('.mp3')) mimeType = 'audio/mp3'
-    else if (fileName.endsWith('.m4a')) mimeType = 'audio/m4a'
-    else if (fileName.endsWith('.wav')) mimeType = 'audio/wav'
-    else if (fileName.endsWith('.webm')) mimeType = 'audio/webm'
-    else if (fileName.endsWith('.ogg')) mimeType = 'audio/ogg'
-    else if (fileName.endsWith('.aac')) mimeType = 'audio/aac'
-
-    const base64Audio = buffer.toString('base64')
-
     const genAI = new GoogleGenerativeAI(apiKey)
-    // Use gemini-2.5-flash or gemini-2.0-flash / gemini-1.5-flash
     const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' })
 
     const prompt = `
 You are an expert pastoral assistant, theologian, and sermon transcription specialist for "The Shepherd's Desk".
 Listen carefully to this sermon audio recording and generate a comprehensive, structured pastoral analysis.
+
+CRITICAL WRITING RULE:
+Never use em dashes (—) or en dashes (–) anywhere in the output. Real people rarely type them. Use commas, colons, periods, or the word "and" instead. Plain hyphens (-) are only allowed inside words or Scripture ranges like "Romans 8:28-30".
 
 You MUST respond ONLY with a valid JSON object (no markdown code blocks, no backticks, no text before or after).
 The JSON object must have the following exact schema:
@@ -78,17 +129,52 @@ The JSON object must have the following exact schema:
 }
 `
 
-    const response = await model.generateContent([
-      {
-        inlineData: {
-          mimeType,
-          data: base64Audio,
-        },
-      },
-      prompt,
-    ])
+    let responseText = ''
 
-    const responseText = response.response.text()
+    // If audio is over 15MB, use Google AI File Manager to avoid inline base64 memory limits
+    if (buffer.length > 15 * 1024 * 1024) {
+      const fileManager = new GoogleAIFileManager(apiKey)
+      const ext = mimeType.split('/')[1] || 'm4a'
+      const tempPath = path.join(os.tmpdir(), `sermon-${Date.now()}.${ext}`)
+      await fs.writeFile(tempPath, buffer)
+
+      let uploadedFile: any = null
+      try {
+        const uploadResult = await fileManager.uploadFile(tempPath, {
+          mimeType,
+          displayName: 'Sermon Audio',
+        })
+        uploadedFile = uploadResult.file
+
+        const response = await model.generateContent([
+          {
+            fileData: {
+              mimeType: uploadedFile.mimeType,
+              fileUri: uploadedFile.uri,
+            },
+          },
+          prompt,
+        ])
+        responseText = response.response.text()
+      } finally {
+        await fs.unlink(tempPath).catch(() => {})
+        if (uploadedFile?.name) {
+          fileManager.deleteFile(uploadedFile.name).catch(() => {})
+        }
+      }
+    } else {
+      const base64Audio = buffer.toString('base64')
+      const response = await model.generateContent([
+        {
+          inlineData: {
+            mimeType,
+            data: base64Audio,
+          },
+        },
+        prompt,
+      ])
+      responseText = response.response.text()
+    }
 
     // Clean JSON response (strip markdown fences if model returned them)
     let cleanedJson = responseText.trim()
@@ -98,12 +184,15 @@ The JSON object must have the following exact schema:
       cleanedJson = cleanedJson.replace(/^```\s*/i, '').replace(/```\s*$/, '').trim()
     }
 
+    // Strictly enforce no em dashes or en dashes from AI response
+    cleanedJson = cleanedJson.replace(/[\u2014\u2013]/g, ', ')
+
     try {
       const parsedData = JSON.parse(cleanedJson)
       return NextResponse.json({
         success: true,
         data: {
-          title: parsedData.title || file.name.replace(/\.[^/.]+$/, '') || 'Untitled Sermon',
+          title: parsedData.title || originalName.replace(/\.[^/.]+$/, '') || 'Untitled Sermon',
           scriptures: Array.isArray(parsedData.scriptures) ? parsedData.scriptures : [],
           summary: parsedData.summary || '',
           outline: Array.isArray(parsedData.outline) ? parsedData.outline : [],
@@ -113,16 +202,15 @@ The JSON object must have the following exact schema:
       })
     } catch (jsonErr) {
       console.warn('Failed to parse structured JSON from Gemini, returning fallback text:', jsonErr)
-      // Fallback if model returned plain text transcript
       return NextResponse.json({
         success: true,
         data: {
-          title: file.name.replace(/\.[^/.]+$/, '') || 'Transcribed Sermon',
+          title: originalName.replace(/\.[^/.]+$/, '') || 'Transcribed Sermon',
           scriptures: [],
           summary: 'Transcribed audio recording.',
           outline: [],
           keyQuotes: [],
-          transcript: responseText,
+          transcript: responseText.replace(/[\u2014\u2013]/g, ', '),
         },
       })
     }
@@ -134,5 +222,13 @@ The JSON object must have the following exact schema:
       },
       { status: 500 }
     )
+  } finally {
+    // Delete temporary file from Supabase storage if it was uploaded via storagePath
+    if (storagePathToDelete && adminSupabase) {
+      adminSupabase.storage
+        .from('sermon-audio')
+        .remove([storagePathToDelete])
+        .catch((err: any) => console.warn('Could not clean up temporary storage file:', err))
+    }
   }
 }

@@ -164,12 +164,35 @@ export default function SermonAudioTranscriberModal({
     const step3Timer = setTimeout(() => setProcessingStep(3), 6000)
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
+      const ext = file.name.split('.').pop() || 'mp3'
+      const urlRes = await fetch('/api/ai/transcribe-sermon/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ext }),
+      })
+      const urlJson = await urlRes.json()
+      if (!urlRes.ok || !urlJson.signedUrl) {
+        throw new Error(urlJson.error || 'Failed to prepare audio upload.')
+      }
 
+      // Upload directly to Supabase storage (bypassing Vercel 4.5MB limit)
+      const uploadRes = await fetch(urlJson.signedUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'audio/mpeg',
+        },
+        body: file,
+      })
+
+      if (!uploadRes.ok) {
+        throw new Error('Failed to upload sermon audio. Please check your internet connection.')
+      }
+
+      // Process transcription using lightweight JSON payload
       const response = await fetch('/api/ai/transcribe-sermon', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storagePath: urlJson.path }),
       })
 
       const json = await response.json()
