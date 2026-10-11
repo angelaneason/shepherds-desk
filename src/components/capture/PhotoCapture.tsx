@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Camera, Upload, Image as ImageIcon, Loader2, Check, RefreshCw, Mic, MicOff, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { compressImageForOcr } from '@/lib/imageCompression'
 
 interface PhotoCaptureProps {
   isOpen: boolean
@@ -147,18 +148,19 @@ export function PhotoCapture({ isOpen, onClose, onTextCaptured, initialTab = 'vo
     }
   }, [])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setError('File size exceeds 10MB limit.')
-        return
-      }
-      setSelectedImage(file)
-      setPreviewUrl(URL.createObjectURL(file))
       setError(null)
       setExtractedText('')
       setConfidence(null)
+      setPreviewUrl(URL.createObjectURL(file))
+      try {
+        const compressed = await compressImageForOcr(file)
+        setSelectedImage(compressed)
+      } catch {
+        setSelectedImage(file)
+      }
     }
   }
 
@@ -168,10 +170,11 @@ export function PhotoCapture({ isOpen, onClose, onTextCaptured, initialTab = 'vo
     setIsLoading(true)
     setError(null)
 
-    const formData = new FormData()
-    formData.append('file', selectedImage)
-
     try {
+      const fileToUpload = await compressImageForOcr(selectedImage)
+      const formData = new FormData()
+      formData.append('file', fileToUpload)
+
       const response = await fetch('/api/ocr', {
         method: 'POST',
         body: formData,

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import mammoth from 'mammoth'
+import sharp from 'sharp'
+
+export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,13 +15,13 @@ export async function POST(request: NextRequest) {
     }
 
     const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    const fileType = file.type
+    let buffer = Buffer.from(bytes)
+    let fileType = file.type || 'image/jpeg'
     const fileName = file.name.toLowerCase()
 
     // Handle plain text files directly
     if (fileType === 'text/plain' || fileName.endsWith('.txt')) {
-      const text = buffer.toString('utf-8')
+      const text = buffer.toString('utf-8').replace(/[\u2014\u2013]/g, ', ')
       return NextResponse.json({ text, confidence: 'high' as const })
     }
 
@@ -28,7 +31,8 @@ export async function POST(request: NextRequest) {
       fileName.endsWith('.docx')
     ) {
       const result = await mammoth.extractRawText({ buffer })
-      return NextResponse.json({ text: result.value, confidence: 'high' as const })
+      const text = result.value.replace(/[\u2014\u2013]/g, ', ')
+      return NextResponse.json({ text, confidence: 'high' as const })
     }
 
     // Handle DOC files with mammoth (best effort)
@@ -38,21 +42,22 @@ export async function POST(request: NextRequest) {
     ) {
       try {
         const result = await mammoth.extractRawText({ buffer })
-        return NextResponse.json({ text: result.value, confidence: 'medium' as const })
+        const text = result.value.replace(/[\u2014\u2013]/g, ', ')
+        return NextResponse.json({ text, confidence: 'medium' as const })
       } catch {
-        // Fall through to Gemini AI if mammoth can't handle it
+        // Fall through to Gemini AI if mammoth cannot handle it
       }
     }
 
-    // Handle RTF files - extract text by stripping RTF formatting
+    // Handle RTF files: extract text by stripping RTF formatting
     if (fileType === 'application/rtf' || fileName.endsWith('.rtf')) {
       const rtfContent = buffer.toString('utf-8')
-      // Basic RTF text extraction - strip control words and formatting
       const text = rtfContent
         .replace(/\{\\[^{}]*\}/g, '')
         .replace(/\\[a-z]+\d*\s?/gi, '')
         .replace(/[{}]/g, '')
         .replace(/\\\\/g, '\\')
+        .replace(/[\u2014\u2013]/g, ', ')
         .trim()
       return NextResponse.json({ text, confidence: 'medium' as const })
     }
@@ -63,15 +68,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 })
     }
 
+    const isPDF = fileType === 'application/pdf' || fileName.endsWith('.pdf')
+
+    // If it is an image, optimize and resize to max 1600px with sharp for fast OCR
+    if (!isPDF && (fileType.startsWith('image/') || /\.(jpe?g|png|webp|heic|bmp|tiff)$/i.test(fileName))) {
+      try {
+        if (buffer.length > 500 * 1024) {
+          buffer = await sharp(buffer)
+            .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer()
+          fileType = 'image/jpeg'
+        }
+      } catch (sharpErr) {
+        console.warn('Sharp optimization skipped, using original buffer:', sharpErr)
+      }
+    }
+
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' })
 
-    const isPDF = fileType === 'application/pdf' || fileName.endsWith('.pdf')
     const base64String = buffer.toString('base64')
 
     const prompt = isPDF
-      ? "You are an expert OCR system for a pastoral note-taking app called Shepherd's Desk. Extract ALL text from EVERY PAGE of this PDF accurately. This is likely a typed or handwritten sermon. Preserve paragraph breaks, maintain sermon structure (introduction, points, conclusion). Preserve scripture references carefully. Clean up but don't rewrite - keep the pastor's original words. Process ALL pages in order. Return ONLY the extracted text with no additional commentary, page numbers, or explanation."
-      : "You are an expert OCR system for a pastoral note-taking app called Shepherd's Desk. Extract all text from this image accurately. This is likely a handwritten sermon. Preserve paragraph breaks, maintain sermon structure (introduction, points, conclusion). Handle handwriting variations and preserve scripture references carefully. Clean up but don't rewrite - keep the pastor's original words. Return ONLY the extracted text with no additional commentary or explanation."
+      ? "You are an expert OCR system for a pastoral note-taking app called Shepherd's Desk. Extract ALL text from EVERY PAGE of this PDF accurately. This is likely a typed or handwritten sermon. Preserve paragraph breaks, maintain sermon structure (introduction, points, conclusion). Preserve scripture references carefully. Clean up but do not rewrite: keep the pastor's original words. Never use em dashes or en dashes. Process ALL pages in order. Return ONLY the extracted text with no additional commentary, page numbers, or explanation."
+      : "You are an expert OCR system for a pastoral note-taking app called Shepherd's Desk. Extract all text from this image accurately. This is likely a handwritten sermon or book page. Preserve paragraph breaks, maintain sermon structure (introduction, points, conclusion). Handle handwriting variations and preserve scripture references carefully. Clean up but do not rewrite: keep the pastor's original words. Never use em dashes or en dashes. Return ONLY the extracted text with no additional commentary or explanation."
 
     const imageParts = [
       {
@@ -84,7 +105,10 @@ export async function POST(request: NextRequest) {
 
     const result = await model.generateContent([prompt, ...imageParts])
     const response = await result.response
-    const text = response.text()
+    let text = response.text()
+
+    // Strictly enforce no em dashes or en dashes from output
+    text = text.replace(/[\u2014\u2013]/g, ', ')
 
     let confidence: 'high' | 'medium' | 'low' = 'high'
     if (text.includes('[unclear]') || text.includes('[?]')) {
