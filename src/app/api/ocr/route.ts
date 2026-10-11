@@ -6,17 +6,33 @@ export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
+    let buffer: Buffer
+    let fileType = 'image/jpeg'
+    let fileName = 'photo.jpg'
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    const contentType = request.headers.get('content-type') || ''
+
+    if (contentType.includes('application/json')) {
+      const json = await request.json()
+      if (!json.base64) {
+        return NextResponse.json({ error: 'No image data provided' }, { status: 400 })
+      }
+      buffer = Buffer.from(json.base64, 'base64')
+      fileType = json.mimeType || 'image/jpeg'
+      fileName = (json.fileName || 'photo.jpg').toLowerCase()
+    } else {
+      const formData = await request.formData()
+      const file = formData.get('file') as File | null
+
+      if (!file) {
+        return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+      }
+
+      const bytes = await file.arrayBuffer()
+      buffer = Buffer.from(bytes)
+      fileType = file.type || 'image/jpeg'
+      fileName = (file.name || 'photo.jpg').toLowerCase()
     }
-
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    let fileType = file.type || 'image/jpeg'
-    const fileName = file.name.toLowerCase()
 
     // Handle plain text files directly
     if (fileType === 'text/plain' || fileName.endsWith('.txt')) {

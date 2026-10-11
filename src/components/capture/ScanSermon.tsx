@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Camera, Upload, Loader2, Check, X, ArrowUp, ArrowDown, ScanLine } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { compressImageForOcr } from '@/lib/imageCompression';
+import { compressImageForOcr, fileToBase64 } from '@/lib/imageCompression';
 
 interface PageItem {
   id: string;
@@ -126,12 +126,16 @@ export function ScanSermon({ isOpen, onClose }: ScanSermonProps) {
         setProgressMsg(`Converting page ${i + 1} of ${pages.length}...`);
         
         const fileToUpload = await compressImageForOcr(pages[i].file);
-        const formData = new FormData();
-        formData.append('file', fileToUpload);
+        const base64 = await fileToBase64(fileToUpload);
 
         const response = await fetch('/api/ocr', {
           method: 'POST',
-          body: formData,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base64,
+            mimeType: fileToUpload.type || 'image/jpeg',
+            fileName: fileToUpload.name,
+          }),
         });
 
         if (!response.ok) {

@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Camera, Upload, Image as ImageIcon, Loader2, Check, RefreshCw, Mic, MicOff, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { compressImageForOcr } from '@/lib/imageCompression'
+import { compressImageForOcr, fileToBase64 } from '@/lib/imageCompression'
 
 interface PhotoCaptureProps {
   isOpen: boolean
@@ -172,24 +172,31 @@ export function PhotoCapture({ isOpen, onClose, onTextCaptured, initialTab = 'vo
 
     try {
       const fileToUpload = await compressImageForOcr(selectedImage)
-      const formData = new FormData()
-      formData.append('file', fileToUpload)
+      const base64 = await fileToBase64(fileToUpload)
 
       const response = await fetch('/api/ocr', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          base64,
+          mimeType: fileToUpload.type || 'image/jpeg',
+          fileName: fileToUpload.name || 'capture.jpg',
+        }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to process image')
+        const errJson = await response.json().catch(() => null)
+        throw new Error(errJson?.error || 'Failed to process image')
       }
 
       const data = await response.json()
       setExtractedText(data.text)
       setConfidence(data.confidence)
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setError('We had trouble reading that. Try a clearer photo with good lighting.')
+      setError(err?.message || 'We had trouble reading that. Try a clearer photo with good lighting.')
     } finally {
       setIsLoading(false)
     }

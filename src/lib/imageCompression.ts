@@ -85,3 +85,19 @@ export async function compressImageForOcr(
     img.src = url
   })
 }
+
+/**
+ * Converts a file or blob to base64 string without data URL prefix.
+ */
+export async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      const base64 = result.includes(',') ? result.split(',')[1] : result
+      resolve(base64)
+    }
+    reader.onerror = (err) => reject(err)
+    reader.readAsDataURL(file)
+  })
+}
