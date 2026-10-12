@@ -155,7 +155,7 @@ export function PulpitPrintModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-6">
+      <DialogContent className="sm:max-w-4xl lg:max-w-5xl w-[95vw] max-h-[92vh] flex flex-col p-6 bg-slate-50/95 shadow-2xl">
         <DialogHeader className="border-b pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -163,7 +163,7 @@ export function PulpitPrintModal({
                 Pulpit & Bulletin Print View
               </DialogTitle>
               <p className="text-xs text-slate-500 mt-1">
-                {title} &bull; {sundayDate}
+                {title} • {sundayDate}
               </p>
             </div>
 
@@ -181,7 +181,7 @@ export function PulpitPrintModal({
               <Button
                 onClick={handlePrint}
                 size="sm"
-                className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 gap-1.5 text-xs"
+                className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 gap-1.5 text-xs font-bold"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Print / Save PDF
@@ -190,14 +190,14 @@ export function PulpitPrintModal({
           </div>
 
           {/* Controls Bar: Format Toggle & Font Size */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-2 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-2 border-t border-slate-200">
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-slate-200 shadow-2xs">
               <button
                 type="button"
                 onClick={() => setFormatType('spoken')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   formatType === 'spoken'
-                    ? 'bg-white text-[#022d5c] shadow-xs'
+                    ? 'bg-[#022d5c] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -206,9 +206,9 @@ export function PulpitPrintModal({
               <button
                 type="button"
                 onClick={() => setFormatType('bulletin')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   formatType === 'bulletin'
-                    ? 'bg-white text-[#022d5c] shadow-xs'
+                    ? 'bg-[#022d5c] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -219,25 +219,25 @@ export function PulpitPrintModal({
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Type className="w-3.5 h-3.5 text-slate-400" />
               <span>Font Size:</span>
-              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-md">
+              <div className="flex items-center gap-1 bg-white p-0.5 rounded-md border border-slate-200 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setFontSize('normal')}
-                  className={`px-2 py-0.5 rounded text-xs ${fontSize === 'normal' ? 'bg-white font-bold text-[#022d5c] shadow-xs' : 'text-slate-600'}`}
+                  className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${fontSize === 'normal' ? 'bg-[#022d5c] font-bold text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   Standard
                 </button>
                 <button
                   type="button"
                   onClick={() => setFontSize('large')}
-                  className={`px-2 py-0.5 rounded text-xs ${fontSize === 'large' ? 'bg-white font-bold text-[#022d5c] shadow-xs' : 'text-slate-600'}`}
+                  className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${fontSize === 'large' ? 'bg-[#022d5c] font-bold text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   Large
                 </button>
                 <button
                   type="button"
                   onClick={() => setFontSize('pulpit')}
-                  className={`px-2 py-0.5 rounded text-xs ${fontSize === 'pulpit' ? 'bg-[#D0A348] font-bold text-white shadow-xs' : 'text-slate-600'}`}
+                  className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${fontSize === 'pulpit' ? 'bg-[#D0A348] font-bold text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   Pulpit (20pt)
                 </button>
@@ -246,31 +246,31 @@ export function PulpitPrintModal({
           </div>
         </DialogHeader>
 
-        {/* Paper Document Preview */}
-        <div className="flex-1 overflow-y-auto py-4 px-2">
+        {/* Paper Document Preview Area */}
+        <div className="flex-1 overflow-y-auto py-6 px-4 bg-slate-200/50 rounded-xl border border-slate-300/60 shadow-inner flex justify-center">
           <div
             ref={printContentRef}
-            className={`max-w-2xl mx-auto bg-white p-8 rounded-xl border border-slate-200 shadow-sm transition-all ${
+            className={`max-w-3xl w-full bg-white p-10 sm:p-14 rounded-xs border border-slate-300 shadow-xl transition-all font-serif min-h-[650px] ${
               fontSize === 'pulpit' ? 'text-xl leading-relaxed' : fontSize === 'large' ? 'text-base leading-relaxed' : 'text-sm leading-normal'
             }`}
           >
-            <div className="border-b border-[#022d5c]/20 pb-4 mb-6">
+            <div className="border-b-2 border-[#022d5c] pb-5 mb-8 font-sans">
               {churchName && (
-                <div className="text-xs uppercase font-bold tracking-wider text-slate-500 mb-1">
+                <div className="text-xs uppercase font-bold tracking-widest text-slate-500 mb-1">
                   {churchName}
                 </div>
               )}
-              <h2 className="text-2xl font-black text-[#022d5c]">{title}</h2>
-              <div className="text-xs text-slate-500 mt-1 flex items-center gap-3">
+              <h2 className="text-3xl font-black text-[#022d5c] leading-tight">{title}</h2>
+              <div className="text-xs text-slate-500 mt-3 flex flex-wrap items-center gap-3">
                 <span>Date: <strong>{sundayDate}</strong></span>
-                {pastorName && <span>Pastor: <strong>{pastorName}</strong></span>}
-                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">
+                {pastorName && <span>• Pastor: <strong>{pastorName}</strong></span>}
+                <span className="bg-[#D0A348]/15 text-[#8b6920] px-2.5 py-0.5 rounded font-bold text-[11px] ml-auto">
                   {formatType === 'spoken' ? 'Pulpit Script' : 'Bulletin & Slides'}
                 </span>
               </div>
             </div>
 
-            <div className="whitespace-pre-wrap text-slate-800 font-serif">
+            <div className="whitespace-pre-wrap text-slate-900 font-serif leading-relaxed">
               {activeContent}
             </div>
           </div>

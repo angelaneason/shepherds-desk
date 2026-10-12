@@ -30,20 +30,20 @@ export function SermonPrintModal({
   churchName = "The Shepherd's Desk"
 }: SermonPrintModalProps) {
   const [printMode, setPrintMode] = useState<'manuscript' | 'outline'>('manuscript')
-  const [fontSize, setFontSize] = useState<'normal' | 'large' | 'pulpit'>('pulpit')
+  const [fontSize, setFontSize] = useState<'normal' | 'large' | 'pulpit'>('large')
   const [copied, setCopied] = useState(false)
 
   const outlineItems = extractSermonOutline(sermon.content)
   const fullHtmlContent = sermonContentToHtml(sermon.content)
 
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank', 'width=850,height=1000')
+    const printWindow = window.open('', '_blank', 'width=900,height=1000')
     if (!printWindow) {
       window.print()
       return
     }
 
-    const fontSizePx = fontSize === 'pulpit' ? '20px' : fontSize === 'large' ? '17px' : '14px'
+    const fontSizePx = fontSize === 'pulpit' ? '20px' : fontSize === 'large' ? '16px' : '14px'
     const lineHeight = fontSize === 'pulpit' ? '1.8' : fontSize === 'large' ? '1.6' : '1.5'
 
     let bodyHtml = ''
@@ -54,7 +54,7 @@ export function SermonPrintModal({
         bodyHtml = '<p><em>No outline points detected in this sermon yet. Add headings or bullet points to generate an outline.</em></p>'
       } else {
         bodyHtml = '<div class="outline-list">' + outlineItems.map(item => {
-          const indent = item.level === 1 ? '0px' : item.level === 2 ? '20px' : item.level === 3 ? '40px' : '60px'
+          const indent = item.level === 1 ? '0px' : item.level === 2 ? '24px' : item.level === 3 ? '44px' : '64px'
           const weight = item.level <= 2 ? 'bold' : 'normal'
           const color = item.level === 1 ? '#022d5c' : '#1f2937'
           const prefix = item.level === 1 ? '■ ' : item.level === 2 ? '● ' : item.level === 3 ? '◆ ' : '• '
@@ -185,7 +185,7 @@ export function SermonPrintModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-6">
+      <DialogContent className="sm:max-w-4xl lg:max-w-5xl w-[95vw] max-h-[92vh] flex flex-col p-6 bg-slate-50/95 shadow-2xl">
         <DialogHeader className="border-b pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -193,7 +193,7 @@ export function SermonPrintModal({
                 Print Sermon
               </DialogTitle>
               <p className="text-xs text-slate-500 mt-1">
-                {sermon.title || 'Untitled Sermon'} {sermon.scripture_primary ? `&bull; ${sermon.scripture_primary}` : ''}
+                {sermon.title || 'Untitled Sermon'} {sermon.scripture_primary ? `• ${sermon.scripture_primary}` : ''}
               </p>
             </div>
 
@@ -219,14 +219,14 @@ export function SermonPrintModal({
           </div>
 
           {/* Mode & Font controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-2 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-2 border-t border-slate-200">
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-slate-200 shadow-2xs">
               <button
                 type="button"
                 onClick={() => setPrintMode('manuscript')}
-                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   printMode === 'manuscript'
-                    ? 'bg-white text-[#022d5c] shadow-xs'
+                    ? 'bg-[#022d5c] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -236,9 +236,9 @@ export function SermonPrintModal({
               <button
                 type="button"
                 onClick={() => setPrintMode('outline')}
-                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   printMode === 'outline'
-                    ? 'bg-white text-[#022d5c] shadow-xs'
+                    ? 'bg-[#022d5c] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -250,25 +250,25 @@ export function SermonPrintModal({
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Type className="w-3.5 h-3.5 text-slate-400" />
               <span>Font Size:</span>
-              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-md">
+              <div className="flex items-center gap-1 bg-white p-0.5 rounded-md border border-slate-200 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setFontSize('normal')}
-                  className={`px-2 py-0.5 rounded text-xs ${fontSize === 'normal' ? 'bg-white font-bold text-[#022d5c] shadow-xs' : 'text-slate-600'}`}
+                  className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${fontSize === 'normal' ? 'bg-[#022d5c] font-bold text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
-                  Standard
+                  Standard (14pt)
                 </button>
                 <button
                   type="button"
                   onClick={() => setFontSize('large')}
-                  className={`px-2 py-0.5 rounded text-xs ${fontSize === 'large' ? 'bg-white font-bold text-[#022d5c] shadow-xs' : 'text-slate-600'}`}
+                  className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${fontSize === 'large' ? 'bg-[#022d5c] font-bold text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
-                  Large
+                  Large (16pt)
                 </button>
                 <button
                   type="button"
                   onClick={() => setFontSize('pulpit')}
-                  className={`px-2 py-0.5 rounded text-xs ${fontSize === 'pulpit' ? 'bg-[#D0A348] font-bold text-white shadow-xs' : 'text-slate-600'}`}
+                  className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${fontSize === 'pulpit' ? 'bg-[#D0A348] font-bold text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   Pulpit (20pt)
                 </button>
@@ -277,28 +277,29 @@ export function SermonPrintModal({
           </div>
         </DialogHeader>
 
-        {/* Paper Document Preview */}
-        <div className="flex-1 overflow-y-auto py-4 px-2">
+        {/* Paper Document Preview Area */}
+        <div className="flex-1 overflow-y-auto py-6 px-4 bg-slate-200/50 rounded-xl border border-slate-300/60 shadow-inner flex justify-center">
           <div
-            className={`max-w-2xl mx-auto bg-white p-8 rounded-xl border border-slate-200 shadow-sm transition-all font-serif ${
+            className={`max-w-3xl w-full bg-white p-10 sm:p-14 rounded-xs border border-slate-300 shadow-xl transition-all font-serif min-h-[650px] ${
               fontSize === 'pulpit' ? 'text-xl leading-relaxed' : fontSize === 'large' ? 'text-base leading-relaxed' : 'text-sm leading-normal'
             }`}
           >
-            <div className="border-b border-[#022d5c]/20 pb-4 mb-6">
+            <div className="border-b-2 border-[#022d5c] pb-5 mb-8">
               {churchName && (
-                <div className="text-xs uppercase font-bold tracking-wider text-slate-500 mb-1">
+                <div className="text-xs uppercase font-bold tracking-widest text-slate-500 mb-1">
                   {churchName}
                 </div>
               )}
-              <h2 className="text-2xl font-black text-[#022d5c]">{sermon.title || 'Untitled Sermon'}</h2>
+              <h2 className="text-3xl font-black text-[#022d5c] leading-tight">{sermon.title || 'Untitled Sermon'}</h2>
               {sermon.subtitle && (
-                <div className="text-sm text-slate-600 mt-1 italic">{sermon.subtitle}</div>
+                <div className="text-base text-slate-600 mt-1.5 italic font-sans">{sermon.subtitle}</div>
               )}
-              <div className="text-xs text-slate-500 mt-2 flex flex-wrap items-center gap-3">
+              <div className="text-xs text-slate-500 mt-3 flex flex-wrap items-center gap-3 font-sans">
                 {sermon.scripture_primary && <span>Scripture: <strong>{sermon.scripture_primary}</strong></span>}
-                {sermon.series_name && <span>Series: <strong>{sermon.series_name}</strong></span>}
-                {sermon.preach_date && <span>Date: <strong>{sermon.preach_date}</strong></span>}
-                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">
+                {sermon.series_name && <span>• Series: <strong>{sermon.series_name}</strong></span>}
+                {sermon.preach_date && <span>• Date: <strong>{sermon.preach_date}</strong></span>}
+                {pastorName && <span>• Pastor: <strong>{pastorName}</strong></span>}
+                <span className="bg-[#D0A348]/15 text-[#8b6920] px-2.5 py-0.5 rounded font-bold text-[11px] ml-auto">
                   {printMode === 'manuscript' ? 'Full Manuscript' : 'Pulpit Outline'}
                 </span>
               </div>
@@ -306,11 +307,11 @@ export function SermonPrintModal({
 
             {printMode === 'manuscript' ? (
               <div
-                className="text-slate-800"
+                className="text-slate-900 print-preview-body"
                 dangerouslySetInnerHTML={{ __html: fullHtmlContent || '<p class="italic text-slate-400">No content entered yet.</p>' }}
               />
             ) : (
-              <div className="space-y-2 text-slate-800">
+              <div className="space-y-3 text-slate-900">
                 {outlineItems.length === 0 ? (
                   <p className="italic text-slate-400 text-xs">
                     No outline items detected. Use headings or bullet points in the sermon editor to populate the pulpit outline.
@@ -319,10 +320,10 @@ export function SermonPrintModal({
                   outlineItems.map((item, idx) => (
                     <div
                       key={idx}
-                      style={{ paddingLeft: `${(item.level - 1) * 16}px` }}
-                      className={`${item.level <= 2 ? 'font-bold text-[#022d5c]' : 'text-slate-700'} py-0.5 flex items-start gap-2`}
+                      style={{ paddingLeft: `${(item.level - 1) * 24}px` }}
+                      className={`${item.level <= 2 ? 'font-bold text-[#022d5c]' : 'text-slate-800'} py-1 flex items-start gap-2.5`}
                     >
-                      <span className="text-[#D0A348] select-none">
+                      <span className="text-[#D0A348] select-none shrink-0 mt-0.5">
                         {item.level === 1 ? '■' : item.level === 2 ? '●' : item.level === 3 ? '◆' : '•'}
                       </span>
                       <span>{item.text}</span>
