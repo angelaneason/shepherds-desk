@@ -45,6 +45,7 @@ export default function SermonAudioTranscriberModal({
   const [result, setResult] = useState<TranscribedData | null>(null)
   const [activeResultTab, setActiveResultTab] = useState<'outline' | 'transcript'>('outline')
   const [isCreatingSermon, setIsCreatingSermon] = useState(false)
+  const [savedSermonId, setSavedSermonId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -246,6 +247,85 @@ export default function SermonAudioTranscriberModal({
 
       setResult(json.data)
       setProcessingStep(4)
+
+      // Auto-save immediately to Preached Sermons so pastor never loses their recording
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user && json.data) {
+          const contentDoc = {
+            type: 'doc',
+            content: [
+              {
+                type: 'heading',
+                attrs: { level: 2 },
+                content: [{ type: 'text', text: 'Executive Summary' }],
+              },
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: json.data.summary || '' }],
+              },
+              {
+                type: 'heading',
+                attrs: { level: 2 },
+                content: [{ type: 'text', text: 'Sermon Outline' }],
+              },
+              ...(json.data.outline || []).map((item: any, idx: number) => ({
+                type: 'paragraph',
+                content: [
+                  {
+                    type: 'text',
+                    text: `${idx + 1}. ${item.point}${item.scripture ? ` (${item.scripture})` : ''}: `,
+                    marks: [{ type: 'bold' }],
+                  },
+                  { type: 'text', text: item.explanation || '' },
+                ],
+              })),
+              {
+                type: 'heading',
+                attrs: { level: 2 },
+                content: [{ type: 'text', text: 'Key Illustrations & Quotes' }],
+              },
+              ...(json.data.keyQuotes || []).map((q: string) => ({
+                type: 'paragraph',
+                content: [
+                  { type: 'text', text: `• "${q}"` },
+                ],
+              })),
+              {
+                type: 'heading',
+                attrs: { level: 2 },
+                content: [{ type: 'text', text: 'Full Audio Transcript' }],
+              },
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: json.data.transcript || '' }],
+              },
+            ],
+          }
+
+          const todayStr = new Date().toISOString().split('T')[0]
+          const { data: autoSaved } = await supabase
+            .from('sermons')
+            .insert({
+              author_id: user.id,
+              title: json.data.title || 'Live Captured Sermon',
+              subtitle: json.data.summary || null,
+              scripture_primary: json.data.scriptures?.[0] || null,
+              scriptures_all: json.data.scriptures || [],
+              content: contentDoc,
+              status: 'preached',
+              preach_date: todayStr,
+            })
+            .select()
+            .single()
+
+          if (autoSaved?.id) {
+            setSavedSermonId(autoSaved.id)
+          }
+        }
+      } catch (autoErr) {
+        console.warn('Auto-save notice:', autoErr)
+      }
     } catch (err: any) {
       console.error('Transcription error:', err)
       let message = err?.message || 'An error occurred while transcribing your audio.'
@@ -325,6 +405,7 @@ export default function SermonAudioTranscriberModal({
         ],
       }
 
+      const todayStr = new Date().toISOString().split('T')[0]
       const { data: sermon, error: insertError } = (await supabase
         .from('sermons')
         .insert({
@@ -334,7 +415,8 @@ export default function SermonAudioTranscriberModal({
           scripture_primary: result.scriptures[0] || null,
           scriptures_all: result.scriptures || [],
           content: contentDoc,
-          status: 'draft',
+          status: 'preached',
+          preach_date: todayStr,
         })
         .select()
         .single()) as any
@@ -644,7 +726,7 @@ ${result.transcript}
                     Transcribed Title
                   </span>
                   <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
-                    <CheckCircle2 size={13} /> Complete
+                    <CheckCircle2 size={13} /> {savedSermonId ? 'Saved to Preached Sermons' : 'Transcription Complete'}
                   </span>
                 </div>
                 <h3 className="text-xl font-playfair font-bold text-[#022d5c]">
@@ -792,6 +874,7 @@ ${result.transcript}
                       setResult(null)
                       setFile(null)
                       setAudioUrl(null)
+                      setSavedSermonId(null)
                     }}
                     className="text-xs"
                   >
@@ -808,18 +891,33 @@ ${result.transcript}
                   </Button>
                 </div>
 
-                <Button
-                  onClick={handleCreateSermonDraft}
-                  disabled={isCreatingSermon}
-                  className="w-full sm:w-auto bg-[#022d5c] hover:bg-[#033b7a] text-white text-xs font-semibold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#022d5c]/10"
-                >
-                  {isCreatingSermon ? (
-                    <Loader2 size={14} className="animate-spin" />
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {savedSermonId ? (
+                    <Button
+                      onClick={() => {
+                        onClose()
+                        router.push(`/sermons/${savedSermonId}`)
+                      }}
+                      className="w-full sm:w-auto bg-[#022d5c] hover:bg-[#033b7a] text-white text-xs font-semibold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#022d5c]/10"
+                    >
+                      <ArrowRight size={14} className="text-[#D0A348]" />
+                      <span>Open in Sermon Studio</span>
+                    </Button>
                   ) : (
-                    <ArrowRight size={14} className="text-[#D0A348]" />
+                    <Button
+                      onClick={handleCreateSermonDraft}
+                      disabled={isCreatingSermon}
+                      className="w-full sm:w-auto bg-[#022d5c] hover:bg-[#033b7a] text-white text-xs font-semibold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#022d5c]/10"
+                    >
+                      {isCreatingSermon ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <ArrowRight size={14} className="text-[#D0A348]" />
+                      )}
+                      <span>Save as Preached Sermon</span>
+                    </Button>
                   )}
-                  <span>Create New Sermon Draft</span>
-                </Button>
+                </div>
               </div>
             </div>
           )}
