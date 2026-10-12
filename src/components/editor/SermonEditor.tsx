@@ -23,9 +23,20 @@ interface SermonEditorProps {
   onChange?: (content: any) => void;
   readOnly?: boolean;
   isSaving?: boolean;
+  sermonTitle?: string;
+  scripture?: string;
+  subtitle?: string;
 }
 
-export function SermonEditor({ content, onChange, readOnly = false, isSaving = false }: SermonEditorProps) {
+export function SermonEditor({
+  content,
+  onChange,
+  readOnly = false,
+  isSaving = false,
+  sermonTitle = '',
+  scripture = '',
+  subtitle = '',
+}: SermonEditorProps) {
   const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
   const [isBibleOpen, setIsBibleOpen] = useState(false);
   const [isStudyPanelOpen, setIsStudyPanelOpen] = useState(false);
@@ -181,6 +192,9 @@ export function SermonEditor({ content, onChange, readOnly = false, isSaving = f
         sermonContent={getSermonText()}
         selectedText={getSelectedText()}
         onInsertText={handleInsertHTML}
+        sermonTitle={sermonTitle}
+        scripture={scripture}
+        subtitle={subtitle}
       />
 
       {isBibleOpen && (

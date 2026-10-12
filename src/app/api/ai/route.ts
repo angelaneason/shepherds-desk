@@ -23,8 +23,7 @@ const getSystemPrompt = (action: string, pastorContext: string = ''): string => 
 
 CRITICAL INSTRUCTIONS:
 - NEVER include apologies, meta-commentary, or bracketed explanations (e.g., do NOT say "(I wasn't able to pull up your sermon archive...)" or "(I see we don't have your specific scripture...)").
-- Directly deliver high-quality, inspiring, and theologically sound content.
-- When scripture is given (e.g. John 3:16), tailor all titles, outlines, illustrations, and commentary specifically to that text.
+- You MUST anchor all titles, outlines, illustrations, and commentary specifically to the pastor's provided Scripture passage and Sermon Title. NEVER substitute an unrelated passage or topic.
 - Never use em dashes (—) or en dashes (–). Use a comma, period, colon, or the word "and" instead. Plain hyphens (-) are only allowed inside hyphenated words or numeric ranges like "8-15".
 ${pastorContext ? `\n${pastorContext}` : ''}`;
 
@@ -99,7 +98,7 @@ async function getPastorContext(userId: string, currentTopic: string): Promise<s
 
 export async function POST(request: Request) {
   try {
-    const { action, context, selection, userId } = await request.json();
+    const { action, context, selection, userId, sermonTitle, scripture, subtitle } = await request.json();
 
     if (!action) {
       return NextResponse.json({ error: 'Action is required' }, { status: 400 });
@@ -110,22 +109,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'AI is not configured yet.' }, { status: 500 });
     }
 
+    const primaryFocus = selection || scripture || sermonTitle || '';
+
     // Only query library context if pastor is explicitly searching their sermon archive
     const pastorContext = (action === 'search_sermons' && userId)
-      ? await getPastorContext(userId, selection || context || '')
+      ? await getPastorContext(userId, primaryFocus || context || '')
       : '';
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const systemPrompt = getSystemPrompt(action, pastorContext);
+
+    const sermonDetails = [
+      sermonTitle ? `Sermon Title: "${sermonTitle}"` : '',
+      scripture ? `Primary Scripture: "${scripture}"` : '',
+      subtitle ? `Series or Theme: "${subtitle}"` : '',
+      context && context.trim() ? `Sermon Draft Notes:\n${context}` : '',
+    ].filter(Boolean).join('\n');
+
     let userContent = '';
     if (action === 'custom') {
-      userContent = `Pastor's Request: "${selection || context || 'Sermon preparation help'}"\n\nSermon Draft: ${context || 'None'}`;
-    } else if (selection) {
-      userContent = `Scripture / Focus Topic: "${selection}"\n\nSermon Draft: ${context || 'None'}`;
-    } else if (context && context.trim()) {
-      userContent = `Sermon Draft / Context: "${context}"`;
+      userContent = `Pastor's Specific Request: "${selection || 'Sermon preparation help'}"\n\n${sermonDetails || 'General sermon preparation'}`;
+    } else if (primaryFocus) {
+      userContent = `Primary Scripture or Focus Topic: "${primaryFocus}"\n\n${sermonDetails || 'None'}`;
+    } else if (sermonDetails) {
+      userContent = `Sermon Context:\n${sermonDetails}`;
     } else {
       userContent = `General sermon preparation context.`;
     }

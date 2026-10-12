@@ -331,6 +331,9 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
             content={content} 
             onChange={setContent} 
             isSaving={isSaving}
+            sermonTitle={title}
+            scripture={scripture}
+            subtitle={series}
           />
         </div>
       </div>

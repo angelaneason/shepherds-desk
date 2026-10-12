@@ -14,9 +14,21 @@ interface AIPanelProps {
   sermonContent: string;
   selectedText: string;
   onInsertText: (text: string) => void;
+  sermonTitle?: string;
+  scripture?: string;
+  subtitle?: string;
 }
 
-export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsertText }: AIPanelProps) {
+export function AIPanel({
+  isOpen,
+  onClose,
+  sermonContent,
+  selectedText,
+  onInsertText,
+  sermonTitle = '',
+  scripture = '',
+  subtitle = '',
+}: AIPanelProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
@@ -32,11 +44,20 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
     });
   }, []);
 
+  useEffect(() => {
+    if (isOpen && !topicInput.trim()) {
+      const defaultTopic = scripture || sermonTitle || '';
+      if (defaultTopic) setTopicInput(defaultTopic);
+    }
+  }, [isOpen, scripture, sermonTitle]);
+
   const handleAction = async (action: string, customText?: string) => {
     setLoading(true);
     setError('');
     setResult('');
     setLastAction(action);
+
+    const primaryTopic = customText || topicInput || selectedText || scripture || sermonTitle || '';
 
     try {
       const response = await fetch('/api/ai', {
@@ -47,7 +68,10 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
         body: JSON.stringify({
           action,
           context: sermonContent,
-          selection: selectedText || customText || '',
+          selection: primaryTopic,
+          sermonTitle,
+          scripture,
+          subtitle,
           userId,
         }),
       });
@@ -109,6 +133,11 @@ export function AIPanel({ isOpen, onClose, sermonContent, selectedText, onInsert
                 onChange={(e) => setTopicInput(e.target.value)}
                 className="bg-[#F8F5EE]/50 border-gray-200 text-sm focus-visible:ring-[#D0A348]"
               />
+              {(scripture || sermonTitle) && (
+                <p className="text-[11px] text-[#022d5c] font-medium">
+                  Sermon Focus: {scripture ? `${scripture}` : ''} {sermonTitle ? `("${sermonTitle}")` : ''}
+                </p>
+              )}
               <p className="text-[11px] text-gray-500">
                 Type your passage or topic above, then pick an action below:
               </p>
