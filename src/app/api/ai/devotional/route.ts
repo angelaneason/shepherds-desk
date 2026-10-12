@@ -3,6 +3,17 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const dynamic = 'force-dynamic';
 
+// Number ranges ("8–10") become a plain hyphen; any other dash becomes a comma.
+function removeDashes(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/(\d)\s*[–—]\s*(\d)/g, '$1-$2')
+    .replace(/\s*[–—]+\s*/g, ', ')
+    .replace(/,\s*([,.!?])/g, '$1')
+    .replace(/^,\s*/, '')
+    .trim();
+}
+
 export async function POST(request: Request) {
   try {
     const { sermonTitle, sermonContent, scripture, days } = await request.json();
@@ -17,40 +28,60 @@ export async function POST(request: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const systemPrompt = `You are a pastoral devotional writer. Given a sermon title, content, and scripture, create a ${days}-day devotional plan. Each day should have:
+    const systemPrompt = `You are a pastoral devotional writer. Given a sermon title, content, and scripture, create a ${days}-day devotional plan. Each day must have:
 - day (number)
 - title (string)
-- scripture (string)
-- text (string: 2-3 warm, inspiring paragraphs in pastoral tone)
-- question (string: 1 reflection question)
-- prayer (string: 1 short closing prayer prompt)
+- scripture (string: biblical reference)
+- text (string: 1 concise, inspiring pastoral paragraph of 3-4 sentences capturing the core message)
+- question (string: 1 personal reflection question)
+- prayer (string: 1 short closing prayer sentence)
 
-Format your response as a valid JSON array of objects with fields: day, title, scripture, text, question, prayer.
-Return ONLY the raw JSON array. Do not include markdown code fences or backticks.`;
+CRITICAL RULES:
+- Never use em dashes (—) or en dashes (–). Use commas, periods, colons, or the word "and" instead. Plain hyphens (-) are only allowed inside hyphenated words or numeric ranges like "8-15".
+- Return a valid JSON array of objects with keys: day, title, scripture, text, question, prayer.`;
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-3.6-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.7,
+      },
       systemInstruction: systemPrompt,
     });
 
-    const prompt = `Sermon Title: ${sermonTitle}\n\n${scripture ? `Scripture: ${scripture}\n\n` : ''}${sermonContent ? `Sermon Content:\n${sermonContent}` : 'Generate based on the sermon title.'}`;
+    const truncatedContent = sermonContent ? sermonContent.substring(0, 3000) : '';
+    const prompt = `Sermon Title: ${sermonTitle}\n\n${scripture ? `Scripture: ${scripture}\n\n` : ''}${truncatedContent ? `Sermon Content:\n${truncatedContent}` : 'Generate based on the sermon title.'}`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
 
-    // Resilient JSON array extraction
-    const startIdx = responseText.indexOf('[');
-    const endIdx = responseText.lastIndexOf(']');
-
-    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-      const jsonStr = responseText.substring(startIdx, endIdx + 1);
-      const parsedData = JSON.parse(jsonStr);
-      return NextResponse.json(parsedData);
+    let parsedData: any[] = [];
+    try {
+      parsedData = JSON.parse(responseText);
+    } catch {
+      const startIdx = responseText.indexOf('[');
+      const endIdx = responseText.lastIndexOf(']');
+      if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+        const jsonStr = responseText.substring(startIdx, endIdx + 1);
+        parsedData = JSON.parse(jsonStr);
+      } else {
+        const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        parsedData = JSON.parse(cleanedText);
+      }
     }
 
-    // Fallback cleanup
-    const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const parsedData = JSON.parse(cleanedText);
+    // Sanitize any dashes from every devotional field
+    if (Array.isArray(parsedData)) {
+      parsedData = parsedData.map((item) => ({
+        ...item,
+        title: removeDashes(item.title || ''),
+        scripture: removeDashes(item.scripture || ''),
+        text: removeDashes(item.text || ''),
+        question: removeDashes(item.question || ''),
+        prayer: removeDashes(item.prayer || ''),
+      }));
+    }
+
     return NextResponse.json(parsedData);
   } catch (error: any) {
     console.error('Error generating devotional:', error?.message || error);
