@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare, Mic, Globe, Users, HelpCircle } from 'lucide-react'
 import { PhotoCapture } from '@/components/capture/PhotoCapture'
 import { SupportChat } from '@/components/support/SupportChat'
@@ -15,6 +16,9 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const isPulpit = pathname?.endsWith('/pulpit')
+
   const [isCaptureOpen, setIsCaptureOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [userInitial, setUserInitial] = useState('?')
@@ -163,6 +167,10 @@ export default function DashboardLayout({
       console.error('Error saving idea from quick capture:', error)
       alert('Failed to save idea. Please try again.')
     }
+  }
+
+  if (isPulpit) {
+    return <>{children}</>
   }
 
   return (

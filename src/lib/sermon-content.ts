@@ -25,7 +25,7 @@ export function normalizeSermonContent(rawContent: any): any {
     }
 
     // Check if it contains embedded TipTap JSON (e.g., 'ROO{"type":"doc"...')
-    const jsonMatch = trimmed.match(/\{.*"type"\s*:\s*"doc".*\}/s);
+    const jsonMatch = trimmed.match(/\{[\s\S]*"type"\s*:\s*"doc"[\s\S]*\}/);
     if (jsonMatch) {
       try {
         let jsonStr = jsonMatch[0]
@@ -128,12 +128,14 @@ export function plainTextToTipTap(text: string) {
 }
 
 /**
- * Converts sermon content (TipTap JSON or plain text) into clean printable HTML.
+ * Converts sermon content (TipTap JSON or plain text) into clean printable or pulpit HTML.
  */
-export function sermonContentToHtml(rawContent: any): string {
+export function sermonContentToHtml(rawContent: any, mode: 'light' | 'dark' = 'light'): string {
   if (!rawContent) return "";
 
   const normalized = normalizeSermonContent(rawContent);
+  const headingColor = mode === 'dark' ? '#D0A348' : '#022d5c';
+  const textColor = mode === 'dark' ? '#F8FAFC' : '#1E293B';
 
   if (typeof normalized === "string") {
     if (normalized.includes("<p>") || normalized.includes("<h1>") || normalized.includes("<div>")) {
@@ -143,47 +145,56 @@ export function sermonContentToHtml(rawContent: any): string {
       .split("\n")
       .map(line => line.trim())
       .filter(Boolean)
-      .map(line => `<p style="margin-bottom: 1em;">${line}</p>`)
+      .map(line => {
+        if (/^(#{1,3}\s|[I|V|X]+\.\s)/i.test(line)) {
+          return `<h3 style="font-size: 1.3em; margin: 1.2em 0 0.4em 0; font-weight: bold; color: ${headingColor};">${line}</h3>`;
+        }
+        return `<p style="margin-bottom: 1em; line-height: 1.6; color: ${textColor};">${line}</p>`;
+      })
       .join("");
   }
 
   if (typeof normalized === "object" && normalized.type === "doc" && Array.isArray(normalized.content)) {
-    return renderNodes(normalized.content);
+    return renderNodes(normalized.content, mode);
   }
 
   return "";
 }
 
-function renderNodes(nodes: any[]): string {
+function renderNodes(nodes: any[], mode: 'light' | 'dark' = 'light'): string {
   if (!Array.isArray(nodes)) return "";
 
+  const headingColor = mode === 'dark' ? '#D0A348' : '#022d5c';
+  const textColor = mode === 'dark' ? '#F8FAFC' : '#1E293B';
+  const quoteColor = mode === 'dark' ? '#E2E8F0' : '#374151';
+
   return nodes.map(node => {
-    const textContent = renderInlineContent(node.content);
+    const textContent = renderInlineContent(node.content, mode);
 
     switch (node.type) {
       case "paragraph":
-        return `<p style="margin-bottom: 1em; line-height: 1.6;">${textContent || "&nbsp;"}</p>`;
+        return `<p style="margin-bottom: 1em; line-height: 1.6; color: ${textColor};">${textContent || "&nbsp;"}</p>`;
       case "heading": {
         const level = node.attrs?.level || 2;
         const size = level === 1 ? "1.8em" : level === 2 ? "1.4em" : "1.2em";
         const margin = level === 1 ? "1.2em 0 0.4em 0" : "1em 0 0.3em 0";
-        return `<h${level} style="font-size: ${size}; margin: ${margin}; font-weight: bold; color: #022d5c;">${textContent}</h${level}>`;
+        return `<h${level} style="font-size: ${size}; margin: ${margin}; font-weight: bold; color: ${headingColor};">${textContent}</h${level}>`;
       }
       case "blockquote":
-        return `<blockquote style="border-left: 3px solid #D0A348; padding-left: 14px; margin: 1em 0; font-style: italic; color: #374151;">${renderNodes(node.content)}</blockquote>`;
+        return `<blockquote style="border-left: 3px solid #D0A348; padding-left: 14px; margin: 1em 0; font-style: italic; color: ${quoteColor};">${renderNodes(node.content, mode)}</blockquote>`;
       case "bulletList":
-        return `<ul style="list-style-type: disc; margin: 0.8em 0; padding-left: 24px;">${renderNodes(node.content)}</ul>`;
+        return `<ul style="list-style-type: disc; margin: 0.8em 0; padding-left: 24px; color: ${textColor};">${renderNodes(node.content, mode)}</ul>`;
       case "orderedList":
-        return `<ol style="list-style-type: decimal; margin: 0.8em 0; padding-left: 24px;">${renderNodes(node.content)}</ol>`;
+        return `<ol style="list-style-type: decimal; margin: 0.8em 0; padding-left: 24px; color: ${textColor};">${renderNodes(node.content, mode)}</ol>`;
       case "listItem":
-        return `<li style="margin-bottom: 0.4em;">${renderNodes(node.content)}</li>`;
+        return `<li style="margin-bottom: 0.4em; color: ${textColor};">${renderNodes(node.content, mode)}</li>`;
       default:
-        return textContent ? `<p style="margin-bottom: 1em;">${textContent}</p>` : "";
+        return textContent ? `<p style="margin-bottom: 1em; color: ${textColor};">${textContent}</p>` : "";
     }
   }).join("");
 }
 
-function renderInlineContent(inlines: any[]): string {
+function renderInlineContent(inlines: any[], mode: 'light' | 'dark' = 'light'): string {
   if (!Array.isArray(inlines)) return "";
 
   return inlines.map(inline => {
@@ -195,7 +206,12 @@ function renderInlineContent(inlines: any[]): string {
         if (mark.type === "bold") text = `<strong>${text}</strong>`;
         if (mark.type === "italic") text = `<em>${text}</em>`;
         if (mark.type === "underline") text = `<u>${text}</u>`;
-        if (mark.type === "highlight") text = `<mark style="background: #fef08a; padding: 0 2px;">${text}</mark>`;
+        if (mark.type === "highlight") {
+          const markStyle = mode === 'dark'
+            ? 'background: rgba(208, 163, 72, 0.4); color: #FFFFFF; padding: 0 4px; border-radius: 2px;'
+            : 'background: #fef08a; padding: 0 2px;';
+          text = `<mark style="${markStyle}">${text}</mark>`;
+        }
       });
     }
     return text;
