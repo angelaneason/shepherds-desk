@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback, use } from "react";
 import Link from "next/link";
-import { X, Play, Pause, RotateCcw, Type, Timer, Clock } from "lucide-react";
+import { X, Play, Pause, RotateCcw, Type, Timer, Clock, Printer } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { SermonEditor } from "@/components/editor/SermonEditor";
+import { SermonPrintModal } from "@/components/sermons/SermonPrintModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,8 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
   
   const [sermon, setSermon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [pastorProfile, setPastorProfile] = useState<{ full_name?: string; church_name?: string }>({});
   
   // Timer mode: 'countdown' or 'stopwatch'
   const [timerMode, setTimerMode] = useState<'countdown' | 'stopwatch'>('stopwatch');
@@ -47,12 +50,24 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     async function fetchSermon() {
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from("sermons")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (!error && data) setSermon(data);
+      const [sermonRes, userRes] = await Promise.all([
+        supabase
+          .from("sermons")
+          .select("*")
+          .eq("id", id)
+          .single(),
+        supabase.auth.getUser()
+      ]);
+
+      if (!sermonRes.error && sermonRes.data) setSermon(sermonRes.data);
+      if (userRes.data?.user) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("full_name, church_name")
+          .eq("id", userRes.data.user.id)
+          .maybeSingle();
+        if (prof) setPastorProfile(prof);
+      }
       setLoading(false);
     }
     fetchSermon();
@@ -188,6 +203,18 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
               +
             </Button>
           </div>
+
+          <div className="w-px h-6 bg-white/20 mx-2" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-white hover:bg-white/20 h-8 gap-1.5 text-xs font-semibold px-2.5"
+            onClick={() => setPrintModalOpen(true)}
+            title="Print Sermon"
+          >
+            <Printer className="h-4 w-4" />
+            <span>Print</span>
+          </Button>
         </div>
       </div>
 
@@ -257,6 +284,17 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
           padding: 0 !important;
         }
       `}</style>
+
+      {/* Sermon Print Modal */}
+      {sermon && (
+        <SermonPrintModal
+          isOpen={printModalOpen}
+          onClose={() => setPrintModalOpen(false)}
+          sermon={sermon}
+          pastorName={pastorProfile.full_name}
+          churchName={pastorProfile.church_name}
+        />
+      )}
     </div>
   );
 }

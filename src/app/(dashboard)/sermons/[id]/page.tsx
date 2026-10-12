@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Presentation, Trash2, BookOpen, Loader2, Copy, X, Download } from "lucide-react";
+import { ArrowLeft, Save, Presentation, Trash2, BookOpen, Loader2, Copy, X, Download, Printer } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SermonEditor } from "@/components/editor/SermonEditor";
 import { normalizeSermonContent } from "@/lib/sermon-content";
+import { SermonPrintModal } from "@/components/sermons/SermonPrintModal";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -46,15 +47,23 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
   const [devResult, setDevResult] = useState<any[]>([]);
   const [devSaving, setDevSaving] = useState(false);
 
+  // Print Modal State
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [pastorProfile, setPastorProfile] = useState<{ full_name?: string; church_name?: string }>({});
+
   const fetchSermon = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from("sermons")
-        .select("*")
-        .eq("id", id)
-        .single<any>();
+      const [sermonRes, userRes] = await Promise.all([
+        supabase
+          .from("sermons")
+          .select("*")
+          .eq("id", id)
+          .single<any>(),
+        supabase.auth.getUser()
+      ]);
 
-      if (error) throw error;
+      if (sermonRes.error) throw sermonRes.error;
+      const data = sermonRes.data;
       
       if (data) {
         setTitle(data.title || "");
@@ -65,6 +74,15 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
         setLocation(data.location || "");
         setStatus(data.status || "draft");
         setContent(normalizeSermonContent(data.content));
+      }
+
+      if (userRes.data?.user) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("full_name, church_name")
+          .eq("id", userRes.data.user.id)
+          .maybeSingle();
+        if (prof) setPastorProfile(prof);
       }
     } catch (error) {
       console.error("Error fetching sermon:", error);
@@ -232,6 +250,15 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
               Pulpit Mode
             </Button>
           </Link>
+
+          <Button 
+            variant="outline"
+            onClick={() => setPrintModalOpen(true)}
+            className="border-[#022d5c]/30 text-[#022d5c] hover:bg-[#022d5c]/10 gap-2 font-medium"
+          >
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
 
           <Button 
             onClick={() => handleSave(false)} 
@@ -472,6 +499,23 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       )}
+
+      {/* Sermon Print Modal */}
+      <SermonPrintModal
+        isOpen={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        sermon={{
+          title,
+          subtitle,
+          scripture_primary: scripture,
+          series_name: series,
+          preach_date: preachDate,
+          location,
+          content
+        }}
+        pastorName={pastorProfile.full_name}
+        churchName={pastorProfile.church_name}
+      />
     </div>
   );
 }

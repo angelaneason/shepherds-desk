@@ -10,7 +10,7 @@ import {
   Copy, Pencil, Trash, Megaphone, PartyPopper, Heart, HandHeart, Zap, 
   ChevronDown, ChevronUp, Plus, X, Sparkles, MessageSquare, Users, Send, 
   Check, CheckSquare, Square, Phone, Clock, AlertCircle, ExternalLink, RefreshCw,
-  Star, Archive, Search, History, Ban, ShieldCheck, Smartphone
+  Star, Archive, Search, History, Ban, ShieldCheck, Smartphone, Calendar
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import AiTextComposerModal from '@/components/care/AiTextComposerModal'
@@ -23,6 +23,7 @@ import { useBridgeDevice } from '@/components/bridge/BridgeSendButton'
 import { BridgeUnlockInline } from '@/components/bridge/BridgeUnlockInline'
 import { errorText, createBroadcast, personalize, smsSegments as countSegments } from '@/lib/broadcasts'
 import { sortByName } from '@/lib/people'
+import { SundayAnnouncementsPanel } from '@/components/announcements/SundayAnnouncementsPanel'
 
 type AnnouncementCategory = 'general' | 'event' | 'prayer' | 'volunteer' | 'celebration' | 'urgent'
 
@@ -115,7 +116,7 @@ export default function CommunicationPage() {
   const supabase = createClient()
   
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'announcements' | 'broadcast' | 'history'>('announcements')
+  const [activeTab, setActiveTab] = useState<'announcements' | 'sunday' | 'broadcast' | 'history'>('announcements')
   
   // Announcements State
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
@@ -523,6 +524,19 @@ export default function CommunicationPage() {
         </button>
 
         <button
+          onClick={() => setActiveTab('sunday')}
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer",
+            activeTab === 'sunday' 
+              ? "bg-[#022d5c] text-white shadow-sm" 
+              : "bg-white text-[#022d5c]/70 hover:text-[#022d5c] hover:bg-white/80 border border-[#022d5c]/10"
+          )}
+        >
+          <Calendar className="w-4 h-4 text-[#D0A348]" />
+          <span>Sunday Announcements</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('broadcast')}
           className={cn(
             "flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer",
@@ -562,6 +576,17 @@ export default function CommunicationPage() {
           )}
         </button>
       </div>
+
+      {/* TAB: SUNDAY ANNOUNCEMENTS */}
+      {activeTab === 'sunday' && (
+        <SundayAnnouncementsPanel
+          pastorProfile={pastorProfile}
+          onSendBroadcast={(body) => {
+            setBroadcastMessage(body)
+            setActiveTab('broadcast')
+          }}
+        />
+      )}
 
       {/* TAB 3: BROADCAST HISTORY (reloads each time it is opened) */}
       {activeTab === 'history' && (
