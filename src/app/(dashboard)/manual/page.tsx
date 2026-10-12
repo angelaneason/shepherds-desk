@@ -23,6 +23,8 @@ import {
   Heart,
   MessageSquare,
   Settings as SettingsIcon,
+  Calendar,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -61,6 +63,21 @@ const FAQS: FAQItem[] = [
     question: 'What happens if a broadcast runs late into the evening?',
     answer:
       'Phone Bridge respects pastoral quiet hours. If a broadcast is still sending between 9:00 PM and 8:00 AM, the app automatically pauses sending so your members are not woken up at night. Sending safely resumes in the morning.',
+  },
+  {
+    question: 'How does calendar scanning protect my private pastoral counseling notes?',
+    answer:
+      'When curating Sunday Announcements, the calendar scanner automatically filters for sensitive entries. Keywords such as counseling, doctor, dentist, private, and personal appointments are detected and excluded from the public church announcements by default.',
+  },
+  {
+    question: 'Can I edit the generated Sunday Announcements before printing or broadcasting?',
+    answer:
+      'Yes. You have complete editorial control. Both the Pulpit Spoken Script and the Church Bulletin text can be edited directly inside the browser or mobile app before saving, printing, or sending as a broadcast.',
+  },
+  {
+    question: 'Can I print my sermon manuscript or outline directly from my tablet or phone?',
+    answer:
+      'Yes. The sermon print preview allows you to select either Full Manuscript or Pulpit Outline, choose your font size (Standard 14pt, Large 16pt, or Pulpit Binder 20pt), and print directly to any network printer, AirPrint device, or export a clean PDF.',
   },
 ]
 
@@ -158,10 +175,22 @@ export default function ManualPage() {
             5. Member Directory
           </a>
           <a
+            href="#sunday-announcements"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
+          >
+            6. Sunday Announcements
+          </a>
+          <a
+            href="#pulpit-printing"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
+          >
+            7. Pulpit Printing
+          </a>
+          <a
             href="#faq"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            6. FAQ
+            8. FAQ
           </a>
         </div>
       </div>
@@ -474,11 +503,140 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* Section 6: Frequently Asked Questions */}
-      <section id="faq" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+      {/* Section 6: Sunday Announcements Workflow */}
+      <section id="sunday-announcements" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
             6
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[#022d5c]">Sunday Announcements Workflow</h2>
+            <p className="text-xs text-gray-500">Curate calendar events into spoken scripts and church bulletins</p>
+          </div>
+        </div>
+
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+          The Sunday Announcements workflow eliminates the stress of gathering weekly notices across ministries.
+          It scans your church calendar, lets you add custom pastoral highlights, and automatically produces two tailored scripts.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[#022d5c]" />
+              1. Scan Church Calendar
+            </h3>
+            <p className="text-xs md:text-sm text-gray-700 leading-relaxed">
+              Open <strong>Communication &gt; Sunday</strong> tab and tap <strong>New Sunday Announcements</strong>.
+              Choose your service date and scan window (7, 14, or 30 days). The system automatically pulls upcoming gatherings and events.
+            </p>
+            <div className="text-xs text-emerald-800 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 font-medium">
+              🛡️ <strong>Counseling Privacy Shield:</strong> Doctor visits, private pastoral counseling, and personal lunch appointments are automatically excluded and unchecked.
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#D0A348]" />
+              2. Add Pastoral Notes &amp; Tone
+            </h3>
+            <p className="text-xs md:text-sm text-gray-700 leading-relaxed">
+              Type custom pastoral highlights (such as shut-in visits, benevolence offerings, or volunteer calls) and select your tone:
+              <strong> Pastoral and Warm</strong>, <strong>Celebratory</strong>, or <strong>Clear and Concise</strong>.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-[#022d5c]/5 border border-[#022d5c]/10 space-y-3">
+          <h3 className="font-bold text-[#022d5c] text-sm flex items-center gap-2">
+            <FileText className="w-4 h-4 text-[#D0A348]" />
+            Dual Script Generation
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div className="bg-white p-3.5 rounded-lg border border-gray-200 space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#022d5c]">🎙️ Pulpit Spoken Script</span>
+              <p className="text-xs text-gray-700 leading-relaxed">
+                Written for spoken delivery with natural stage cues (like <em>[PAUSE FOR WELCOME]</em> or <em>[WARM SMILE]</em>) and bold key dates for glance-reading while speaking.
+              </p>
+            </div>
+            <div className="bg-white p-3.5 rounded-lg border border-gray-200 space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#022d5c]">📄 Church Bulletin / Slides</span>
+              <p className="text-xs text-gray-700 leading-relaxed">
+                A clean, concise summary with dates, times, and locations ready for printed bulletin handouts, projection slides, or weekly email newsletters.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Link href="/announcements">
+            <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs font-semibold gap-1.5 cursor-pointer">
+              Go to Sunday Announcements
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Section 7: Pulpit Printing & PDF Export */}
+      <section id="pulpit-printing" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
+            7
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[#022d5c]">Pulpit Printing &amp; PDF Export</h2>
+            <p className="text-xs text-gray-500">Read comfortably from any pulpit, music stand, or binder</p>
+          </div>
+        </div>
+
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+          Both the web dashboard and mobile app feature a dedicated document print preview designed for clean reading in the pulpit.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm">📖 Full Manuscript View</h3>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Prints the complete text of your sermon with generous line spacing and clear margins for pastors who preach word-for-word.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm">📝 Pulpit Outline View</h3>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Automatically extracts main points, roman numerals, headings, and scripture references into an indented, high-contrast binder outline.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm">🔍 Pulpit 20pt Font Size</h3>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Toggle between Standard (14pt), Large (16pt), and Pulpit (20pt) so you can glance down from chest height without leaning or reading glasses.
+            </p>
+          </div>
+        </div>
+
+        <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="text-xs font-bold text-[#022d5c]">AirPrint &amp; PDF Sharing on Mobile</div>
+            <p className="text-xs text-gray-600">
+              In the mobile app, tap Print in any sermon or Sunday announcement to send directly to your wireless printer or export a clean PDF via AirDrop, Save to Files, or email.
+            </p>
+          </div>
+          <Link href="/sermons">
+            <Button variant="outline" className="text-[#022d5c] border-[#022d5c] text-xs font-semibold gap-1.5 shrink-0 cursor-pointer">
+              Open Sermon Studio
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Section 8: Frequently Asked Questions */}
+      <section id="faq" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
+            8
           </div>
           <div>
             <h2 className="text-xl font-bold text-[#022d5c]">Frequently Asked Questions</h2>
