@@ -25,6 +25,7 @@ import {
   Settings as SettingsIcon,
   Calendar,
   FileText,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -175,22 +176,34 @@ export default function ManualPage() {
             5. Member Directory
           </a>
           <a
+            href="#sermon-studio"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
+          >
+            6. Sermon Studio
+          </a>
+          <a
+            href="#calendar-setup"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
+          >
+            7. Calendar Setup
+          </a>
+          <a
             href="#sunday-announcements"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            6. Sunday Announcements
+            8. Sunday Announcements
           </a>
           <a
             href="#pulpit-printing"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            7. Pulpit Printing
+            9. Pulpit Printing
           </a>
           <a
             href="#faq"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            8. FAQ
+            10. FAQ
           </a>
         </div>
       </div>
@@ -503,11 +516,148 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* Section 6: Sunday Announcements Workflow */}
-      <section id="sunday-announcements" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+      {/* Section 6: Sermon Studio & Sermon Preparation */}
+      <section id="sermon-studio" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
             6
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[#022d5c]">Sermon Studio &amp; Sermon Preparation</h2>
+            <p className="text-xs text-gray-500">Prepare, research, outline, write, and preach your weekly messages</p>
+          </div>
+        </div>
+
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+          Sermon Studio provides a peaceful, distraction-free environment to prepare what God has placed on your heart. It seamlessly links biblical research, voice dictation, an intelligent pastoral assistant, devotional generation, and high-contrast pulpit preaching.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#022d5c]" />
+              1. Organizing &amp; Drafting
+            </h3>
+            <p className="text-xs md:text-sm text-gray-700 leading-relaxed">
+              Set your <strong>Sermon Title</strong>, <strong>Primary Scripture</strong> (e.g. <em>2 Chronicles 20:12-17</em>), Series Name, and Preach Date. Move each message through four status badges: <strong>Draft</strong>, <strong>Review</strong>, <strong>Ready</strong>, and <strong>Preached</strong>. Every keystroke auto-saves every 3 seconds.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#D0A348]" />
+              2. Bible Lookup &amp; Study Tools
+            </h3>
+            <p className="text-xs md:text-sm text-gray-700 leading-relaxed">
+              Tap <strong>Bible</strong> to search across multiple translations (KJV, ASV, WEB, BBE, Darby, and YLT) and insert verses with one click. Tap <strong>Study</strong> to search the biblical concordance for original Greek and Hebrew meanings, or access Matthew Henry commentary.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-[#022d5c]/5 border border-[#022d5c]/10 space-y-3">
+          <h3 className="font-bold text-[#022d5c] text-sm flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#D0A348]" />
+            Sermon Assistant &amp; Devotional Generator
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div className="bg-white p-3.5 rounded-lg border border-gray-200 space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#022d5c]">✨ Sermon Assistant</span>
+              <p className="text-xs text-gray-700 leading-relaxed">
+                Automatically locks onto your sermon scripture. Brainstorms 5 titles, drafts a 3-point structured outline, discovers modern illustrations, suggests natural transitions, and finds cross-references with zero robotic dashes.
+              </p>
+            </div>
+            <div className="bg-white p-3.5 rounded-lg border border-gray-200 space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#022d5c]">📅 Devotional Generator</span>
+              <p className="text-xs text-gray-700 leading-relaxed">
+                Transforms your sermon into a 5-day or 7-day devotional plan for your congregation or small group. Each day includes scripture, reflection, a practical question, and a prayer prompt.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+          <h3 className="font-bold text-[#022d5c] text-sm flex items-center gap-2">
+            <Clock className="w-4 h-4 text-[#022d5c]" />
+            Pulpit Mode (Live Preaching)
+          </h3>
+          <p className="text-xs md:text-sm text-gray-700 leading-relaxed">
+            Tap <strong>Pulpit Mode</strong> in the header for a distraction-free preaching view. Features high-contrast scalable text (A+ / A-), a built-in stopwatch or countdown timer, and a smooth teleprompter auto-scroll with adjustable speed controls.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Link href="/sermons">
+            <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs font-semibold gap-1.5 cursor-pointer">
+              Go to Sermon Studio
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Section 7: Calendar & Church Events Setup */}
+      <section id="calendar-setup" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
+            7
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[#022d5c]">Calendar &amp; Church Events Setup</h2>
+            <p className="text-xs text-gray-500">Color-coded pastoral scheduling, Google/Apple iCal sync, and event management</p>
+          </div>
+        </div>
+
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+          The Shepherd&apos;s Desk Calendar keeps your pastoral schedule organized and connects church gatherings directly into your weekly Sunday announcements.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[#022d5c]" />
+              1. Pastoral Event Types
+            </h3>
+            <p className="text-xs md:text-sm text-gray-700 leading-relaxed">
+              Color-code your week: <strong>Sermon Study</strong> (Navy) for sermon preparation blocks, <strong>Church Service</strong> (Purple) for Sunday and mid-week services, <strong>Pastoral Visit</strong> (Green) for hospital calls, <strong>Ministry Meeting</strong> (Blue) for committees, and <strong>Personal</strong> (Gold) for family time.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-[#D0A348]" />
+              2. Google &amp; Apple Calendar Sync
+            </h3>
+            <p className="text-xs md:text-sm text-gray-700 leading-relaxed">
+              Link your existing calendar using a secret iCal or webcal URL. In Google Calendar, go to <em>Settings &gt; Integrate calendar &gt; Secret address in iCal format</em>. In Apple Calendar, copy the public link. Paste it into the <strong>Sync</strong> dialog in The Shepherd&apos;s Desk to sync appointments automatically.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+          <h3 className="font-bold text-emerald-900 text-sm flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-700" />
+            Automatic Feeds into Sunday Announcements
+          </h3>
+          <p className="text-xs md:text-sm text-emerald-800 leading-relaxed">
+            All your upcoming church outings, services, and meetings are automatically surfaced when you generate Sunday Announcements. Sensitive appointments (counseling, doctor visits, and personal lunches) are automatically excluded and protected by the Counseling Privacy Shield.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Link href="/calendar">
+            <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs font-semibold gap-1.5 cursor-pointer">
+              Go to Calendar
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Section 8: Sunday Announcements Workflow */}
+      <section id="sunday-announcements" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
+            8
           </div>
           <div>
             <h2 className="text-xl font-bold text-[#022d5c]">Sunday Announcements Workflow</h2>
@@ -578,11 +728,11 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* Section 7: Pulpit Printing & PDF Export */}
+      {/* Section 9: Pulpit Printing & PDF Export */}
       <section id="pulpit-printing" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
-            7
+            9
           </div>
           <div>
             <h2 className="text-xl font-bold text-[#022d5c]">Pulpit Printing &amp; PDF Export</h2>
