@@ -45,7 +45,7 @@ export function AIPanel({
   }, []);
 
   useEffect(() => {
-    if (isOpen && !topicInput.trim()) {
+    if (isOpen) {
       const defaultTopic = scripture || sermonTitle || '';
       if (defaultTopic) setTopicInput(defaultTopic);
     }
