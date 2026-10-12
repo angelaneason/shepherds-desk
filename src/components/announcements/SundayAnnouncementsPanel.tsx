@@ -63,6 +63,7 @@ export function SundayAnnouncementsPanel({
 
   const [targetSunday, setTargetSunday] = useState(getInitialSunday())
   const [scope, setScope] = useState<LookaheadScope>('7days')
+  const [customStartDate, setCustomStartDate] = useState(getInitialSunday())
   const [customEndDate, setCustomEndDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'))
 
   // Calendar Events fetched for builder
@@ -124,14 +125,38 @@ export function SundayAnnouncementsPanel({
     }
   }
 
+  // Calculate start date based on scope
+  const calculateStartDate = (): Date => {
+    try {
+      if (scope === 'custom' && customStartDate) {
+        return parseISO(customStartDate)
+      }
+      return parseISO(targetSunday)
+    } catch {
+      return new Date()
+    }
+  }
+
   // Calculate the end date based on lookahead scope
   const calculateEndDate = (): Date => {
-    const start = parseISO(targetSunday)
-    if (scope === '7days') return addDays(start, 7)
-    if (scope === '14days') return addDays(start, 14)
-    if (scope === '30days') return addDays(start, 30)
-    return parseISO(customEndDate)
+    try {
+      const start = calculateStartDate()
+      if (scope === '7days') return addDays(start, 7)
+      if (scope === '14days') return addDays(start, 14)
+      if (scope === '30days') return addDays(start, 30)
+      if (scope === 'custom' && customEndDate) return parseISO(customEndDate)
+      return addDays(start, 7)
+    } catch {
+      return addDays(new Date(), 7)
+    }
   }
+
+  // Automatically refresh calendar events when date range or scope changes
+  useEffect(() => {
+    if (viewMode === 'builder') {
+      loadCalendarEvents()
+    }
+  }, [targetSunday, scope, customStartDate, customEndDate, viewMode])
 
   // Load calendar events whenever targetSunday or scope changes in builder
   const loadCalendarEvents = async () => {
@@ -140,7 +165,7 @@ export function SundayAnnouncementsPanel({
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const startDate = parseISO(targetSunday)
+      const startDate = calculateStartDate()
       const endDate = calculateEndDate()
 
       const { data, error } = await supabase
@@ -203,14 +228,17 @@ export function SundayAnnouncementsPanel({
 
   // Open the builder
   const startNewBuilder = () => {
+    const initialSun = getInitialSunday()
+    setTargetSunday(initialSun)
+    setCustomStartDate(initialSun)
+    setCustomEndDate(format(addDays(parseISO(initialSun), 14), 'yyyy-MM-dd'))
     setSelectedRecord(null)
-    setGeneratedTitle(`Sunday Announcements: ${targetSunday}`)
+    setGeneratedTitle(`Sunday Announcements: ${initialSun}`)
     setGeneratedSpoken('')
     setGeneratedBulletin('')
     setGeneratedSms('')
     setCustomItems([])
     setViewMode('builder')
-    loadCalendarEvents()
   }
 
   // Add custom announcement item
@@ -607,41 +635,83 @@ export function SundayAnnouncementsPanel({
                     <Label className="text-xs font-semibold text-slate-600 mb-1.5 block">
                       Calendar Look-Ahead Scope
                     </Label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-4 gap-1.5">
                       <button
                         type="button"
                         onClick={() => setScope('7days')}
-                        className={`px-2 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
+                        className={`px-1.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
                           scope === '7days'
                             ? 'bg-[#022d5c] text-white border-[#022d5c]'
                             : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        This Week (7d)
+                        7 Days
                       </button>
                       <button
                         type="button"
                         onClick={() => setScope('14days')}
-                        className={`px-2 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
+                        className={`px-1.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
                           scope === '14days'
                             ? 'bg-[#022d5c] text-white border-[#022d5c]'
                             : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        2 Weeks (14d)
+                        14 Days
                       </button>
                       <button
                         type="button"
                         onClick={() => setScope('30days')}
-                        className={`px-2 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
+                        className={`px-1.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
                           scope === '30days'
                             ? 'bg-[#022d5c] text-white border-[#022d5c]'
                             : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        1 Month (30d)
+                        30 Days
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScope('custom')}
+                        className={`px-1.5 py-1.5 text-xs font-semibold rounded-lg border text-center transition-all ${
+                          scope === 'custom'
+                            ? 'bg-[#022d5c] text-white border-[#022d5c]'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        Custom Range
                       </button>
                     </div>
+                  </div>
+
+                  {scope === 'custom' && (
+                    <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <div>
+                        <Label className="text-[11px] font-semibold text-slate-600">Start Date</Label>
+                        <Input
+                          type="date"
+                          value={customStartDate}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                          className="mt-1 bg-white text-xs"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] font-semibold text-slate-600">End Date</Label>
+                        <Input
+                          type="date"
+                          value={customEndDate}
+                          onChange={(e) => setCustomEndDate(e.target.value)}
+                          className="mt-1 bg-white text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Active Scanning Range Indicator */}
+                  <div className="text-[11px] text-slate-600 bg-blue-50/70 border border-blue-100 rounded-lg p-2.5 flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">Scanning window:</span>
+                    <span className="font-bold text-[#022d5c]">
+                      {format(calculateStartDate(), 'MMM d, yyyy')} to {format(calculateEndDate(), 'MMM d, yyyy')}
+                    </span>
                   </div>
 
                   <Button
