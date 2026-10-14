@@ -26,6 +26,12 @@ import {
   Calendar,
   FileText,
   RefreshCw,
+  Lightbulb,
+  Share2,
+  HeartHandshake,
+  BookMarked,
+  Mic,
+  Gift,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -79,6 +85,26 @@ const FAQS: FAQItem[] = [
     question: 'Can I print my sermon manuscript or outline directly from my tablet or phone?',
     answer:
       'Yes. The sermon print preview allows you to select either Full Manuscript or Pulpit Outline, choose your font size (Standard 14pt, Large 16pt, or Pulpit Binder 20pt), and print directly to any network printer, AirPrint device, or export a clean PDF.',
+  },
+  {
+    question: 'How do I use voice commands with the Smart Pastoral Assistant?',
+    answer:
+      'Tap the microphone icon or the Smart Assistant button on mobile or web. You can speak naturally, such as: "Remind me to visit Sister Mary tomorrow at 2 PM", "Add a new sermon titled Walking in Faith", or "Add Brother John to the prayer list". The assistant processes your intent and updates your calendar, sermons, or care notes automatically.',
+  },
+  {
+    question: 'Can I convert my thoughts in Ideas into a full sermon?',
+    answer:
+      'Yes. Every idea card has a "Convert to Sermon" button. Tapping it instantly creates a new sermon draft in Sermon Studio with your notes, title, scripture references, and voice transcriptions pre-populated.',
+  },
+  {
+    question: 'Where does the Community Relief directory get local resources?',
+    answer:
+      'The Resource Center queries verified public databases by ZIP code for verified local food pantries, shelters, utility assistance, and free health clinics. You can also save your own custom church benevolence contacts to the directory.',
+  },
+  {
+    question: 'How does the Refer a Pastor program work?',
+    answer:
+      'In the Refer a Pastor section, you have a unique personal referral link and pre-written pastoral invitation messages. When a fellow pastor signs up through your link, they receive VIP onboarding and you can track their status in your dashboard.',
   },
 ]
 
@@ -170,40 +196,64 @@ export default function ManualPage() {
             4. Smart Pacing
           </a>
           <a
-            href="#directory"
+            href="#people"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            5. Member Directory
+            5. People &amp; Pastoral Care
+          </a>
+          <a
+            href="#smart-assistant"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
+          >
+            6. Smart Assistant
           </a>
           <a
             href="#sermon-studio"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            6. Sermon Studio
+            7. Sermon Studio &amp; Pulpit
+          </a>
+          <a
+            href="#ideas"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
+          >
+            8. Ministry Ideas
           </a>
           <a
             href="#calendar-setup"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            7. Calendar Setup
+            9. Ministry Calendar
           </a>
           <a
             href="#sunday-announcements"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            8. Sunday Announcements
+            10. Sunday Announcements
+          </a>
+          <a
+            href="#resources"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
+          >
+            11. Rich Resource Center
+          </a>
+          <a
+            href="#referrals"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
+          >
+            12. Refer a Pastor
           </a>
           <a
             href="#pulpit-printing"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            9. Pulpit Printing
+            13. Pulpit Printing &amp; PDF
           </a>
           <a
             href="#faq"
             className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-[#022d5c] hover:text-white transition-colors text-gray-700"
           >
-            10. FAQ
+            14. FAQ
           </a>
         </div>
       </div>
@@ -475,55 +525,159 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* Section 5: Member Privacy & Directory Management */}
-      <section id="directory" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+      {/* Section 5: People & Pastoral Care */}
+      <section id="people" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
             5
           </div>
           <div>
-            <h2 className="text-xl font-bold text-[#022d5c]">Member Privacy &amp; Directory Management</h2>
-            <p className="text-xs text-gray-500">Protecting your congregation and honoring preferences</p>
+            <h2 className="text-xl font-bold text-[#022d5c]">People &amp; Pastoral Care (Shepherding the Flock)</h2>
+            <p className="text-xs text-gray-500">Member profiles, hospital visit logs, prayer tracking, and care check-ins</p>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+          Ministry is about people, not paperwork. The People section serves as your private pastoral relationship manager, keeping your congregation organized and cared for with compassion.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
-            <h3 className="font-bold text-[#022d5c] text-sm">⭐ Starred Members vs Regular Directory Contacts</h3>
-            <p className="text-xs md:text-sm text-gray-700">
-              Clicking the gold star on a contact marks them as an official church member.
-              Contacts without a star remain respected contacts (such as visiting pastors, community partners, or guests). No negative labels are ever shown.
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <Users className="w-4 h-4 text-[#D0A348]" />
+              Member Profiles &amp; Families
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Store contact numbers, email, physical addresses, family relationships, birthdays, anniversaries, and key spiritual milestones like baptisms and dedications.
             </p>
           </div>
 
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <Heart className="w-4 h-4 text-[#D0A348]" />
+              Hospital &amp; Bedside Care Logs
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Log hospital room visits, nursing home check-ins, and pastoral counseling sessions. Add private notes on scripture read and prayers offered so you always remember their journey.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Active Prayer List Tracker
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Maintain an active prayer list for ongoing medical and family needs. When God answers, mark them answered to celebrate God&apos;s faithfulness with your church.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <Send className="w-4 h-4 text-[#022d5c]" />
+              Direct 1:1 Care Messaging
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Tap the message icon beside any member to instantly send a personal, caring text through your carrier phone. Replies return directly to your phone for private conversation.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-100 space-y-2">
+            <h3 className="font-bold text-[#022d5c] text-sm">⭐ Starred Members vs Community Contacts</h3>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Clicking the gold star on a contact marks them as an active church member for Sunday announcements and group broadcasts. Contacts without a star remain respected community contacts (such as visiting ministers, vendors, or guests).
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-100 space-y-2">
             <h3 className="font-bold text-[#022d5c] text-sm">🚫 &quot;Do Not Text&quot; Protection</h3>
-            <p className="text-xs md:text-sm text-gray-700">
-              If someone asks not to receive group SMS texts, toggle on <strong>Do Not Text</strong> on their profile.
-              The system will completely lock their number out of broadcasts, while still allowing phone calls and pastoral visits.
+            <p className="text-xs text-gray-700 leading-relaxed">
+              If someone requests not to receive group SMS broadcasts, toggle on <strong>Do Not Text</strong> on their profile. The system will lock their number out of bulk broadcasts while still letting you make personal phone calls or pastoral visits.
             </p>
           </div>
+        </div>
 
-          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
-            <h3 className="font-bold text-[#022d5c] text-sm">📁 Archiving vs Safe Deleting</h3>
-            <p className="text-xs md:text-sm text-gray-700">
-              <strong>Archiving:</strong> When someone moves away, archive their profile to keep your active list clean while keeping all past care history safe.
-            </p>
-            <p className="text-xs md:text-sm text-gray-700">
-              <strong>Safe Deleting:</strong> Permanent deletion removes the contact but keeps historical care logs intact as &quot;Member (deleted)&quot;, preventing broken reports.
-            </p>
-          </div>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Link href="/care">
+            <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs font-semibold gap-1.5 cursor-pointer">
+              Go to People &amp; Pastoral Care
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
         </div>
       </section>
 
-      {/* Section 6: Sermon Studio & Sermon Preparation */}
-      <section id="sermon-studio" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+      {/* Section 6: Smart Pastoral Assistant */}
+      <section id="smart-assistant" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
             6
           </div>
           <div>
-            <h2 className="text-xl font-bold text-[#022d5c]">Sermon Studio &amp; Sermon Preparation</h2>
+            <h2 className="text-xl font-bold text-[#022d5c]">Smart Pastoral Assistant</h2>
+            <p className="text-xs text-gray-500">Voice-activated reminders, sermon drafting, and hands-free pastoral help</p>
+          </div>
+        </div>
+
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+          Your Smart Pastoral Assistant is built to lighten the pastoral load. You can speak or type in plain language, and the assistant handles scheduling, sermon drafting, and care reminders without making you navigate deep menus.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-[#78350F] text-sm">
+              <Mic className="w-4 h-4 text-[#D97706]" />
+              Natural Voice Commands
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Tap the microphone or assistant button and speak naturally:
+            </p>
+            <ul className="text-xs text-gray-800 space-y-1.5 pl-2 border-l-2 border-[#D0A348]">
+              <li>&bull; <em>&quot;Remind me to visit Sister Mary at the hospital tomorrow at 2 PM&quot;</em></li>
+              <li>&bull; <em>&quot;Add a new sermon titled Walking in Faith on Hebrews 11&quot;</em></li>
+              <li>&bull; <em>&quot;Add Brother John to our prayer list for surgery on Friday&quot;</em></li>
+              <li>&bull; <em>&quot;Draft a warm follow-up text checking on the Miller family&quot;</em></li>
+            </ul>
+          </div>
+
+          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-[#78350F] text-sm">
+              <Sparkles className="w-4 h-4 text-[#D97706]" />
+              Sermon &amp; Service Study Help
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Within Sermon Studio, your assistant provides instant study support:
+            </p>
+            <ul className="text-xs text-gray-800 space-y-1.5 pl-2 border-l-2 border-[#D0A348]">
+              <li>&bull; Brainstorm fresh sermon titles and three-point outlines</li>
+              <li>&bull; Uncover historical illustrations and cultural context</li>
+              <li>&bull; Generate Sunday announcements and church bulletin copy</li>
+              <li>&bull; Create children&apos;s sermon lessons and discussion questions</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+          <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            Respects Your Pastoral Calling and Voice
+          </div>
+          <p className="text-xs md:text-sm text-gray-700 leading-relaxed">
+            The assistant never writes generic sermons or replaces the guidance of the Holy Spirit. It functions as an attentive pastoral researcher and scribe, helping you organize and express what God has already placed on your heart.
+          </p>
+        </div>
+      </section>
+
+      {/* Section 7: Sermon Studio & Pulpit Mode */}
+      <section id="sermon-studio" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
+            7
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[#022d5c]">Sermon Studio &amp; Pulpit Mode</h2>
             <p className="text-xs text-gray-500">Prepare, research, outline, write, and preach your weekly messages</p>
           </div>
         </div>
@@ -595,11 +749,79 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* Section 7: Calendar & Church Events Setup */}
+      {/* Section 8: Sermon & Ministry Ideas Studio */}
+      <section id="ideas" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
+            8
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[#022d5c]">Sermon &amp; Ministry Ideas Studio</h2>
+            <p className="text-xs text-gray-500">Capture spontaneous thoughts, voice memos, and sermon sparks before they fade</p>
+          </div>
+        </div>
+
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+          Pastors receive inspiration at all times: while driving, reading scripture, visiting members, or in personal prayer. The Ideas Studio gives you an instant capture inbox so meaningful thoughts are never lost.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <Lightbulb className="w-4 h-4 text-[#D0A348]" />
+              Quick Thought Capture
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Jot down a title idea, illustration, book quote, or scripture reference with a quick title and notes. Your ideas stay organized in a clean card view.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <Mic className="w-4 h-4 text-[#D0A348]" />
+              Audio Memos &amp; Automatic Transcription
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              On the road or between hospital visits? Tap the microphone button in the mobile app to record an audio note. The app automatically transcribes your voice into clean, searchable text.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <BookMarked className="w-4 h-4 text-[#022d5c]" />
+              Topic Tagging &amp; Series Planning
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Tag your ideas by subject (such as Faith, Grace, Stewardship, or Family) or assign them to upcoming sermon series so your research is ready when you begin writing.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <ArrowRight className="w-4 h-4 text-emerald-600" />
+              One-Tap &quot;Convert to Sermon&quot;
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              When an idea is ready to become Sunday&apos;s message, tap <strong>Convert to Sermon</strong>. It instantly opens Sermon Studio with your title, scripture, notes, and transcriptions pre-populated.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Link href="/ideas">
+            <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs font-semibold gap-1.5 cursor-pointer">
+              Go to Ideas Studio
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Section 9: Calendar & Church Events Setup */}
       <section id="calendar-setup" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
-            7
+            9
           </div>
           <div>
             <h2 className="text-xl font-bold text-[#022d5c]">Calendar &amp; Church Events Setup</h2>
@@ -653,11 +875,11 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* Section 8: Sunday Announcements Workflow */}
+      {/* Section 10: Sunday Announcements Workflow */}
       <section id="sunday-announcements" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
-            8
+            10
           </div>
           <div>
             <h2 className="text-xl font-bold text-[#022d5c]">Sunday Announcements Workflow</h2>
@@ -728,11 +950,154 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* Section 9: Pulpit Printing & PDF Export */}
+      {/* Section 11: Rich Resource Center & Counseling Directory */}
+      <section id="resources" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
+            11
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[#022d5c]">Rich Resource Center &amp; Counseling Directory</h2>
+            <p className="text-xs text-gray-500">Biblical counseling wisdom and local community benevolence referrals</p>
+          </div>
+        </div>
+
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+          When people turn to the church in distress, pastors need immediate access to spiritual wisdom and practical community aid. The Resource Center combines biblical counseling guides with a verified local community referral network.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <BookOpen className="w-4 h-4 text-[#D0A348]" />
+              Biblical Counseling Guides
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Access curated scripture, pastoral talking points, and counsel notes for:
+            </p>
+            <ul className="text-xs text-gray-800 space-y-1 pl-2 border-l-2 border-[#D0A348]">
+              <li>&bull; Grief and loss of a loved one</li>
+              <li>&bull; Marital conflict and restoration</li>
+              <li>&bull; Anxiety, fear, and depression</li>
+              <li>&bull; Addictions, recovery, and spiritual crisis</li>
+              <li>&bull; Parenting challenges and youth discipleship</li>
+            </ul>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <HeartHandshake className="w-4 h-4 text-[#022d5c]" />
+              Local Community Relief Directory
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Search by church ZIP code to find immediate relief agencies in your neighborhood:
+            </p>
+            <ul className="text-xs text-gray-800 space-y-1 pl-2 border-l-2 border-[#022d5c]">
+              <li>&bull; Verified local food pantries and hot meals</li>
+              <li>&bull; Emergency shelters and transitional housing</li>
+              <li>&bull; Utility and rent assistance funds</li>
+              <li>&bull; Free medical and dental clinics</li>
+              <li>&bull; 24/7 crisis hotlines and specialized counseling</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-100 space-y-2">
+          <h3 className="font-bold text-[#022d5c] text-sm">📲 Sharing Resources Directly with Church Members</h3>
+          <p className="text-xs text-gray-700 leading-relaxed">
+            Every resource includes a one-click <strong>Share</strong> button. You can send contact details, phone numbers, and addresses directly to a church family in need via text message or email without copying and pasting.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Link href="/resources">
+            <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs font-semibold gap-1.5 cursor-pointer">
+              Go to Resource Center
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Section 12: Refer a Pastor & VIP Invitations */}
+      <section id="referrals" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
+            12
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[#022d5c]">Refer a Pastor &amp; VIP Invitations</h2>
+            <p className="text-xs text-gray-500">Bless fellow pastors, share your link, and track ministry referrals</p>
+          </div>
+        </div>
+
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+          Pastoral ministry can be lonely, and fellow pastors often carry heavy burdens alone. You can introduce your pastor friends, colleagues, and association members to The Shepherd&apos;s Desk with pre-written personal notes.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <Share2 className="w-4 h-4 text-[#D0A348]" />
+              Personal Referral Link
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Every pastor receives a unique invite link. Copy and share it via text, email, pastor text groups, or social media. Fellow pastors receive immediate full trial access with your personal recommendation.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <MessageSquare className="w-4 h-4 text-[#022d5c]" />
+              Pastor-to-Pastor Invitation Templates
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Choose from ready-to-send messages written specifically pastor-to-pastor. You can send directly from your phone through SMS or WhatsApp with your link already included.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Referral Dashboard &amp; Tracking
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Track when friends sign up. The dashboard shows pending invites, active joined pastors, and milestone celebrations as your pastor network grows.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-[#022d5c] text-sm">
+              <Gift className="w-4 h-4 text-[#D0A348]" />
+              Pastoral Gift Subscriptions
+            </div>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Want to bless a pastor or mentor? Gift a prepaid 6-month or 1-year subscription, complete with a personalized message and printable presentation certificate for Pastor Appreciation, Christmas, or ordinations.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Link href="/referrals">
+            <Button className="bg-[#022d5c] text-white hover:bg-[#022d5c]/90 text-xs font-semibold gap-1.5 cursor-pointer">
+              Go to Refer a Pastor
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+          <Link href="/gift">
+            <Button variant="outline" className="text-[#022d5c] border-[#022d5c] text-xs font-semibold gap-1.5 cursor-pointer">
+              <Gift className="w-3.5 h-3.5 text-[#D0A348]" />
+              Gift a Pastor
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Section 13: Pulpit Printing & PDF Export */}
       <section id="pulpit-printing" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
-            9
+            13
           </div>
           <div>
             <h2 className="text-xl font-bold text-[#022d5c]">Pulpit Printing &amp; PDF Export</h2>
@@ -782,11 +1147,11 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* Section 8: Frequently Asked Questions */}
+      {/* Section 14: Frequently Asked Questions */}
       <section id="faq" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
-            8
+            14
           </div>
           <div>
             <h2 className="text-xl font-bold text-[#022d5c]">Frequently Asked Questions</h2>
