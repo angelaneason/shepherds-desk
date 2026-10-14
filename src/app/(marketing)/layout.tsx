@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Shepherd's Desk — Sermon Prep & Ministry Management for Pastors",
-  description: "The all-in-one platform for sermon preparation, pastoral care, and ministry management. Built for pastors, by pastors.",
+  title: "The Shepherd's Desk: Your Complete Pastoral Ministry Assistant",
+  description: "The complete Ministry Assistant for pastors and ministers. Sermon preparation, ministry calendar, rich pastoral care and counseling resources, church communication, and stage-ready pulpit presentation.",
 }
 
 export default function MarketingLayout({

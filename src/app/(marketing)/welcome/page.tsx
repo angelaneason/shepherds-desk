@@ -11,7 +11,9 @@ import {
   CheckCircle2,
   ChevronRight,
   Gift,
-  LogIn
+  LogIn,
+  MessageSquare,
+  Mic
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -47,8 +49,8 @@ export default function WelcomePage() {
             Your calling. Your voice. <span className="text-gold">God's Message.</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-gray/80 max-w-2xl mb-10 font-light leading-relaxed">
-            The all-in-one sermon preparation and ministry management platform built for Pastors, Preachers, Teachers, and Ministers.
+          <p className="text-lg md:text-xl text-gray/80 max-w-3xl mb-10 font-light leading-relaxed">
+            The complete ministry assistant and pastoral companion. Equip your calling with sermon preparation, ministry calendar scheduling, pastoral care tracking, a rich resource center, and a seamless church communication hub.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center">
@@ -97,7 +99,7 @@ export default function WelcomePage() {
       <div className="bg-charcoal text-white/70 py-6 border-b border-white/10 text-center px-6">
         <p className="text-sm font-medium tracking-wide uppercase flex items-center justify-center gap-4">
           <span className="w-12 h-px bg-white/20 hidden sm:inline-block"></span>
-          Everything you need to shepherd your flock
+          Everything you need to shepherd your flock from Monday's ministry to Sunday's message
           <span className="w-12 h-px bg-white/20 hidden sm:inline-block"></span>
         </p>
       </div>
@@ -113,33 +115,33 @@ export default function WelcomePage() {
           {[
             {
               icon: BookOpen,
-              title: "Sermon Studio",
-              description: "Write, organize, and polish your sermons with a beautiful distraction-free editor. Smart writing tools help you brainstorm, outline, and refine your message."
-            },
-            {
-              icon: Book,
-              title: "Bible at Your Fingertips",
-              description: "Look up any verse in 6 translations, search Strong's Concordance, and access classic commentaries — all without leaving your sermon."
-            },
-            {
-              icon: Camera,
-              title: "Snap & Digitize",
-              description: "Photograph handwritten notes, napkin scribbles, or book highlights. The app reads your handwriting and converts it to searchable digital text."
+              title: "Sermon Studio & Pulpit Mode",
+              description: "Write, organize, and preach with confidence. Build structured outlines and full manuscripts, then preach with a stage-ready teleprompter, high-contrast themes, and a sermon timer."
             },
             {
               icon: CalendarDays,
-              title: "Ministry Calendar",
-              description: "Color-coded scheduling for services, visits, meetings, and personal time. See your whole week at a glance."
+              title: "Ministry Calendar & Scheduling",
+              description: "Color-coded scheduling tailored for pastoral life. Organize Sunday services, hospital visits, weddings, funerals, committee meetings, and personal rest at a glance."
             },
             {
               icon: Heart,
-              title: "Pastoral Care Tracker",
-              description: "Never let a follow-up slip through the cracks. Track hospital visits, phone calls, member care, and prayer needs."
+              title: "Pastoral Care & Hospital Visits",
+              description: "Never let a soul slip through the cracks. Track hospital visits, bedside prayers, homebound check-ins, member care history, and follow-up reminders right from your phone."
             },
             {
-              icon: Monitor,
-              title: "Pulpit Mode",
-              description: "Clean, distraction-free sermon display with built-in timer. Your notes, beautifully formatted for the pulpit."
+              icon: Book,
+              title: "Rich Resource Center & Counseling",
+              description: "Instant access to biblical counseling guides for grief, marriage, and crisis, plus a local community relief directory for food pantries, shelter, medical clinics, and family assistance."
+            },
+            {
+              icon: MessageSquare,
+              title: "Church Communication Hub",
+              description: "Keep your flock informed and cared for. Coordinate Sunday announcements, draft member check-ins, send prayer alerts, and prepare service bulletins with ease."
+            },
+            {
+              icon: Mic,
+              title: "Hands-Free Voice Studio & Notes",
+              description: "Record sermon thoughts on the road, dictate pastoral care notes hands-free, or photograph book pages and handwritten notes with instant digital conversion."
             }
           ].map((feature, i) => (
             <div key={i} className="bg-white rounded-2xl p-8 shadow-sm border border-gray/50 hover:shadow-md transition-shadow">
@@ -153,17 +155,17 @@ export default function WelcomePage() {
         </div>
       </section>
 
-      {/* AI Section Highlight */}
+      {/* Pastoral Assistant Section Highlight */}
       <section className="bg-gold py-24 px-6">
         <div className="container mx-auto max-w-5xl">
           <div className="bg-white rounded-3xl p-8 md:p-12 lg:p-16 shadow-xl flex flex-col md:flex-row items-center gap-12">
             <div className="md:w-1/2">
               <div className="inline-flex items-center gap-2 bg-gold/10 text-navy px-4 py-2 rounded-full text-sm font-semibold mb-6">
-                <Sparkles className="h-4 w-4" /> Built-in Assistant
+                <Sparkles className="h-4 w-4" /> Pastoral Assistant
               </div>
-              <h2 className="text-3xl md:text-4xl font-[family-name:var(--font-playfair)] text-navy mb-6">Tools That Respect Your Voice</h2>
+              <h2 className="text-3xl md:text-4xl font-[family-name:var(--font-playfair)] text-navy mb-6">A Faithful Assistant That Respects Your Voice</h2>
               <p className="text-charcoal/80 mb-6 leading-relaxed text-lg">
-                The Shepherd's Desk doesn't write your sermons - it helps you develop what God has already placed on your heart. Brainstorm titles, generate outlines, find illustrations, and polish your prose.
+                The Shepherd's Desk does not write your sermons or replace your pastoral heart. It is a faithful assistant built to support what God has already placed on your heart. From developing sermon outlines and historical illustrations to organizing Sunday announcements, coordinating pastoral care, and managing church resources, your assistant is always ready to help lighten the load.
               </p>
               <p className="font-[family-name:var(--font-playfair)] text-xl text-navy italic">
                 Your calling. Your voice. God's message.
@@ -291,7 +293,7 @@ export default function WelcomePage() {
                 Looking for a Meaningful Gift for Your Pastor?
               </h3>
               <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-                Give your pastor something they will actually use every single week. Gift a prepaid 6-month or 1-year subscription—complete with a personalized note and high-resolution printable certificate.
+                Give your pastor something they will actually use every single week. Gift a prepaid 6-month or 1-year subscription, complete with a personalized note and high-resolution printable certificate.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row md:flex-col gap-3 w-full md:w-auto">
@@ -320,7 +322,7 @@ export default function WelcomePage() {
           </p>
           <div className="w-16 h-1 bg-gold mx-auto mb-6"></div>
           <p className="text-charcoal/60 uppercase tracking-widest font-semibold text-sm">
-            — John 21:17
+            John 21:17
           </p>
         </div>
       </section>
