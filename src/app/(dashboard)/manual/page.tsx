@@ -290,78 +290,154 @@ export default function ManualPage() {
         </div>
       </section>
 
-      {/* Section 1: One-Time Phone Setup */}
+      {/* Section 1: One-Time Setup */}
       <section id="setup" className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#022d5c] text-white flex items-center justify-center font-bold text-lg">
             1
           </div>
           <div>
-            <h2 className="text-xl font-bold text-[#022d5c]">Getting Started: One-Time Phone Setup</h2>
-            <p className="text-xs text-gray-500">Takes less than two minutes to pair your phone</p>
+            <h2 className="text-xl font-bold text-[#022d5c]">Getting Started: One-Time Setup</h2>
+            <p className="text-xs text-gray-500">Connect your mobile phone carrier and live Google or Apple calendar in under 5 minutes</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Step 1 */}
-          <div className="border border-gray-200 rounded-xl p-5 space-y-3 bg-gray-50/50">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#D0A348] text-white flex items-center justify-center text-xs font-bold">
-                1
-              </span>
-              <h3 className="font-bold text-[#022d5c] text-sm md:text-base">Install Phone Bridge</h3>
-            </div>
-            <ol className="space-y-2.5 text-xs md:text-sm text-gray-700 list-decimal list-inside pl-1">
-              <li>
-                Download and install <strong>Shepherd&apos;s Desk Phone Bridge</strong> on your Android phone.
-              </li>
-              <li>
-                Open the app. You will see a welcome screen explaining that messages will send from your carrier phone number.
-              </li>
-              <li>
-                Tap <strong>Continue</strong> and grant the standard SMS and Notification permissions when prompted.
-              </li>
-              <li>
-                Sign in using the exact same email and password you use for The Shepherd&apos;s Desk web dashboard.
-              </li>
-            </ol>
+        {/* Part 1: Phone Bridge Setup */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+            <Smartphone className="w-4 h-4 text-[#D0A348]" />
+            <h3 className="font-bold text-[#022d5c] text-base">Part A: Phone Bridge Setup (2 Minutes)</h3>
           </div>
 
-          {/* Step 2 */}
-          <div className="border border-gray-200 rounded-xl p-5 space-y-3 bg-gray-50/50">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#D0A348] text-white flex items-center justify-center text-xs font-bold">
-                2
-              </span>
-              <h3 className="font-bold text-[#022d5c] text-sm md:text-base">Pair Your Phone</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Step 1 */}
+            <div className="border border-gray-200 rounded-xl p-5 space-y-3 bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#D0A348] text-white flex items-center justify-center text-xs font-bold">
+                  1
+                </span>
+                <h4 className="font-bold text-[#022d5c] text-sm md:text-base">Install Phone Bridge</h4>
+              </div>
+              <ol className="space-y-2.5 text-xs md:text-sm text-gray-700 list-decimal list-inside pl-1">
+                <li>
+                  Download and install <strong>Shepherd&apos;s Desk Phone Bridge</strong> on your Android phone.
+                </li>
+                <li>
+                  Open the app. You will see a welcome screen explaining that messages will send from your carrier phone number.
+                </li>
+                <li>
+                  Tap <strong>Continue</strong> and grant standard SMS and Notification permissions when prompted.
+                </li>
+                <li>
+                  Sign in using the exact same email and password you use for The Shepherd&apos;s Desk web dashboard.
+                </li>
+              </ol>
             </div>
-            <ol className="space-y-2.5 text-xs md:text-sm text-gray-700 list-decimal list-inside pl-1">
-              <li>
-                On your computer or tablet, go to{' '}
-                <Link href="/settings" className="text-[#022d5c] font-semibold underline">
-                  Settings
-                </Link>{' '}
-                and look for the <strong>Phone Bridge</strong> card.
-              </li>
-              <li>
-                Click <strong>Connect Phone</strong> (or Pair Device) to display your unique pairing QR code on screen.
-              </li>
-              <li>
-                On your phone, tap <strong>Scan QR Code</strong> and point your camera at the computer screen.
-              </li>
-              <li>
-                Your phone will instantly confirm <strong>&quot;Ready to Bridge&quot;</strong> with your device name.
-              </li>
-            </ol>
+
+            {/* Step 2 */}
+            <div className="border border-gray-200 rounded-xl p-5 space-y-3 bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#D0A348] text-white flex items-center justify-center text-xs font-bold">
+                  2
+                </span>
+                <h4 className="font-bold text-[#022d5c] text-sm md:text-base">Pair Your Phone</h4>
+              </div>
+              <ol className="space-y-2.5 text-xs md:text-sm text-gray-700 list-decimal list-inside pl-1">
+                <li>
+                  On your computer or tablet, go to{' '}
+                  <Link href="/settings" className="text-[#022d5c] font-semibold underline">
+                    Settings
+                  </Link>{' '}
+                  and locate the <strong>Phone Bridge</strong> card.
+                </li>
+                <li>
+                  Click <strong>Connect Phone</strong> (or Pair Device) to display your unique pairing QR code on screen.
+                </li>
+                <li>
+                  On your phone, tap <strong>Scan QR Code</strong> and point your camera at the computer screen.
+                </li>
+                <li>
+                  Your phone will instantly confirm <strong>&quot;Ready to Bridge&quot;</strong> with your device name.
+                </li>
+              </ol>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs md:text-sm text-amber-900 leading-relaxed">
+              <strong>Battery Optimization Tip:</strong> For uninterrupted background sending, go to your phone&apos;s{' '}
+              <em>Settings &gt; Apps &gt; Phone Bridge &gt; Battery</em> and select <strong>Unrestricted</strong>.
+              This ensures your phone does not pause long broadcasts when the screen turns off.
+            </div>
           </div>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-xs md:text-sm text-amber-900 leading-relaxed">
-            <strong>Battery Optimization Tip:</strong> For uninterrupted background sending, go to your phone&apos;s{' '}
-            <em>Settings &gt; Apps &gt; Phone Bridge &gt; Battery</em> and select <strong>Unrestricted</strong>.
-            This ensures your phone does not pause long broadcasts when the screen turns off.
+        {/* Part 2: Live Calendar Auto-Sync (Google & Apple) */}
+        <div className="space-y-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+            <Calendar className="w-4 h-4 text-[#D0A348]" />
+            <h3 className="font-bold text-[#022d5c] text-base">Part B: Live Calendar Auto-Sync (Google &amp; Apple)</h3>
+          </div>
+
+          <p className="text-gray-700 text-xs md:text-sm leading-relaxed">
+            Connecting your live calendar automatically feeds your church gatherings, services, and ministry outings directly into your weekly Sunday announcements, while automatically shielding private counseling notes.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Google Calendar Instructions */}
+            <div className="border border-gray-200 rounded-xl p-5 space-y-3 bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#022d5c] text-white flex items-center justify-center text-xs font-bold">
+                  G
+                </span>
+                <h4 className="font-bold text-[#022d5c] text-sm md:text-base">Google Calendar (Secret iCal Link)</h4>
+              </div>
+              <ol className="space-y-2.5 text-xs text-gray-700 list-decimal list-inside pl-1">
+                <li>
+                  In Google Calendar on your computer, click the <strong>Gear icon &gt; Settings</strong>.
+                </li>
+                <li>
+                  In the left sidebar, look down under <strong>&quot;Settings for my calendars&quot;</strong> and click your calendar name.
+                </li>
+                <li>
+                  Click <strong>&quot;Integrate calendar&quot;</strong> in the left submenu (or scroll down to that section).
+                </li>
+                <li>
+                  Find <strong>&quot;Secret address in iCal format&quot;</strong> and click the <strong>Copy button</strong> (the two overlapping squares next to the eye icon).
+                </li>
+              </ol>
+              <div className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                <strong>Important:</strong> Do <em>not</em> copy the &quot;Public address in iCal format&quot;. Always copy the <strong>&quot;Secret address in iCal format&quot;</strong> so your schedule and appointments sync properly.
+              </div>
+            </div>
+
+            {/* Apple iCloud Calendar Instructions */}
+            <div className="border border-gray-200 rounded-xl p-5 space-y-3 bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#022d5c] text-white flex items-center justify-center text-xs font-bold">
+                  
+                </span>
+                <h4 className="font-bold text-[#022d5c] text-sm md:text-base">Apple Calendar / iCloud (webcal://)</h4>
+              </div>
+              <ol className="space-y-2.5 text-xs text-gray-700 list-decimal list-inside pl-1">
+                <li>
+                  Open the <strong>Calendar app</strong> on your Mac, iPad, or iPhone (or visit <em>icloud.com/calendar</em>).
+                </li>
+                <li>
+                  Click or tap the <strong>share/info icon</strong> next to the calendar you want to sync.
+                </li>
+                <li>
+                  Enable <strong>Public Calendar</strong> to generate a secure read-only feed link.
+                </li>
+                <li>
+                  Tap <strong>Copy Link</strong> to copy the <em>webcal://</em> feed address to your clipboard.
+                </li>
+              </ol>
+              <div className="text-xs text-blue-900 bg-blue-50 p-2.5 rounded-lg border border-blue-200">
+                <strong>Paste in The Shepherd&apos;s Desk:</strong> Go to <strong>Calendar &gt; Sync</strong>, paste your copied link, check <strong>&quot;Automatically sync when opening calendar&quot;</strong>, and click <strong>Sync Live Google &amp; Apple Feed</strong>.
+              </div>
+            </div>
           </div>
         </div>
       </section>
