@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Search, Calendar, Clock, Edit, ScanLine, LayoutGrid, Layers, Filter, BookOpen, BookMarked, ChevronDown, ChevronRight, Mic } from "lucide-react";
 import { format } from "date-fns";
@@ -52,33 +52,33 @@ export default function SermonsPage() {
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const supabase = createClient();
 
-  useEffect(() => {
-    async function fetchSermons() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  const fetchSermons = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const { data, error } = await supabase
-        .from("sermons")
-        .select("*")
-        .eq("author_id", user.id)
-        .order("updated_at", { ascending: false }) as any;
+    const { data, error } = await supabase
+      .from("sermons")
+      .select("*")
+      .eq("author_id", user.id)
+      .order("updated_at", { ascending: false }) as any;
 
-      if (error) {
-        console.error("Error fetching sermons:", error);
-      } else {
-        setSermons(data || []);
-        // Auto-expand all series in series view
-        const seriesNames = new Set<string>();
-        (data || []).forEach((s: Sermon) => {
-          if (s.series_name) seriesNames.add(s.series_name);
-        });
-        setExpandedSeries(seriesNames);
-      }
-      setLoading(false);
+    if (error) {
+      console.error("Error fetching sermons:", error);
+    } else {
+      setSermons(data || []);
+      // Auto-expand all series in series view
+      const seriesNames = new Set<string>();
+      (data || []).forEach((s: Sermon) => {
+        if (s.series_name) seriesNames.add(s.series_name);
+      });
+      setExpandedSeries(seriesNames);
     }
-
-    fetchSermons();
+    setLoading(false);
   }, [supabase]);
+
+  useEffect(() => {
+    fetchSermons();
+  }, [fetchSermons]);
 
   // Multi-field search
   const filteredSermons = sermons.filter((sermon) => {
@@ -257,8 +257,23 @@ export default function SermonsPage() {
         </div>
       </div>
 
-      <ScanSermon isOpen={isScanModalOpen} onClose={() => setIsScanModalOpen(false)} />
-      <SermonAudioTranscriberModal isOpen={isTranscribeModalOpen} onClose={() => setIsTranscribeModalOpen(false)} />
+      <ScanSermon 
+        isOpen={isScanModalOpen} 
+        onClose={() => {
+          setIsScanModalOpen(false);
+          fetchSermons();
+        }} 
+      />
+      <SermonAudioTranscriberModal 
+        isOpen={isTranscribeModalOpen} 
+        onClose={() => {
+          setIsTranscribeModalOpen(false);
+          fetchSermons();
+        }}
+        onSermonSaved={() => {
+          fetchSermons();
+        }}
+      />
 
       {/* Search, Filters, and View Toggle */}
       <div className="space-y-4 mb-6">

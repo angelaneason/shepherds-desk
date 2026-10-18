@@ -23,11 +23,13 @@ interface TranscribedData {
 interface SermonAudioTranscriberModalProps {
   isOpen: boolean
   onClose: () => void
+  onSermonSaved?: (sermonId: string) => void
 }
 
 export default function SermonAudioTranscriberModal({
   isOpen,
   onClose,
+  onSermonSaved,
 }: SermonAudioTranscriberModalProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -321,6 +323,7 @@ export default function SermonAudioTranscriberModal({
 
           if (autoSaved?.id) {
             setSavedSermonId(autoSaved.id)
+            onSermonSaved?.(autoSaved.id)
           }
         }
       } catch (autoErr) {
@@ -423,6 +426,7 @@ export default function SermonAudioTranscriberModal({
 
       if (insertError) throw insertError
 
+      onSermonSaved?.(sermon.id)
       onClose()
       router.push(`/sermons/${sermon.id}`)
     } catch (err: any) {
