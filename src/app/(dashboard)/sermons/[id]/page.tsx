@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Presentation, Trash2, BookOpen, Loader2, Copy, X, Download, Printer } from "lucide-react";
+import { ArrowLeft, Save, Presentation, Trash2, BookOpen, Loader2, Copy, X, Download, Printer, Mic } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SermonEditor } from "@/components/editor/SermonEditor";
 import { normalizeSermonContent } from "@/lib/sermon-content";
 import { SermonPrintModal } from "@/components/sermons/SermonPrintModal";
+import SermonAudioTranscriberModal from "@/components/sermons/SermonAudioTranscriberModal";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -49,6 +50,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
 
   // Print Modal State
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [pastorProfile, setPastorProfile] = useState<{ full_name?: string; church_name?: string }>({});
 
   const fetchSermon = useCallback(async () => {
@@ -242,6 +244,15 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           >
             <BookOpen className="h-4 w-4" />
             Devotional
+          </Button>
+
+          <Button 
+            variant="outline"
+            onClick={() => setIsRecordModalOpen(true)}
+            className="border-[#D0A348] text-[#977323] hover:bg-[#D0A348]/10 gap-2 font-medium cursor-pointer"
+          >
+            <Mic className="h-4 w-4 text-[#D0A348]" />
+            <span>Record Preaching</span>
           </Button>
 
           <Link href={`/sermons/${id}/pulpit`}>
@@ -452,7 +463,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
                           await supabase.from('saved_devotionals').insert({
                             profile_id: user.id,
                             sermon_id: id,
-                            title: `${title} — ${devDays}-Day Devotional`,
+                            title: `${title}: ${devDays}-Day Devotional`,
                             days: devDays,
                             content: devResult
                           } as any);
@@ -518,6 +529,17 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
         }}
         pastorName={pastorProfile.full_name}
         churchName={pastorProfile.church_name}
+      />
+
+      {/* Record Preaching Modal */}
+      <SermonAudioTranscriberModal
+        isOpen={isRecordModalOpen}
+        onClose={() => setIsRecordModalOpen(false)}
+        existingSermonId={id}
+        existingTitle={title}
+        onSermonSaved={() => {
+          fetchSermon();
+        }}
       />
     </div>
   );

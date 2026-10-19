@@ -24,17 +24,21 @@ interface SermonAudioTranscriberModalProps {
   isOpen: boolean
   onClose: () => void
   onSermonSaved?: (sermonId: string) => void
+  existingSermonId?: string
+  existingTitle?: string
 }
 
 export default function SermonAudioTranscriberModal({
   isOpen,
   onClose,
   onSermonSaved,
+  existingSermonId,
+  existingTitle,
 }: SermonAudioTranscriberModalProps) {
   const router = useRouter()
   const supabase = createClient()
 
-  const [mode, setMode] = useState<'upload' | 'record'>('upload')
+  const [mode, setMode] = useState<'upload' | 'record'>(existingSermonId ? 'record' : 'upload')
   const [file, setFile] = useState<File | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
@@ -254,76 +258,149 @@ export default function SermonAudioTranscriberModal({
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (user && json.data) {
-          const contentDoc = {
-            type: 'doc',
-            content: [
+          const todayStr = new Date().toISOString().split('T')[0]
+
+          if (existingSermonId) {
+            // Append live preaching transcript to existing sermon
+            const { data: existingSermon } = await supabase
+              .from('sermons')
+              .select('content, title, scriptures_all')
+              .eq('id', existingSermonId)
+              .single()
+
+            const existingNodes = existingSermon?.content?.content || []
+            const liveAppendNodes: any[] = [
               {
                 type: 'heading',
                 attrs: { level: 2 },
-                content: [{ type: 'text', text: 'Executive Summary' }],
+                content: [{ type: 'text', text: `Live Preached Audio Transcript (${todayStr})` }],
+              },
+              {
+                type: 'heading',
+                attrs: { level: 3 },
+                content: [{ type: 'text', text: 'Live Message Summary' }],
               },
               {
                 type: 'paragraph',
                 content: [{ type: 'text', text: json.data.summary || '' }],
               },
+            ]
+
+            if (json.data.keyQuotes && json.data.keyQuotes.length > 0) {
+              liveAppendNodes.push(
+                {
+                  type: 'heading',
+                  attrs: { level: 3 },
+                  content: [{ type: 'text', text: 'Spoken Illustrations and Quotes' }],
+                },
+                ...json.data.keyQuotes.map((q: string) => ({
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: `• "${q}"` }],
+                }))
+              )
+            }
+
+            liveAppendNodes.push(
               {
                 type: 'heading',
-                attrs: { level: 2 },
-                content: [{ type: 'text', text: 'Sermon Outline' }],
-              },
-              ...(json.data.outline || []).map((item: any, idx: number) => ({
-                type: 'paragraph',
-                content: [
-                  {
-                    type: 'text',
-                    text: `${idx + 1}. ${item.point}${item.scripture ? ` (${item.scripture})` : ''}: `,
-                    marks: [{ type: 'bold' }],
-                  },
-                  { type: 'text', text: item.explanation || '' },
-                ],
-              })),
-              {
-                type: 'heading',
-                attrs: { level: 2 },
-                content: [{ type: 'text', text: 'Key Illustrations & Quotes' }],
-              },
-              ...(json.data.keyQuotes || []).map((q: string) => ({
-                type: 'paragraph',
-                content: [
-                  { type: 'text', text: `• "${q}"` },
-                ],
-              })),
-              {
-                type: 'heading',
-                attrs: { level: 2 },
-                content: [{ type: 'text', text: 'Full Audio Transcript' }],
+                attrs: { level: 3 },
+                content: [{ type: 'text', text: 'Word-for-Word Spoken Transcript' }],
               },
               {
                 type: 'paragraph',
                 content: [{ type: 'text', text: json.data.transcript || '' }],
-              },
-            ],
-          }
+              }
+            )
 
-          const todayStr = new Date().toISOString().split('T')[0]
-          const { data: autoSaved } = await supabase
-            .from('sermons')
-            .insert({
-              author_id: user.id,
-              title: json.data.title || 'Live Captured Sermon',
-              subtitle: json.data.summary || null,
-              scripture_primary: json.data.scriptures?.[0] || null,
-              scriptures_all: json.data.scriptures || [],
-              content: contentDoc,
-              status: 'preached',
-              preach_date: todayStr,
-            })
-            .select()
-            .single()
+            const updatedDoc = {
+              type: 'doc',
+              content: [...existingNodes, ...liveAppendNodes],
+            }
 
-          if (autoSaved?.id) {
-            setSavedSermonId(autoSaved.id)
-            onSermonSaved?.(autoSaved.id)
+            await supabase
+              .from('sermons')
+              .update({
+                content: updatedDoc,
+                status: 'preached',
+                preach_date: todayStr,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existingSermonId)
+
+            setSavedSermonId(existingSermonId)
+            onSermonSaved?.(existingSermonId)
+          } else {
+            // Create brand new sermon
+            const contentDoc = {
+              type: 'doc',
+              content: [
+                {
+                  type: 'heading',
+                  attrs: { level: 2 },
+                  content: [{ type: 'text', text: 'Executive Summary' }],
+                },
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: json.data.summary || '' }],
+                },
+                {
+                  type: 'heading',
+                  attrs: { level: 2 },
+                  content: [{ type: 'text', text: 'Sermon Outline' }],
+                },
+                ...(json.data.outline || []).map((item: any, idx: number) => ({
+                  type: 'paragraph',
+                  content: [
+                    {
+                      type: 'text',
+                      text: `${idx + 1}. ${item.point}${item.scripture ? ` (${item.scripture})` : ''}: `,
+                      marks: [{ type: 'bold' }],
+                    },
+                    { type: 'text', text: item.explanation || '' },
+                  ],
+                })),
+                {
+                  type: 'heading',
+                  attrs: { level: 2 },
+                  content: [{ type: 'text', text: 'Key Illustrations & Quotes' }],
+                },
+                ...(json.data.keyQuotes || []).map((q: string) => ({
+                  type: 'paragraph',
+                  content: [
+                    { type: 'text', text: `• "${q}"` },
+                  ],
+                })),
+                {
+                  type: 'heading',
+                  attrs: { level: 2 },
+                  content: [{ type: 'text', text: 'Full Audio Transcript' }],
+                },
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: json.data.transcript || '' }],
+                },
+              ],
+            }
+
+            const { data: autoSaved } = await supabase
+              .from('sermons')
+              .insert({
+                author_id: user.id,
+                title: json.data.title || 'Live Captured Sermon',
+                subtitle: json.data.summary || null,
+                scripture_primary: json.data.scriptures?.[0] || null,
+                scriptures_all: json.data.scriptures || [],
+                content: contentDoc,
+                status: 'preached',
+                preach_date: todayStr,
+              })
+              .select()
+              .single()
+
+            if (autoSaved?.id) {
+              setSavedSermonId(autoSaved.id)
+              onSermonSaved?.(autoSaved.id)
+            }
           }
         }
       } catch (autoErr) {
@@ -495,10 +572,14 @@ ${result.transcript}
               <span>Sermon Audio Capture</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-playfair font-bold text-white">
-              Sermon Audio Transcriber
+              {existingSermonId
+                ? `Record Preaching: ${existingTitle || 'Current Sermon'}`
+                : 'Sermon Audio Transcriber'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-              Upload a sermon audio file or record live preaching. We'll transcribe the audio, detect biblical scriptures, and extract a structured outline.
+              {existingSermonId
+                ? 'Record your spoken sermon live at the pulpit. When you stop, we will transcribe your message and append the live preaching notes and full transcript directly into this sermon.'
+                : 'Upload a sermon audio file or record live preaching. We will transcribe the audio, detect biblical scriptures, and extract a structured outline.'}
             </p>
           </div>
           <button
@@ -900,12 +981,16 @@ ${result.transcript}
                     <Button
                       onClick={() => {
                         onClose()
-                        router.push(`/sermons/${savedSermonId}`)
+                        if (existingSermonId) {
+                          onSermonSaved?.(existingSermonId)
+                        } else {
+                          router.push(`/sermons/${savedSermonId}`)
+                        }
                       }}
                       className="w-full sm:w-auto bg-[#022d5c] hover:bg-[#033b7a] text-white text-xs font-semibold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#022d5c]/10"
                     >
                       <ArrowRight size={14} className="text-[#D0A348]" />
-                      <span>Open in Sermon Studio</span>
+                      <span>{existingSermonId ? 'Return to Sermon' : 'Open in Sermon Studio'}</span>
                     </Button>
                   ) : (
                     <Button

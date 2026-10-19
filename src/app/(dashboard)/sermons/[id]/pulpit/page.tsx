@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, use } from "react";
+import { useEffect, useState, useRef, useCallback, use } from "react";
 import Link from "next/link";
 import { 
   X, 
@@ -14,11 +14,13 @@ import {
   Moon, 
   BookOpen, 
   ListOrdered,
-  FastForward
+  FastForward,
+  Mic
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { sermonContentToHtml, extractSermonOutline } from "@/lib/sermon-content";
 import { SermonPrintModal } from "@/components/sermons/SermonPrintModal";
+import SermonAudioTranscriberModal from "@/components/sermons/SermonAudioTranscriberModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +31,7 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
   const [sermon, setSermon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [pastorProfile, setPastorProfile] = useState<{ full_name?: string; church_name?: string }>({});
   
   // Display theme: dark (auditorium) or light (pulpit paper)
@@ -74,31 +77,32 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
   }, []);
 
   // Fetch sermon and profile data
-  useEffect(() => {
-    async function fetchSermon() {
-      const supabase = createClient();
-      const [sermonRes, userRes] = await Promise.all([
-        supabase
-          .from("sermons")
-          .select("*")
-          .eq("id", id)
-          .single(),
-        supabase.auth.getUser()
-      ]);
+  const fetchSermon = useCallback(async () => {
+    const supabase = createClient();
+    const [sermonRes, userRes] = await Promise.all([
+      supabase
+        .from("sermons")
+        .select("*")
+        .eq("id", id)
+        .single(),
+      supabase.auth.getUser()
+    ]);
 
-      if (!sermonRes.error && sermonRes.data) setSermon(sermonRes.data);
-      if (userRes.data?.user) {
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("full_name, church_name")
-          .eq("id", userRes.data.user.id)
-          .maybeSingle();
-        if (prof) setPastorProfile(prof);
-      }
-      setLoading(false);
+    if (!sermonRes.error && sermonRes.data) setSermon(sermonRes.data);
+    if (userRes.data?.user) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("full_name, church_name")
+        .eq("id", userRes.data.user.id)
+        .maybeSingle();
+      if (prof) setPastorProfile(prof);
     }
-    fetchSermon();
+    setLoading(false);
   }, [id]);
+
+  useEffect(() => {
+    fetchSermon();
+  }, [fetchSermon]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -306,6 +310,25 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
           </span>
         </div>
 
+        {/* Record Live Preaching in Pulpit Mode */}
+        <button
+          onClick={() => setRecordModalOpen(true)}
+          className={cn(
+            "px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all border cursor-pointer shrink-0",
+            isDark 
+              ? "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30" 
+              : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100"
+          )}
+          title="Record Live Preaching directly into this sermon"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+          </span>
+          <Mic className="h-3.5 w-3.5 text-rose-500" />
+          <span className="hidden sm:inline">Record Preaching</span>
+        </button>
+
         {/* Right: Teleprompter, Font Scale, Theme, Print */}
         <div className="flex items-center gap-2">
           {/* Teleprompter Auto-Scroll */}
@@ -500,6 +523,17 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
           churchName={pastorProfile.church_name}
         />
       )}
+
+      {/* Record Preaching Modal in Pulpit Mode */}
+      <SermonAudioTranscriberModal
+        isOpen={recordModalOpen}
+        onClose={() => setRecordModalOpen(false)}
+        existingSermonId={id}
+        existingTitle={sermon?.title}
+        onSermonSaved={() => {
+          fetchSermon();
+        }}
+      />
     </div>
   );
 }
