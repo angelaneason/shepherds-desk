@@ -358,7 +358,9 @@ function LoginContent() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black text-white text-xs font-semibold hover:bg-gray-800 transition-all shadow-sm"
           >
-            <span className="text-base leading-none"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01ZM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25Z" />
+            </svg>
             <span>App Store</span>
           </a>
           <a
@@ -367,7 +369,12 @@ function LoginContent() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#00875A] text-white text-xs font-semibold hover:bg-[#006644] transition-all shadow-sm"
           >
-            <span className="text-base leading-none">▶️</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3.609 1.814L13.792 12 3.61 22.186a1.76 1.76 0 0 1-.61-1.34V3.154c0-.528.234-1.012.609-1.34Z" fill="#4285F4" />
+              <path d="M17.208 8.584L13.792 12l3.416 3.416 3.854-2.193c.884-.503.884-1.943 0-2.446l-3.854-2.193Z" fill="#FBBC04" />
+              <path d="M3.609 22.186L13.792 12l3.416 3.416-11.83 6.732a1.78 1.78 0 0 1-1.769.038Z" fill="#EA4335" />
+              <path d="M3.609 1.814a1.78 1.78 0 0 1 1.769.038l11.83 6.732L13.792 12 3.609 1.814Z" fill="#34A853" />
+            </svg>
             <span>Google Play</span>
           </a>
         </div>

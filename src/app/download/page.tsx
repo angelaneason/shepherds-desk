@@ -1,4 +1,57 @@
 import Link from 'next/link'
+import {
+  BookOpen,
+  Calendar,
+  Heart,
+  Lightbulb,
+  Library,
+  Megaphone,
+  FileText,
+  Share2,
+  ClipboardList,
+} from 'lucide-react'
+
+function GooglePlayLogo({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3.609 1.814L13.792 12 3.61 22.186a1.76 1.76 0 0 1-.61-1.34V3.154c0-.528.234-1.012.609-1.34Z"
+        fill="#4285F4"
+      />
+      <path
+        d="M17.208 8.584L13.792 12l3.416 3.416 3.854-2.193c.884-.503.884-1.943 0-2.446l-3.854-2.193Z"
+        fill="#FBBC04"
+      />
+      <path
+        d="M3.609 22.186L13.792 12l3.416 3.416-11.83 6.732a1.78 1.78 0 0 1-1.769.038Z"
+        fill="#EA4335"
+      />
+      <path
+        d="M3.609 1.814a1.78 1.78 0 0 1 1.769.038l11.83 6.732L13.792 12 3.609 1.814Z"
+        fill="#34A853"
+      />
+    </svg>
+  )
+}
+
+function AppleLogo({ size = 24, color = '#FFFFFF' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden="true">
+      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01ZM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25Z" />
+    </svg>
+  )
+}
+
+const FEATURES = [
+  { label: 'Sermon Prep', Icon: BookOpen },
+  { label: 'Calendar', Icon: Calendar },
+  { label: 'Ministry Care', Icon: Heart },
+  { label: 'Ideas', Icon: Lightbulb },
+  { label: 'Study Tools', Icon: Library },
+  { label: 'Announcements', Icon: Megaphone },
+  { label: 'Resources', Icon: FileText },
+  { label: 'Referrals', Icon: Share2 },
+]
 
 export default function DownloadPage() {
   return (
@@ -30,7 +83,19 @@ export default function DownloadPage() {
           justifyContent: 'space-between'
         }}>
           <div>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+            <div style={{
+              width: 72,
+              height: 72,
+              borderRadius: 20,
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.16)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 18,
+            }}>
+              <GooglePlayLogo size={40} />
+            </div>
             <h2 style={{ color: '#FFFFFF', fontSize: 24, marginBottom: 8 }}>Google Play Store</h2>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
               Get The Shepherd&apos;s Desk for Android phones and tablets directly from Google Play.
@@ -59,7 +124,7 @@ export default function DownloadPage() {
                 boxShadow: '0 4px 14px rgba(0, 135, 90, 0.4)'
               }}
             >
-              <span>▶️</span> Get it on Google Play
+              <GooglePlayLogo size={20} /> Get it on Google Play
             </a>
             <div style={{ marginTop: 14 }}>
               <a 
@@ -87,7 +152,19 @@ export default function DownloadPage() {
           justifyContent: 'space-between'
         }}>
           <div>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🍎</div>
+            <div style={{
+              width: 72,
+              height: 72,
+              borderRadius: 20,
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.16)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 18,
+            }}>
+              <AppleLogo size={42} color="#FFFFFF" />
+            </div>
             <h2 style={{ color: '#FFFFFF', fontSize: 24, marginBottom: 8 }}>Apple App Store</h2>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
               Download The Shepherd&apos;s Desk for iPhone and iPad directly from the official App Store.
@@ -117,7 +194,7 @@ export default function DownloadPage() {
                 boxShadow: '0 4px 14px rgba(0, 113, 227, 0.4)'
               }}
             >
-              <span style={{ fontSize: 20 }}></span> Download on App Store
+              <AppleLogo size={20} color="#FFFFFF" /> Download on App Store
             </a>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 14 }}>
               Official Apple App Store Release
@@ -135,7 +212,9 @@ export default function DownloadPage() {
         maxWidth: 600,
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
-        <h3 style={{ color: '#D0A348', fontSize: 16, marginBottom: 12 }}>📋 Android Install Instructions</h3>
+        <h3 style={{ color: '#D0A348', fontSize: 16, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ClipboardList size={18} /> Android Install Instructions
+        </h3>
         <ol style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, lineHeight: 2, paddingLeft: 20, margin: 0 }}>
           <li>Tap &quot;Download for Android&quot; on your phone</li>
           <li>Tap the downloaded APK file to install</li>
@@ -148,16 +227,19 @@ export default function DownloadPage() {
       <div style={{ marginTop: 48, textAlign: 'center', maxWidth: 600 }}>
         <h3 style={{ color: '#FFFFFF', fontSize: 18, marginBottom: 20 }}>Everything you need, in your pocket</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
-          {['📖 Sermon Prep', '📅 Calendar', '❤️ Ministry Care', '💡 Ideas', '📚 Study Tools', '📢 Announcements', '📋 Resources', '🔗 Referrals'].map(feature => (
-            <span key={feature} style={{ 
+          {FEATURES.map(({ label, Icon }) => (
+            <span key={label} style={{ 
               background: 'rgba(208,163,72,0.15)', 
               color: '#D0A348', 
               padding: '8px 16px', 
               borderRadius: 20, 
               fontSize: 13,
-              border: '1px solid rgba(208,163,72,0.2)'
+              border: '1px solid rgba(208,163,72,0.2)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
             }}>
-              {feature}
+              <Icon size={14} /> {label}
             </span>
           ))}
         </div>

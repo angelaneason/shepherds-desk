@@ -8,6 +8,7 @@ export type PushType =
   | 'calendar'
   | 'announcement'
   | 'broadcast'
+  | 'system'
 
 export interface PushMessage {
   title: string

@@ -90,8 +90,8 @@ export async function POST(req: Request) {
     }
 
     // Try inserting into dedicated table
-    const { data, error } = await supabase
-      .from('sunday_announcements')
+    const { data, error } = await (supabase
+      .from('sunday_announcements') as any)
       .insert({
         profile_id: user.id,
         sunday_date,
@@ -123,8 +123,8 @@ export async function POST(req: Request) {
         notes
       });
 
-      const { data: fallbackRecord, error: fallbackErr } = await supabase
-        .from('announcements')
+      const { data: fallbackRecord, error: fallbackErr } = await (supabase
+        .from('announcements') as any)
         .insert({
           profile_id: user.id,
           title: `[Sunday Announcements] ${title}`,
