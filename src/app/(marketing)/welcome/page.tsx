@@ -113,6 +113,50 @@ export default function WelcomePage() {
         </p>
       </div>
 
+      {/* Founder's Message Section */}
+      <section id="founders-message" className="py-20 lg:py-24 px-6 bg-white border-b border-gray/40">
+        <div className="container mx-auto max-w-5xl">
+          <div className="bg-ivory rounded-3xl p-8 md:p-12 lg:p-14 border border-gold/30 shadow-lg flex flex-col md:flex-row items-center gap-10 lg:gap-14">
+            {/* Left: Story & Heart */}
+            <div className="flex-1 text-center md:text-left">
+              <div className="inline-flex items-center gap-2 bg-gold/15 text-navy px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-5 border border-gold/30">
+                <Heart className="h-3.5 w-3.5 text-gold fill-gold" /> Founder&apos;s Message
+              </div>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-[family-name:var(--font-playfair)] text-navy mb-5 leading-tight">
+                Why We Built The Shepherd&apos;s Desk
+              </h2>
+              <p className="text-charcoal/80 mb-4 leading-relaxed text-base md:text-lg">
+                Ministry does not begin on Sunday morning. It lives in Monday&apos;s hospital visits, Wednesday night Bible study, phone calls with hurting families, and the quiet hours of sacred study where God shapes the message for His people.
+              </p>
+              <p className="text-charcoal/80 mb-6 leading-relaxed text-base md:text-lg">
+                We built The Shepherd&apos;s Desk so pastors never have to choose between caring for their flock and preparing the Word. Every tool inside was prayerfully designed to lighten your administrative load so you can stay focused on the calling God placed on your life.
+              </p>
+              <div className="pt-2 border-t border-gold/25 inline-block md:block">
+                <p className="font-[family-name:var(--font-playfair)] text-xl font-bold text-navy">
+                  Pastor Tiny &amp; Angie Neason
+                </p>
+                <p className="text-xs uppercase tracking-widest text-charcoal/60 font-semibold mt-0.5">
+                  Founders, The Shepherd&apos;s Desk
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Vertical Video Player (YouTube Short) */}
+            <div className="w-full max-w-[300px] sm:max-w-[320px] flex-shrink-0">
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-navy bg-black aspect-[9/16] ring-2 ring-gold/50">
+                <iframe
+                  src="https://www.youtube.com/embed/VBM22y_XWG0?rel=0&modestbranding=1&playsinline=1"
+                  title="Founder's Message - The Shepherd's Desk"
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="py-24 px-6 container mx-auto max-w-7xl">
         <div className="text-center mb-16">
@@ -368,6 +412,7 @@ export default function WelcomePage() {
             </div>
             
             <nav className="flex flex-wrap gap-6 text-sm text-white/60">
+              <a href="#founders-message" className="hover:text-gold transition-colors">Founder&apos;s Message</a>
               <a href="#features" className="hover:text-gold transition-colors">Features</a>
               <a href="#" className="hover:text-gold transition-colors">Pricing</a>
               <Link href="/gift" className="hover:text-gold transition-colors font-medium text-gold/90">Gift a Pastor</Link>
