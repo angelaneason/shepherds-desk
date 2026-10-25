@@ -106,6 +106,16 @@ const FAQS: FAQItem[] = [
     answer:
       'In the Refer a Pastor section, you have a unique personal referral link and pre-written pastoral invitation messages. When a fellow pastor signs up through your link, they receive VIP onboarding and you can track their status in your dashboard.',
   },
+  {
+    question: 'How does in-place sermon recording work in Pulpit Mode without covering my sermon notes?',
+    answer:
+      'Starting in v2.2.9, when you tap Record in Pulpit Mode, a compact recording bar anchors smoothly below the sermon header. It never opens a modal popup or covers your manuscript. Your sermon notes remain 100% visible, readable in 24pt to 40pt font, and freely scrollable throughout your entire sermon delivery.',
+  },
+  {
+    question: 'How do live translation and transcription work when recording from an iPad or phone?',
+    answer:
+      'The app captures pulpit audio in high fidelity, feeds speech recognition to generate an ongoing text transcript, and provides selectable target languages for immediate bilingual translation. When you tap Finish, the complete audio and transcript are automatically attached to that sermon record.',
+  },
 ]
 
 export default function ManualPage() {
@@ -137,7 +147,7 @@ export default function ManualPage() {
             </h1>
             <p className="text-white/80 text-sm md:text-base max-w-2xl print:text-gray-700">
               A simple, step-by-step user manual designed specifically for pastors and ministry leaders.
-              Learn how to connect your phone, send warm pastoral care messages, and manage your flock.
+              Learn how to connect your phone, send warm pastoral care messages, and manage your ministry contacts.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 print:hidden">
@@ -395,7 +405,7 @@ export default function ManualPage() {
               </div>
               <ol className="space-y-2.5 text-xs text-gray-700 list-decimal list-inside pl-1">
                 <li>
-                  In Google Calendar on your computer, click the <strong>Gear icon &gt; Settings</strong>.
+                  In Google Calendar on your computer (or in <strong>Safari Desktop Mode</strong> on iPad/iPhone: tap <strong>AA &gt; Request Desktop Website</strong>), click the <strong>Gear icon &gt; Settings</strong>.
                 </li>
                 <li>
                   In the left sidebar, look down under <strong>&quot;Settings for my calendars&quot;</strong> and click your calendar name.
@@ -408,7 +418,7 @@ export default function ManualPage() {
                 </li>
               </ol>
               <div className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                <strong>Important:</strong> Do <em>not</em> copy the &quot;Public address in iCal format&quot;. Always copy the <strong>&quot;Secret address in iCal format&quot;</strong> so your schedule and appointments sync properly.
+                <strong>Important:</strong> The Google Calendar mobile app hides this link, so always use a web browser. Also make sure to copy the <strong>&quot;Secret address in iCal format&quot;</strong> (not the Public address).
               </div>
             </div>
 
@@ -416,26 +426,26 @@ export default function ManualPage() {
             <div className="border border-gray-200 rounded-xl p-5 space-y-3 bg-gray-50/50">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#022d5c] text-white flex items-center justify-center text-xs font-bold">
-                  
+                  A
                 </span>
                 <h4 className="font-bold text-[#022d5c] text-sm md:text-base">Apple Calendar / iCloud (webcal://)</h4>
               </div>
               <ol className="space-y-2.5 text-xs text-gray-700 list-decimal list-inside pl-1">
                 <li>
-                  Open the <strong>Calendar app</strong> on your Mac, iPad, or iPhone (or visit <em>icloud.com/calendar</em>).
+                  Open the Apple <strong>Calendar app</strong> on your <strong>iPad</strong>, iPhone, or Mac.
                 </li>
                 <li>
-                  Click or tap the <strong>share/info icon</strong> next to the calendar you want to sync.
+                  <strong>On iPad / iPhone:</strong> Tap the <strong>Sidebar icon</strong> (top-left on iPad) or <strong>&quot;Calendars&quot;</strong> (at the bottom), then tap the <strong>ⓘ (Info) button</strong> to the right of your calendar under the <strong>iCloud</strong> section. (On Mac, click the broadcast/share icon next to the calendar.)
                 </li>
                 <li>
-                  Enable <strong>Public Calendar</strong> to generate a secure read-only feed link.
+                  Scroll down and turn ON <strong>Public Calendar</strong>.
                 </li>
                 <li>
-                  Tap <strong>Copy Link</strong> to copy the <em>webcal://</em> feed address to your clipboard.
+                  Tap <strong>Share Link...</strong> (right below Public Calendar) and tap <strong>Copy</strong> to copy your <em>webcal://</em> link.
                 </li>
               </ol>
               <div className="text-xs text-blue-900 bg-blue-50 p-2.5 rounded-lg border border-blue-200">
-                <strong>Paste in The Shepherd&apos;s Desk:</strong> Go to <strong>Calendar &gt; Sync</strong>, paste your copied link, check <strong>&quot;Automatically sync when opening calendar&quot;</strong>, and click <strong>Sync Live Google &amp; Apple Feed</strong>.
+                <strong>iPad Tip:</strong> If you don&apos;t see &quot;Public Calendar&quot;, make sure the calendar is listed under the <strong>iCloud</strong> heading (not &quot;On My iPad&quot;). Enable iCloud Calendars in <strong>iPad Settings &gt; [Your Name] &gt; iCloud &gt; See All &gt; Calendars</strong>.
               </div>
             </div>
           </div>
@@ -608,7 +618,7 @@ export default function ManualPage() {
             5
           </div>
           <div>
-            <h2 className="text-xl font-bold text-[#022d5c]">People &amp; Pastoral Care (Shepherding the Flock)</h2>
+            <h2 className="text-xl font-bold text-[#022d5c]">People &amp; Pastoral Care (Managing Ministry Contacts)</h2>
             <p className="text-xs text-gray-500">Member profiles, hospital visit logs, prayer tracking, and care check-ins</p>
           </div>
         </div>

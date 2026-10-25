@@ -3,6 +3,88 @@ import { createClient as createServerSupabase } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { parseICalFeed } from '@/lib/icalParser';
 
+function formatICSDate(isoStr: string): string {
+  const d = new Date(isoStr);
+  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+function escapeICSText(str: string): string {
+  return (str || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('user_id') || searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing user_id parameter.' }, { status: 400 });
+    }
+
+    const dbClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: events, error } = await dbClient
+      .from('calendar_events')
+      .select('id, title, description, start_time, end_time, all_day, location')
+      .eq('profile_id', userId)
+      .order('start_time', { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ error: 'Unable to load calendar feed.' }, { status: 500 });
+    }
+
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//The Shepherds Desk//Pastoral Calendar//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:The Shepherds Desk',
+    ];
+
+    const dtStamp = formatICSDate(new Date().toISOString());
+
+    for (const ev of events || []) {
+      if (!ev.start_time) continue;
+      const startStr = formatICSDate(ev.start_time);
+      const endStr = ev.end_time ? formatICSDate(ev.end_time) : startStr;
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${ev.id}@theshepherdsdesk.app`);
+      lines.push(`DTSTAMP:${dtStamp}`);
+      lines.push(`DTSTART:${startStr}`);
+      lines.push(`DTEND:${endStr}`);
+      lines.push(`SUMMARY:${escapeICSText(ev.title || 'Ministry Event')}`);
+      if (ev.description) {
+        lines.push(`DESCRIPTION:${escapeICSText(ev.description)}`);
+      }
+      if (ev.location) {
+        lines.push(`LOCATION:${escapeICSText(ev.location)}`);
+      }
+      lines.push('END:VEVENT');
+    }
+
+    lines.push('END:VCALENDAR');
+
+    return new NextResponse(lines.join('\r\n'), {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/calendar; charset=utf-8',
+        'Content-Disposition': 'inline; filename="shepherds-desk-calendar.ics"',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || 'Error generating ICS feed' }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     let user = null;

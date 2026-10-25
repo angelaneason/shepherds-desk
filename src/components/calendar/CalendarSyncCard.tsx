@@ -160,13 +160,17 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
               </a>
             </div>
 
+            <div className="bg-blue-50/90 border border-blue-200/80 text-blue-950 rounded-lg p-2.5 text-[11px] leading-relaxed">
+              📱 <strong>Using an iPad or iPhone?</strong> The Google Calendar <em>app</em> hides this link. Open <strong>Safari</strong> (not the app), tap the link above (or hold it and choose <strong>&quot;Open in New Tab&quot;</strong>), and if you don&apos;t see the left sidebar, tap the <strong>AA / Page Settings icon</strong> in Safari&apos;s address bar and select <strong>&quot;Request Desktop Website&quot;</strong>.
+            </div>
+
             <ol className="space-y-2.5 pl-0 list-none">
               <li className="flex items-start gap-2.5">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px] mt-0.5">
                   1
                 </span>
                 <span>
-                  In Google Calendar, click the <strong>Gear icon ⚙️ &gt; Settings</strong> (or click the quick link above).
+                  In Google Calendar on the web, click the <strong>Gear icon ⚙️ &gt; Settings</strong> (or tap the quick link above).
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
@@ -174,7 +178,7 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
                   2
                 </span>
                 <span>
-                  In the left sidebar, look down under <strong className="text-teal-800">&quot;Settings for my calendars&quot;</strong> and <strong>click your calendar name</strong> (e.g. 🟢 your name).
+                  In the left sidebar, look down under <strong className="text-teal-800">&quot;Settings for my calendars&quot;</strong> and <strong>tap your calendar name</strong> (e.g. 🟢 your name).
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
@@ -182,7 +186,7 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
                   3
                 </span>
                 <span>
-                  Click <strong className="text-teal-800">&quot;Integrate calendar&quot;</strong> in the left submenu (or scroll down the page to that section).
+                  Tap <strong className="text-teal-800">&quot;Integrate calendar&quot;</strong> in the left submenu (or scroll down the page to that section).
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
@@ -190,7 +194,7 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
                   4
                 </span>
                 <span>
-                  Find <strong className="text-gray-900">&quot;Secret address in iCal format&quot;</strong> and click the <strong>Copy button</strong> (the two overlapping squares 📋 next to the eye icon).
+                  Find <strong className="text-gray-900">&quot;Secret address in iCal format&quot;</strong> and tap the <strong>Copy button</strong> (the two overlapping squares 📋 next to the eye icon).
                 </span>
               </li>
             </ol>
@@ -209,7 +213,7 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
                   1
                 </span>
                 <span>
-                  Open the <strong>Calendar</strong> app on your Mac, iPad, or iPhone.
+                  Open the Apple <strong>Calendar</strong> app on your <strong>iPad</strong>, iPhone, or Mac.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
@@ -217,7 +221,8 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
                   2
                 </span>
                 <span>
-                  In the calendar list sidebar, click the <strong>broadcast/share icon</strong> (or right-click your calendar).
+                  <strong>On iPad / iPhone:</strong> Tap the <strong>Sidebar icon</strong> (top-left on iPad) or <strong>&quot;Calendars&quot;</strong> (bottom of screen), then tap the <strong>ⓘ (Info) circle</strong> to the right of your calendar under the <strong>iCloud</strong> section.<br />
+                  <span className="text-gray-500"><strong>On Mac:</strong> In the left sidebar, hover over your iCloud calendar and click the <strong>broadcast/portrait icon</strong> (or right-click the calendar).</span>
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
@@ -225,7 +230,7 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
                   3
                 </span>
                 <span>
-                  Turn on <strong>&quot;Public Calendar&quot;</strong> to generate your link.
+                  Scroll down in the pop-up and toggle ON <strong>&quot;Public Calendar&quot;</strong>.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
@@ -233,10 +238,14 @@ export function CalendarSyncCard({ onSyncComplete, className = '' }: CalendarSyn
                   4
                 </span>
                 <span>
-                  Click <strong>&quot;Copy Link&quot;</strong> (starts with <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200 font-mono text-[11px]">webcal://</code>) and paste it into the field above.
+                  Tap <strong>&quot;Share Link...&quot;</strong> (which appears right below Public Calendar) and tap <strong>&quot;Copy&quot;</strong> to copy your <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200 font-mono text-[11px]">webcal://</code> link, then paste it into the box above.
                 </span>
               </li>
             </ol>
+
+            <div className="bg-amber-50 border border-amber-200/80 text-amber-900 rounded-lg p-2.5 text-[11px] leading-relaxed">
+              💡 <strong>Don&apos;t see &quot;Public Calendar&quot; on your iPad?</strong> Apple only shows the Public Calendar link for calendars under the <strong>iCloud</strong> section (not &quot;On My iPad&quot; or Gmail). To enable iCloud Calendar on iPad, open <strong>iPad Settings &gt; [Your Name] &gt; iCloud &gt; See All &gt; Calendars</strong> and turn on <strong>Use on this iPad</strong>.
+            </div>
           </div>
         )}
       </div>
