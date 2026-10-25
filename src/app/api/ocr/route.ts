@@ -14,10 +14,11 @@ export async function POST(request: NextRequest) {
 
     if (contentType.includes('application/json')) {
       const json = await request.json()
-      if (!json.base64) {
+      const base64Data = json.base64 || json.image
+      if (!base64Data) {
         return NextResponse.json({ error: 'No image data provided' }, { status: 400 })
       }
-      buffer = Buffer.from(json.base64, 'base64')
+      buffer = Buffer.from(base64Data, 'base64')
       fileType = json.mimeType || 'image/jpeg'
       fileName = (json.fileName || 'photo.jpg').toLowerCase()
     } else {

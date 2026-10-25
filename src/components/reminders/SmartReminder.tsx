@@ -2,8 +2,9 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { Mic, MicOff, Loader2, Check, Calendar, User, X, Sparkles, Keyboard, Camera, Send, BookOpen, Lightbulb, Heart, Bell } from 'lucide-react'
+import { Mic, MicOff, Loader2, Check, Calendar, User, X, Sparkles, Keyboard, Camera, Upload, Send, BookOpen, Lightbulb, Heart, Bell, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { compressImageForOcr, fileToBase64 } from '@/lib/imageCompression'
 
 type AssistantAction = 'reminder' | 'sermon' | 'idea' | 'prayer'
 
@@ -57,7 +58,11 @@ export function SmartReminder() {
   const [savedMessage, setSavedMessage] = useState({ title: '', detail: '' })
   const [newSermonId, setNewSermonId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  const [photoExtractedText, setPhotoExtractedText] = useState('')
+  const [photoTitle, setPhotoTitle] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   const action: AssistantAction = parsed?.action || 'reminder'
@@ -125,36 +130,95 @@ export function SmartReminder() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    setMode('photo')
     setIsProcessing(true)
     setError('')
+    setPhotoExtractedText('')
+    setPhotoPreviewUrl(URL.createObjectURL(file))
 
     try {
-      const reader = new FileReader()
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(',')[1]
+      const compressed = await compressImageForOcr(file)
+      const base64 = await fileToBase64(compressed)
 
-        // Send to OCR endpoint
-        const ocrRes = await fetch('/api/ocr', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64 }),
-        })
+      const ocrRes = await fetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base64,
+          mimeType: compressed.type || 'image/jpeg',
+          fileName: compressed.name || 'capture.jpg',
+        }),
+      })
 
-        if (!ocrRes.ok) throw new Error('OCR failed')
-        const ocrData = await ocrRes.json()
-        const ocrText = ocrData.text || ''
+      if (!ocrRes.ok) throw new Error('OCR failed')
+      const ocrData = await ocrRes.json()
+      const ocrText = (ocrData.text || '').trim()
 
-        if (ocrText) {
-          setTranscript(ocrText)
-          await parseReminder(ocrText)
-        } else {
-          setError('Could not read text from the image. Try again.')
-          setIsProcessing(false)
-        }
+      if (ocrText) {
+        setPhotoExtractedText(ocrText)
+      } else {
+        setError('Could not read text from the image. Try a clearer photo with good lighting.')
       }
-      reader.readAsDataURL(file)
     } catch {
-      setError('Failed to process image.')
+      setError('Failed to process image. Please try again.')
+    } finally {
+      setIsProcessing(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  const savePhotoDirectlyToIdeas = async () => {
+    const text = photoExtractedText.trim()
+    if (!text) return
+    setIsProcessing(true)
+    setError('')
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error: ideaError } = await (supabase.from('ideas').insert({
+        profile_id: user.id,
+        content: `[Photo] ${text}`,
+        source_type: 'photo',
+        ocr_text: text,
+        archived: false,
+      }) as any)
+      if (ideaError) throw ideaError
+      finishSave('Photo Note Saved! 📷', 'Converted text was saved to your Ideas Inbox.')
+    } catch {
+      setError('Failed to save photo note.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const savePhotoDirectlyAsSermon = async () => {
+    const text = photoExtractedText.trim()
+    if (!text) return
+    setIsProcessing(true)
+    setError('')
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const firstLine = text.split('\n')[0]?.slice(0, 60).trim() || 'Scanned Sermon Note'
+      const title = photoTitle.trim() || firstLine
+      const htmlContent = text
+        .split(/\n\n+/)
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0)
+        .map((p) => `<p>${p.replace(/\n/g, '<br/>')}</p>`)
+        .join('')
+      const { data: sermon, error: sermonError } = await (supabase.from('sermons').insert({
+        author_id: user.id,
+        title,
+        content: htmlContent,
+        status: 'draft',
+      }).select('id').single() as any)
+      if (sermonError) throw sermonError
+      setNewSermonId(sermon.id)
+      finishSave('Sermon Draft Created! 📖', `"${title}" was created from your photo.`, true)
+    } catch {
+      setError('Failed to create sermon from photo.')
+    } finally {
       setIsProcessing(false)
     }
   }
@@ -308,6 +372,9 @@ export function SmartReminder() {
     setNewSermonId(null)
     setTranscript('')
     setTypedText('')
+    setPhotoPreviewUrl(null)
+    setPhotoExtractedText('')
+    setPhotoTitle('')
     setError('')
     setMode('choose')
   }
@@ -327,12 +394,15 @@ export function SmartReminder() {
         onClick={() => setIsOpen(true)}
         className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-[#022d5c] to-[#0a4a8a] text-white shadow-lg hover:shadow-xl transition-all group"
       >
-        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
           <Mic className="w-5 h-5" />
         </div>
+        <div className="w-10 h-10 -ml-1 rounded-full bg-[#D0A348]/25 flex items-center justify-center group-hover:bg-[#D0A348]/35 transition-colors shrink-0">
+          <Camera className="w-5 h-5 text-[#D0A348]" />
+        </div>
         <div className="text-left">
-          <p className="font-semibold text-sm">Smart Assistant</p>
-          <p className="text-xs text-white/70">Speak or type: set a reminder, start a sermon, save an idea, or add a prayer request</p>
+          <p className="font-semibold text-sm">Smart Assistant (Voice, Type &amp; Photo to Text)</p>
+          <p className="text-xs text-white/75">Speak, type, or snap a photo to convert notes to text, set a reminder, start a sermon, save an idea, or add a prayer request</p>
         </div>
         <Sparkles className="w-5 h-5 text-[#D0A348] ml-auto shrink-0" />
       </button>
@@ -404,30 +474,151 @@ export function SmartReminder() {
                 <span className="text-xs font-medium text-gray-700">Type</span>
               </button>
               <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => setMode('photo')}
                 className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all"
               >
                 <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
                   <Camera className="w-6 h-6 text-green-600" />
                 </div>
-                <span className="text-xs font-medium text-gray-700">Photo</span>
+                <span className="text-xs font-medium text-gray-700">Snap Photo</span>
               </button>
             </div>
+            <div className="text-[11px] text-gray-400 text-center mt-4 space-y-0.5">
+              <p>📷 Tap <strong>Snap Photo</strong> to photograph handwritten notes or book pages &amp; convert to text</p>
+              <p>🎙️ Try: &ldquo;Remind me to call Sister Mary on Thursday&rdquo;</p>
+              <p>&ldquo;Add a new sermon titled Walking by Faith for next Sunday&rdquo;</p>
+              <p>&ldquo;Add Brother John to the prayer list for his surgery&rdquo;</p>
+            </div>
+          </>
+        )}
+
+        {/* Photo Mode (Quick Capture by Photo -> Convert to Text) */}
+        {!saved && !parsed && mode === 'photo' && (
+          <div className="space-y-4">
             <input
-              ref={fileInputRef}
+              ref={cameraInputRef}
               type="file"
               accept="image/*"
               capture="environment"
               className="hidden"
               onChange={handlePhotoCapture}
             />
-            <div className="text-[11px] text-gray-400 text-center mt-4 space-y-0.5">
-              <p>Try: &ldquo;Remind me to call Sister Mary on Thursday&rdquo;</p>
-              <p>&ldquo;Add a new sermon titled Walking by Faith for next Sunday&rdquo;</p>
-              <p>&ldquo;Sermon idea: the eagle renews its strength&rdquo;</p>
-              <p>&ldquo;Add Brother John to the prayer list for his surgery&rdquo;</p>
-            </div>
-          </>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoCapture}
+            />
+
+            {!photoPreviewUrl && !isProcessing && (
+              <>
+                <p className="text-sm text-gray-600 text-center">
+                  Take a photo of handwritten sermon notes, a book page, or a bulletin to convert it directly into text:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl bg-[#D0A348] hover:bg-[#D0A348]/90 text-white font-semibold text-sm shadow-sm transition-all cursor-pointer"
+                  >
+                    <Camera className="w-5 h-5" />
+                    Take Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl border-2 border-[#022d5c] text-[#022d5c] hover:bg-[#022d5c]/5 font-semibold text-sm transition-all cursor-pointer"
+                  >
+                    <Upload className="w-5 h-5" />
+                    Upload Photo
+                  </button>
+                </div>
+              </>
+            )}
+
+            {isProcessing && (
+              <div className="text-center py-8 space-y-3">
+                <Loader2 className="w-9 h-9 animate-spin text-[#D0A348] mx-auto" />
+                <p className="text-sm font-medium text-[#022d5c]">Converting your photo to text...</p>
+              </div>
+            )}
+
+            {photoPreviewUrl && !isProcessing && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photoPreviewUrl}
+                      alt="Captured preview"
+                      className="w-12 h-12 object-cover rounded-lg border border-gray-200"
+                    />
+                    <div>
+                      <p className="text-xs font-bold text-[#022d5c]">Photo Converted to Text</p>
+                      <p className="text-[11px] text-gray-500">Edit below if needed, then choose how to save</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhotoPreviewUrl(null)
+                      setPhotoExtractedText('')
+                      setError('')
+                    }}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-[#022d5c] px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Retake
+                  </button>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Extracted Text</label>
+                  <textarea
+                    rows={5}
+                    value={photoExtractedText}
+                    onChange={(e) => setPhotoExtractedText(e.target.value)}
+                    placeholder="Extracted text will appear here..."
+                    className={inputClass}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={savePhotoDirectlyToIdeas}
+                    disabled={!photoExtractedText.trim() || isProcessing}
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#D0A348] hover:bg-[#D0A348]/90 text-white text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                  >
+                    <Lightbulb className="w-4 h-4" />
+                    Save to Ideas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={savePhotoDirectlyAsSermon}
+                    disabled={!photoExtractedText.trim() || isProcessing}
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[#022d5c] hover:bg-[#022d5c]/90 text-white text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    Save as Sermon
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => parseReminder(photoExtractedText)}
+                    disabled={!photoExtractedText.trim() || isProcessing}
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-[#022d5c] text-[#022d5c] hover:bg-[#022d5c]/5 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 text-[#D0A348]" />
+                    Smart Organize
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <button onClick={() => { setPhotoPreviewUrl(null); setPhotoExtractedText(''); setError(''); setMode('choose') }} className="w-full text-xs text-gray-400 mt-2 hover:text-gray-600">
+              ← Back
+            </button>
+          </div>
         )}
 
         {/* Voice Mode */}
