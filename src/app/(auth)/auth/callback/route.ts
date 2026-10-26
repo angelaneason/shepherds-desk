@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const refCode = searchParams.get('ref')
   const giftCode = searchParams.get('gift')
-  
+
   if (code) {
     const cookieStore = await cookies()
     const supabase = createServerClient(
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     )
 
     const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code)
-    
+
     if (!error && session) {
       const adminSupabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -57,9 +57,9 @@ export async function GET(request: Request) {
         .select('id, full_name')
         .eq('id', session.user.id)
         .maybeSingle()
-        
+
       if (!profile) {
-        // Create profile with 30 day trial
+        // Brand-new user: create church, profile with 30-day trial, and match any pending referral
         const thirtyDaysFromNow = new Date()
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
 
@@ -82,16 +82,9 @@ export async function GET(request: Request) {
             email: session.user.email || '',
             trial_ends_at: thirtyDaysFromNow.toISOString(),
           } as any)
-      } else if (googleName && (!profile.full_name || profile.full_name === 'Pastor')) {
-        await adminSupabase
-          .from('profiles')
-          .update({ full_name: googleName } as any)
-          .eq('id', session.user.id)
-      }
 
-      // Match pending referral by refCode or email
-      const userEmail = (session.user.email || '').toLowerCase().trim()
-      if (refCode || userEmail) {
+        // Match pending referral by refCode or email for new sign-ups
+        const userEmail = (session.user.email || '').toLowerCase().trim()
         try {
           const nowIso = new Date().toISOString()
           if (refCode) {
@@ -121,8 +114,16 @@ export async function GET(request: Request) {
               .eq('status', 'pending')
           }
         } catch {}
+      } else {
+        // Returning user: only backfill name if still generic 'Pastor'
+        if (googleName && (!profile.full_name || profile.full_name === 'Pastor')) {
+          await adminSupabase
+            .from('profiles')
+            .update({ full_name: googleName } as any)
+            .eq('id', session.user.id)
+        }
       }
-      
+
       if (giftCode) {
         return NextResponse.redirect(`${origin}/gift/redeem?code=${encodeURIComponent(giftCode)}`)
       }
