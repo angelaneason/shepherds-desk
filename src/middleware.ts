@@ -5,6 +5,16 @@ export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
   const pathname = url.pathname
 
+  // Fast-path 0: If Supabase OAuth / Magic Link returns ?code=... to /, /welcome, or /login,
+  // forward directly to /auth/callback so the session is exchanged and the pastor lands in the Dashboard.
+  if (
+    (pathname === '/' || pathname === '/welcome' || pathname === '/login') &&
+    url.searchParams.has('code')
+  ) {
+    url.pathname = '/auth/callback'
+    return NextResponse.redirect(url)
+  }
+
   // Fast-path 1: Static assets and Next.js bundles
   if (pathname.startsWith('/_next') || pathname.includes('.') || pathname === '/favicon.ico') {
     return NextResponse.next({ request })
