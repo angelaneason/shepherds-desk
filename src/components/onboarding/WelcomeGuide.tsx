@@ -3,7 +3,7 @@
 import React from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { PenTool, Calendar, Lightbulb, Heart, Settings, ChevronRight } from 'lucide-react'
+import { Mic, PenTool, Calendar, Heart, Settings, ChevronRight, X } from 'lucide-react'
 import Link from 'next/link'
 
 interface WelcomeGuideProps {
@@ -13,7 +13,15 @@ interface WelcomeGuideProps {
 export function WelcomeGuide({ onDismiss }: WelcomeGuideProps) {
   const steps = [
     {
-      title: 'Create your first sermon',
+      title: 'Record or upload a sermon',
+      description: 'Auto-transcribe & build an outline',
+      icon: Mic,
+      href: '/sermons?record=1',
+      color: 'text-amber-700',
+      bgColor: 'bg-amber-100',
+    },
+    {
+      title: 'Write a new sermon',
       description: 'Start drafting your message',
       icon: PenTool,
       href: '/sermons/new',
@@ -21,23 +29,7 @@ export function WelcomeGuide({ onDismiss }: WelcomeGuideProps) {
       bgColor: 'bg-blue-100',
     },
     {
-      title: 'Set up your calendar',
-      description: 'Plan your ministry schedule',
-      icon: Calendar,
-      href: '/calendar',
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
-    },
-    {
-      title: 'Capture an idea',
-      description: 'Jot down inspiration',
-      icon: Lightbulb,
-      href: '/ideas',
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100',
-    },
-    {
-      title: 'Add a prayer request',
+      title: 'Add a prayer or care request',
       description: 'Care for your congregation',
       icon: Heart,
       href: '/care',
@@ -45,8 +37,16 @@ export function WelcomeGuide({ onDismiss }: WelcomeGuideProps) {
       bgColor: 'bg-red-100',
     },
     {
+      title: 'View your ministry calendar',
+      description: 'Optional external sync available',
+      icon: Calendar,
+      href: '/calendar',
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+    },
+    {
       title: 'Personalize your settings',
-      description: 'Configure your preferences',
+      description: 'Set church name & phone alerts',
       icon: Settings,
       href: '/settings',
       color: 'text-gray-600',
@@ -55,14 +55,25 @@ export function WelcomeGuide({ onDismiss }: WelcomeGuideProps) {
   ]
 
   return (
-    <Card className="mb-8 border-none overflow-hidden shadow-lg bg-gradient-to-br from-white to-[#F8F5EE]">
-      <div className="bg-gradient-to-r from-[#022d5c] to-[#061e38] p-8 text-white">
-        <h2 className="text-3xl font-bold font-playfair mb-2">Welcome to The Shepherd's Desk! 🐑</h2>
-        <p className="text-blue-100 text-lg">Let's get you set up in just a few steps</p>
+    <Card className="mb-6 border-none overflow-hidden shadow-lg bg-gradient-to-br from-white to-[#F8F5EE]">
+      <div className="bg-gradient-to-r from-[#022d5c] to-[#061e38] p-6 sm:p-8 text-white flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold font-playfair mb-1.5">Welcome to The Shepherd&apos;s Desk! 🐑</h2>
+          <p className="text-blue-100 text-sm sm:text-base">
+            Pick anything below to begin, or tap <strong className="text-[#D0A348]">✨ Assistant</strong> at the top of any screen to speak what you need.
+          </p>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="text-blue-200 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+          title="Dismiss welcome guide"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
       
-      <CardContent className="p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <CardContent className="p-6 sm:p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {steps.map((step, i) => (
             <Link key={i} href={step.href}>
               <div className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-[#D0A348] hover:shadow-md transition-all bg-white group cursor-pointer h-full">
@@ -81,11 +92,11 @@ export function WelcomeGuide({ onDismiss }: WelcomeGuideProps) {
         
         <div className="flex justify-center">
           <Button 
-            variant="ghost" 
+            variant="outline" 
             onClick={onDismiss}
-            className="text-gray-500 hover:text-[#022d5c]"
+            className="text-gray-600 hover:text-[#022d5c] border-gray-200"
           >
-            I'll explore on my own
+            Skip setup &amp; explore on my own
           </Button>
         </div>
       </CardContent>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Search, Calendar, Clock, Edit, ScanLine, LayoutGrid, Layers, Filter, BookOpen, BookMarked, ChevronDown, ChevronRight, Mic } from "lucide-react";
+import { Plus, Search, Calendar, Clock, Edit, ScanLine, LayoutGrid, Layers, Filter, BookOpen, BookMarked, ChevronDown, ChevronRight, Mic, User } from "lucide-react";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ScanSermon } from "@/components/capture/ScanSermon";
 import SermonAudioTranscriberModal from "@/components/sermons/SermonAudioTranscriberModal";
 import { cn } from "@/lib/utils";
+import { getSermonSpeaker } from "@/lib/sermon-speaker";
 
 type Sermon = {
   id: string;
@@ -24,6 +25,9 @@ type Sermon = {
   series_order: number | null;
   scripture_primary: string | null;
   content: any;
+  speaker_name?: string | null;
+  is_own_sermon?: boolean | null;
+  sermon_tags?: Array<{ tag_type?: string; tag_value?: string }>;
 };
 
 // Extract plain text from Tiptap JSON content for search
@@ -42,28 +46,58 @@ function extractText(node: any): string {
 
 export default function SermonsPage() {
   const [sermons, setSermons] = useState<Sermon[]>([]);
+  const [pastorName, setPastorName] = useState("Pastor");
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [isTranscribeModalOpen, setIsTranscribeModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'series'>('all');
+  const [speakerFilter, setSpeakerFilter] = useState<'all' | 'mine' | 'other'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [seriesFilter, setSeriesFilter] = useState<string>('all');
   const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
   const supabase = createClient();
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('record') === '1') {
+        setIsTranscribeModalOpen(true);
+      }
+    }
+  }, []);
+
   const fetchSermons = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("sermons")
-      .select("*")
-      .eq("author_id", user.id)
-      .order("updated_at", { ascending: false }) as any;
+    const [{ data, error }, { data: prof }] = await Promise.all([
+      supabase
+        .from("sermons")
+        .select("*, sermon_tags(tag_type, tag_value)")
+        .eq("author_id", user.id)
+        .order("updated_at", { ascending: false }) as any,
+      supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle() as any,
+    ]);
+
+    if (prof?.full_name) {
+      setPastorName(prof.full_name);
+    } else if (user.user_metadata?.full_name) {
+      setPastorName(user.user_metadata.full_name);
+    }
 
     if (error) {
-      console.error("Error fetching sermons:", error);
+      // Fallback if sermon_tags join fails
+      const { data: plainData } = await supabase
+        .from("sermons")
+        .select("*")
+        .eq("author_id", user.id)
+        .order("updated_at", { ascending: false }) as any;
+      setSermons(plainData || []);
     } else {
       setSermons(data || []);
       // Auto-expand all series in series view
@@ -80,9 +114,17 @@ export default function SermonsPage() {
     fetchSermons();
   }, [fetchSermons]);
 
+  const mySermonsCount = sermons.filter((s) => getSermonSpeaker(s, s.sermon_tags, pastorName).isOwnSermon).length;
+  const otherSpeakersCount = sermons.length - mySermonsCount;
+
   // Multi-field search
   const filteredSermons = sermons.filter((sermon) => {
     const q = searchQuery.toLowerCase();
+    const speakerInfo = getSermonSpeaker(sermon, sermon.sermon_tags, pastorName);
+
+    // Speaker filter
+    if (speakerFilter === 'mine' && !speakerInfo.isOwnSermon) return false;
+    if (speakerFilter === 'other' && speakerInfo.isOwnSermon) return false;
     
     // Status filter
     if (statusFilter !== 'all' && sermon.status !== statusFilter) return false;
@@ -93,16 +135,17 @@ export default function SermonsPage() {
       if (seriesFilter !== '__none__' && sermon.series_name !== seriesFilter) return false;
     }
     
-    // Search query (multi-field)
+    // Search query (multi-field including speaker name)
     if (q) {
       const titleMatch = (sermon.title || '').toLowerCase().includes(q);
       const subtitleMatch = (sermon.subtitle || '').toLowerCase().includes(q);
       const scriptureMatch = (sermon.scripture_primary || '').toLowerCase().includes(q);
       const seriesMatch = (sermon.series_name || '').toLowerCase().includes(q);
+      const speakerMatch = (speakerInfo.speakerName || '').toLowerCase().includes(q);
       const contentText = extractText(sermon.content).toLowerCase();
       const contentMatch = contentText.includes(q);
       
-      if (!titleMatch && !subtitleMatch && !scriptureMatch && !seriesMatch && !contentMatch) return false;
+      if (!titleMatch && !subtitleMatch && !scriptureMatch && !seriesMatch && !speakerMatch && !contentMatch) return false;
     }
     
     return true;
@@ -155,53 +198,73 @@ export default function SermonsPage() {
     }
   };
 
-  const SermonCard = ({ sermon }: { sermon: Sermon }) => (
-    <Link href={`/sermons/${sermon.id}`}>
-      <Card className="h-full hover:shadow-md transition-shadow border-slate-200 group">
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-start mb-2">
-            <Badge className={getStatusColor(sermon.status)} variant="secondary">
-              {sermon.status.charAt(0).toUpperCase() + sermon.status.slice(1)}
-            </Badge>
-            {sermon.series_name && viewMode === 'all' && (
-              <span className="text-xs text-[#D0A348] font-medium truncate max-w-[120px]">{sermon.series_name}</span>
-            )}
-          </div>
-          <h3 className="text-xl font-semibold text-[#022d5c] line-clamp-2">
-            {sermon.title || "Untitled Sermon"}
-          </h3>
-          {sermon.subtitle && (
-            <p className="text-sm text-slate-500 line-clamp-1 mt-1">{sermon.subtitle}</p>
-          )}
-        </CardHeader>
-        <CardContent className="pb-3 flex-grow">
-          <div className="flex flex-col gap-2 text-sm text-slate-600">
-            {sermon.scripture_primary && (
-              <div className="flex items-center">
-                <BookOpen className="h-4 w-4 mr-2 text-[#D0A348]" />
-                <span className="text-[#022d5c] font-medium">{sermon.scripture_primary}</span>
+  const SermonCard = ({ sermon }: { sermon: Sermon }) => {
+    const speakerInfo = getSermonSpeaker(sermon, sermon.sermon_tags, pastorName);
+    return (
+      <Link href={`/sermons/${sermon.id}`}>
+        <Card className="h-full hover:shadow-md transition-shadow border-slate-200 group">
+          <CardHeader className="pb-3">
+            <div className="flex justify-between items-start gap-2 mb-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge className={getStatusColor(sermon.status)} variant="secondary">
+                  {sermon.status.charAt(0).toUpperCase() + sermon.status.slice(1)}
+                </Badge>
+                {!speakerInfo.isOwnSermon ? (
+                  <Badge variant="outline" className="bg-amber-50 text-amber-900 border-amber-300 text-xs">
+                    🎙️ {speakerInfo.speakerName || "Other Speaker"}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-[#022d5c]/5 text-[#022d5c] border-[#022d5c]/20 text-xs">
+                    My Sermon
+                  </Badge>
+                )}
               </div>
+              {sermon.series_name && viewMode === 'all' && (
+                <span className="text-xs text-[#D0A348] font-medium truncate max-w-[120px]">{sermon.series_name}</span>
+              )}
+            </div>
+            <h3 className="text-xl font-semibold text-[#022d5c] line-clamp-2">
+              {sermon.title || "Untitled Sermon"}
+            </h3>
+            {sermon.subtitle && (
+              <p className="text-sm text-slate-500 line-clamp-1 mt-1">{sermon.subtitle}</p>
             )}
-            {sermon.preach_date && (
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-slate-400" />
-                {format(new Date(sermon.preach_date + 'T12:00:00'), "MMM d, yyyy")}
-              </div>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter className="pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
-          <div className="flex items-center">
-            <Clock className="h-3 w-3 mr-1" />
-            Updated {format(new Date(sermon.updated_at), "MMM d, yyyy")}
-          </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Edit className="h-4 w-4 text-[#022d5c]" />
-          </Button>
-        </CardFooter>
-      </Card>
-    </Link>
-  );
+          </CardHeader>
+          <CardContent className="pb-3 flex-grow">
+            <div className="flex flex-col gap-2 text-sm text-slate-600">
+              {sermon.scripture_primary && (
+                <div className="flex items-center">
+                  <BookOpen className="h-4 w-4 mr-2 text-[#D0A348]" />
+                  <span className="text-[#022d5c] font-medium">{sermon.scripture_primary}</span>
+                </div>
+              )}
+              {sermon.preach_date && (
+                <div className="flex items-center">
+                  <Calendar className="h-4 w-4 mr-2 text-slate-400" />
+                  {format(new Date(sermon.preach_date + 'T12:00:00'), "MMM d, yyyy")}
+                </div>
+              )}
+              {speakerInfo.speakerName && (
+                <div className="flex items-center text-xs text-slate-500">
+                  <User className="h-3.5 w-3.5 mr-2 text-slate-400" />
+                  <span>Speaker: <strong className="text-slate-700">{speakerInfo.speakerName}</strong></span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+          <CardFooter className="pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+            <div className="flex items-center">
+              <Clock className="h-3 w-3 mr-1" />
+              Updated {format(new Date(sermon.updated_at), "MMM d, yyyy")}
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Edit className="h-4 w-4 text-[#022d5c]" />
+            </Button>
+          </CardFooter>
+        </Card>
+      </Link>
+    );
+  };
 
   if (loading) {
     return (
@@ -212,12 +275,12 @@ export default function SermonsPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+    <div className="p-2 sm:p-6 md:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-[#022d5c] font-playfair">Sermons</h1>
-          <p className="text-slate-500 mt-1">Manage and write your messages.</p>
+          <p className="text-slate-500 mt-1">Manage your messages and recordings from guest speakers.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/library">
@@ -238,7 +301,7 @@ export default function SermonsPage() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
             </span>
             <Mic className="h-4 w-4" />
-            <span>Live Sermon Capture</span>
+            <span>Record / Capture Sermon</span>
           </Button>
           <Button 
             onClick={() => setIsScanModalOpen(true)}
@@ -275,6 +338,28 @@ export default function SermonsPage() {
         }}
       />
 
+      {/* Speaker Tabs (All Sermons | My Sermons | Other Speakers) */}
+      <div className="flex flex-wrap items-center gap-2 mb-5 pb-4 border-b border-slate-200">
+        {[
+          { id: 'all' as const, label: `All Sermons (${sermons.length})` },
+          { id: 'mine' as const, label: `My Sermons (${mySermonsCount})` },
+          { id: 'other' as const, label: `Other Speakers (${otherSpeakersCount})` },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setSpeakerFilter(tab.id)}
+            className={cn(
+              "px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer",
+              speakerFilter === tab.id
+                ? "bg-[#022d5c] text-white shadow-xs"
+                : "bg-white text-slate-600 border border-slate-200 hover:border-[#022d5c]/40"
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Search, Filters, and View Toggle */}
       <div className="space-y-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
@@ -282,7 +367,7 @@ export default function SermonsPage() {
           <div className="relative flex-1 max-w-lg">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search by title, scripture, series, or content..."
+              placeholder="Search by title, speaker, scripture, series, or content..."
               className="pl-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -290,7 +375,7 @@ export default function SermonsPage() {
           </div>
 
           {/* View Toggle */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-gray-100 rounded-lg p-1 self-start">
             <button
               onClick={() => setViewMode('all')}
               className={cn(
@@ -363,11 +448,11 @@ export default function SermonsPage() {
           <div className="max-w-md mx-auto">
             <h3 className="text-xl font-semibold text-[#022d5c] mb-2">No sermons found</h3>
             <p className="text-slate-500 mb-6">
-              {searchQuery || statusFilter !== 'all' || seriesFilter !== 'all'
-                ? "Try adjusting your search or filters."
-                : "Start writing your first message!"}
+              {searchQuery || statusFilter !== 'all' || seriesFilter !== 'all' || speakerFilter !== 'all'
+                ? "Try adjusting your search or speaker filter."
+                : "Start writing or recording your first message!"}
             </p>
-            {!searchQuery && statusFilter === 'all' && seriesFilter === 'all' && (
+            {!searchQuery && statusFilter === 'all' && seriesFilter === 'all' && speakerFilter === 'all' && (
               <Link href="/sermons/new">
                 <Button className="bg-[#D0A348] text-white hover:bg-[#D0A348]/90">
                   <Plus className="h-4 w-4 mr-2" />
@@ -408,7 +493,7 @@ export default function SermonsPage() {
                 </div>
                 {/* Series Progress Dots */}
                 <div className="flex items-center gap-1.5 mr-2">
-                  {group.sermons.map((s, i) => (
+                  {group.sermons.map((s) => (
                     <div
                       key={s.id}
                       className={cn("w-3 h-3 rounded-full", getStatusDot(s.status))}

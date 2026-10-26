@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { 
   Mic, MicOff, Upload, FileAudio, Sparkles, X, Check, Copy, 
-  Download, ArrowRight, Play, Pause, RotateCcw, BookOpen, 
-  Quote, ListOrdered, CheckCircle2, AlertCircle, Loader2
+  Download, ArrowRight, RotateCcw, BookOpen, 
+  Quote, ListOrdered, CheckCircle2, AlertCircle, Loader2, User
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { saveSermonSpeaker } from '@/lib/sermon-speaker'
 
 interface TranscribedData {
   title: string
@@ -43,7 +45,11 @@ export default function SermonAudioTranscriberModal({
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false)
+
+  // Speaker attribution state
+  const [pastorName, setPastorName] = useState('')
+  const [isOwnSermon, setIsOwnSermon] = useState(true)
+  const [speakerName, setSpeakerName] = useState('')
 
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStep, setProcessingStep] = useState(0)
@@ -59,6 +65,25 @@ export default function SermonAudioTranscriberModal({
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null)
 
+  useEffect(() => {
+    if (!isOpen) return
+    async function loadPastor() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle() as any
+      const name = (prof?.full_name || user.user_metadata?.full_name || 'Pastor').trim()
+      setPastorName(name)
+      if (isOwnSermon && !speakerName) {
+        setSpeakerName(name)
+      }
+    }
+    loadPastor()
+  }, [isOpen, supabase])
+
   // Clear timers on unmount
   useEffect(() => {
     return () => {
@@ -68,6 +93,10 @@ export default function SermonAudioTranscriberModal({
   }, [audioUrl])
 
   if (!isOpen) return null
+
+  const effectiveSpeakerName = isOwnSermon
+    ? (speakerName.trim() || pastorName || 'Pastor')
+    : (speakerName.trim() || 'Guest Speaker')
 
   // Recording Handlers
   const startRecording = async () => {
@@ -180,6 +209,10 @@ export default function SermonAudioTranscriberModal({
   // Process Transcription with Gemini
   const handleStartTranscription = async () => {
     if (!file) return
+    if (!isOwnSermon && !speakerName.trim()) {
+      setError('Please enter the speaker\'s name before transcribing.')
+      return
+    }
 
     setIsProcessing(true)
     setError(null)
@@ -201,8 +234,6 @@ export default function SermonAudioTranscriberModal({
         throw new Error(urlJson.error || 'Failed to prepare audio upload.')
       }
 
-      // Upload directly to Supabase storage signed URL using Supabase client
-      // Handles browser Blob and FormData packaging cleanly across Safari, iOS, Chrome, and Firefox
       let uploadSuccess = false
       if (urlJson.path && urlJson.token) {
         const { error: upErr } = await supabase.storage
@@ -261,12 +292,11 @@ export default function SermonAudioTranscriberModal({
           const todayStr = new Date().toISOString().split('T')[0]
 
           if (existingSermonId) {
-            // Append live preaching transcript to existing sermon
             const { data: existingSermon } = await supabase
               .from('sermons')
               .select('content, title, scriptures_all')
               .eq('id', existingSermonId)
-              .single()
+              .single() as any
 
             const existingNodes = existingSermon?.content?.content || []
             const liveAppendNodes: any[] = [
@@ -274,6 +304,13 @@ export default function SermonAudioTranscriberModal({
                 type: 'heading',
                 attrs: { level: 2 },
                 content: [{ type: 'text', text: `Live Preached Audio Transcript (${todayStr})` }],
+              },
+              {
+                type: 'paragraph',
+                content: [
+                  { type: 'text', text: 'Speaker: ', marks: [{ type: 'bold' }] },
+                  { type: 'text', text: `${effectiveSpeakerName}${isOwnSermon ? ' (My Sermon)' : ' (Guest / Other Speaker)'}` },
+                ],
               },
               {
                 type: 'heading',
@@ -317,8 +354,7 @@ export default function SermonAudioTranscriberModal({
               content: [...existingNodes, ...liveAppendNodes],
             }
 
-            await supabase
-              .from('sermons')
+            await (supabase.from('sermons') as any)
               .update({
                 content: updatedDoc,
                 status: 'preached',
@@ -327,6 +363,11 @@ export default function SermonAudioTranscriberModal({
               })
               .eq('id', existingSermonId)
 
+            await saveSermonSpeaker(supabase, existingSermonId, {
+              isOwnSermon,
+              speakerName: effectiveSpeakerName,
+            })
+
             setSavedSermonId(existingSermonId)
             onSermonSaved?.(existingSermonId)
           } else {
@@ -334,6 +375,13 @@ export default function SermonAudioTranscriberModal({
             const contentDoc = {
               type: 'doc',
               content: [
+                {
+                  type: 'paragraph',
+                  content: [
+                    { type: 'text', text: 'Speaker: ', marks: [{ type: 'bold' }] },
+                    { type: 'text', text: `${effectiveSpeakerName}${isOwnSermon ? ' (My Sermon)' : ' (Guest / Other Speaker)'}` },
+                  ],
+                },
                 {
                   type: 'heading',
                   attrs: { level: 2 },
@@ -382,8 +430,7 @@ export default function SermonAudioTranscriberModal({
               ],
             }
 
-            const { data: autoSaved } = await supabase
-              .from('sermons')
+            const { data: autoSaved } = await (supabase.from('sermons') as any)
               .insert({
                 author_id: user.id,
                 title: json.data.title || 'Live Captured Sermon',
@@ -398,6 +445,10 @@ export default function SermonAudioTranscriberModal({
               .single()
 
             if (autoSaved?.id) {
+              await saveSermonSpeaker(supabase, autoSaved.id, {
+                isOwnSermon,
+                speakerName: effectiveSpeakerName,
+              })
               setSavedSermonId(autoSaved.id)
               onSermonSaved?.(autoSaved.id)
             }
@@ -437,6 +488,13 @@ export default function SermonAudioTranscriberModal({
       const contentDoc = {
         type: 'doc',
         content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'Speaker: ', marks: [{ type: 'bold' }] },
+              { type: 'text', text: `${effectiveSpeakerName}${isOwnSermon ? ' (My Sermon)' : ' (Guest / Other Speaker)'}` },
+            ],
+          },
           {
             type: 'heading',
             attrs: { level: 2 },
@@ -497,11 +555,16 @@ export default function SermonAudioTranscriberModal({
           content: contentDoc,
           status: 'preached',
           preach_date: todayStr,
-        })
+        } as any)
         .select()
         .single()) as any
 
       if (insertError) throw insertError
+
+      await saveSermonSpeaker(supabase, sermon.id, {
+        isOwnSermon,
+        speakerName: effectiveSpeakerName,
+      })
 
       onSermonSaved?.(sermon.id)
       onClose()
@@ -518,6 +581,7 @@ export default function SermonAudioTranscriberModal({
   const handleCopyTranscript = () => {
     if (!result) return
     const fullText = `SERMON: ${result.title}
+SPEAKER: ${effectiveSpeakerName} (${isOwnSermon ? 'My Sermon' : 'Guest / Other Speaker'})
 SCRIPTURES: ${result.scriptures.join(', ')}
 
 SUMMARY:
@@ -541,6 +605,7 @@ ${result.transcript}
   const handleDownloadTxt = () => {
     if (!result) return
     const text = `Title: ${result.title}
+Speaker: ${effectiveSpeakerName} (${isOwnSermon ? 'My Sermon' : 'Guest / Other Speaker'})
 Scriptures: ${result.scriptures.join(', ')}
 
 SUMMARY:
@@ -601,7 +666,62 @@ ${result.transcript}
 
           {/* SCREEN 1: INPUT & RECORDING (When no result yet) */}
           {!result && !isProcessing && (
-            <div className="space-y-6">
+            <div className="space-y-5">
+              {/* Speaker Identification Box */}
+              <div className="bg-[#F8F5EE] border border-[#D0A348]/40 rounded-xl p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#022d5c] flex items-center gap-1.5">
+                    <User size={14} className="text-[#D0A348]" />
+                    <span>Who is preaching / speaking?</span>
+                  </label>
+                  <div className="flex rounded-lg bg-white p-0.5 border border-gray-200 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOwnSermon(true)
+                        setSpeakerName(pastorName)
+                      }}
+                      className={cn(
+                        'px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer',
+                        isOwnSermon
+                          ? 'bg-[#022d5c] text-white shadow-2xs'
+                          : 'text-gray-600 hover:text-[#022d5c]'
+                      )}
+                    >
+                      My Sermon
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOwnSermon(false)
+                        if (speakerName === pastorName) setSpeakerName('')
+                      }}
+                      className={cn(
+                        'px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer',
+                        !isOwnSermon
+                          ? 'bg-[#022d5c] text-white shadow-2xs'
+                          : 'text-gray-600 hover:text-[#022d5c]'
+                      )}
+                    >
+                      Other Speaker / Guest
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={speakerName}
+                    onChange={(e) => setSpeakerName(e.target.value)}
+                    placeholder={
+                      isOwnSermon
+                        ? pastorName || 'Your Name (Pastor)'
+                        : 'Enter speaker name (e.g. Evangelist David Johnson, Youth Pastor Mark...)'
+                    }
+                    className="bg-white border-gray-200 text-sm focus-visible:ring-[#022d5c]"
+                  />
+                </div>
+              </div>
+
               {/* Mode Toggle */}
               <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
                 <button
@@ -762,7 +882,7 @@ ${result.transcript}
                   className="bg-[#D0A348] hover:bg-[#b8892e] text-white font-semibold px-6 py-2.5 rounded-xl flex items-center gap-2 cursor-pointer shadow-md shadow-[#D0A348]/20"
                 >
                   <Sparkles size={16} />
-                  <span>Transcribe & Analyze</span>
+                  <span>Transcribe &amp; Analyze</span>
                 </Button>
               </div>
             </div>
@@ -796,7 +916,7 @@ ${result.transcript}
                 <span>→</span>
                 <span className={cn('px-2 py-1 rounded-md border', processingStep >= 2 ? 'bg-slate-100 border-[#022d5c] text-[#022d5c] font-bold' : 'border-slate-200')}>2. Speech-to-Text</span>
                 <span>→</span>
-                <span className={cn('px-2 py-1 rounded-md border', processingStep >= 3 ? 'bg-slate-100 border-[#022d5c] text-[#022d5c] font-bold' : 'border-slate-200')}>3. Scripture & Outline</span>
+                <span className={cn('px-2 py-1 rounded-md border', processingStep >= 3 ? 'bg-slate-100 border-[#022d5c] text-[#022d5c] font-bold' : 'border-slate-200')}>3. Scripture &amp; Outline</span>
               </div>
             </div>
           )}
@@ -806,13 +926,23 @@ ${result.transcript}
             <div className="space-y-6">
               {/* Title & Scripture Badges */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
                     Transcribed Title
                   </span>
-                  <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
-                    <CheckCircle2 size={13} /> {savedSermonId ? 'Saved to Preached Sermons' : 'Transcription Complete'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      'text-xs font-semibold px-2.5 py-0.5 rounded-full border',
+                      isOwnSermon
+                        ? 'bg-[#022d5c]/10 text-[#022d5c] border-[#022d5c]/20'
+                        : 'bg-amber-50 text-amber-900 border-amber-200'
+                    )}>
+                      🎙️ {effectiveSpeakerName} {!isOwnSermon && '(Other Speaker)'}
+                    </span>
+                    <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                      <CheckCircle2 size={13} /> {savedSermonId ? 'Saved to Preached Sermons' : 'Transcription Complete'}
+                    </span>
+                  </div>
                 </div>
                 <h3 className="text-xl font-playfair font-bold text-[#022d5c]">
                   {result.title}
@@ -847,7 +977,7 @@ ${result.transcript}
                   )}
                 >
                   <ListOrdered size={14} />
-                  <span>Sermon Outline & Summary</span>
+                  <span>Sermon Outline &amp; Summary</span>
                 </button>
                 <button
                   onClick={() => setActiveResultTab('transcript')}
@@ -913,7 +1043,7 @@ ${result.transcript}
                   {result.keyQuotes.length > 0 && (
                     <div className="space-y-2 pt-2">
                       <h4 className="text-xs font-bold text-[#022d5c] uppercase tracking-wider">
-                        Memorable Quotes & Illustrations
+                        Memorable Quotes &amp; Illustrations
                       </h4>
                       <ul className="space-y-1.5">
                         {result.keyQuotes.map((q, idx) => (
@@ -921,7 +1051,7 @@ ${result.transcript}
                             key={idx}
                             className="text-xs text-slate-700 italic bg-slate-50 p-2.5 rounded-lg border-l-3 border-[#D0A348]"
                           >
-                            "{q}"
+                            &ldquo;{q}&rdquo;
                           </li>
                         ))}
                       </ul>

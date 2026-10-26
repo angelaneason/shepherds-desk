@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Mic, MicOff, Loader2, Check, Calendar, User, X, Sparkles, Keyboard, Camera, Upload, Send, BookOpen, Lightbulb, Heart, Bell, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -46,8 +46,20 @@ const localToday = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export function SmartReminder() {
-  const [isOpen, setIsOpen] = useState(false)
+interface SmartReminderProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  variant?: 'banner' | 'modal'
+}
+
+export function SmartReminder({ open, onOpenChange, variant = 'banner' }: SmartReminderProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = open !== undefined ? open : internalOpen
+  const setIsOpen = (next: boolean) => {
+    setInternalOpen(next)
+    onOpenChange?.(next)
+  }
+
   const [mode, setMode] = useState<InputMode>('choose')
   const [isListening, setIsListening] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -66,6 +78,13 @@ export function SmartReminder() {
   const supabase = createClient()
 
   const action: AssistantAction = parsed?.action || 'reminder'
+
+  useEffect(() => {
+    if (variant !== 'modal') return
+    const handleOpenEvent = () => setIsOpen(true)
+    window.addEventListener('open_smart_assistant', handleOpenEvent)
+    return () => window.removeEventListener('open_smart_assistant', handleOpenEvent)
+  }, [variant])
 
   const startListening = () => {
     setError('')
@@ -226,6 +245,7 @@ export function SmartReminder() {
   const finishSave = (title: string, detail: string, keepOpen = false) => {
     setSavedMessage({ title, detail })
     setSaved(true)
+    try { window.dispatchEvent(new CustomEvent('smart_assistant_saved')) } catch {}
     if (!keepOpen) {
       setTimeout(() => {
         setIsOpen(false)
@@ -387,12 +407,12 @@ export function SmartReminder() {
   const inputClass = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-[#D0A348] focus:ring-1 focus:ring-[#D0A348]'
   const labelClass = 'text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block'
 
-  // Collapsed state
   if (!isOpen) {
+    if (variant === 'modal') return null
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-[#022d5c] to-[#0a4a8a] text-white shadow-lg hover:shadow-xl transition-all group"
+        className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-[#022d5c] to-[#0a4a8a] text-white shadow-lg hover:shadow-xl transition-all group cursor-pointer"
       >
         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
           <Mic className="w-5 h-5" />
@@ -402,14 +422,14 @@ export function SmartReminder() {
         </div>
         <div className="text-left">
           <p className="font-semibold text-sm">Smart Assistant (Voice, Type &amp; Photo to Text)</p>
-          <p className="text-xs text-white/75">Speak, type, or snap a photo to convert notes to text, set a reminder, start a sermon, save an idea, or add a prayer request</p>
+          <p className="text-xs text-white/75">Speak, type, or snap a photo to set a reminder, add to calendar, start a sermon, save an idea, or add a prayer request</p>
         </div>
         <Sparkles className="w-5 h-5 text-[#D0A348] ml-auto shrink-0" />
       </button>
     )
   }
 
-  return (
+  const assistantCard = (
     <div className="w-full rounded-2xl bg-white border-2 border-[#022d5c] shadow-xl overflow-hidden">
       {/* Header */}
       <div className="bg-[#022d5c] text-white px-4 py-3 flex items-center justify-between">
@@ -417,12 +437,12 @@ export function SmartReminder() {
           <Sparkles className="w-4 h-4 text-[#D0A348]" />
           <span className="font-semibold text-sm">Smart Assistant</span>
         </div>
-        <button onClick={() => { setIsOpen(false); stopListening(); reset() }} className="p-1 hover:bg-white/10 rounded-full">
+        <button onClick={() => { setIsOpen(false); stopListening(); reset() }} className="p-1 hover:bg-white/10 rounded-full cursor-pointer">
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 max-h-[80vh] overflow-y-auto">
         {/* Success */}
         {saved && (
           <div className="text-center py-6">
@@ -435,6 +455,7 @@ export function SmartReminder() {
               <div className="flex gap-2 justify-center mt-4">
                 <Link
                   href={`/sermons/${newSermonId}`}
+                  onClick={() => { setIsOpen(false); setTimeout(() => reset(), 300) }}
                   className="px-4 py-2 rounded-xl bg-[#022d5c] text-white text-sm font-medium hover:bg-[#022d5c]/90"
                 >
                   Open Sermon
@@ -453,41 +474,73 @@ export function SmartReminder() {
         {/* Choose Mode */}
         {!saved && !parsed && mode === 'choose' && (
           <>
-            <p className="text-sm text-gray-500 mb-4 text-center">What can I help with? Speak, type, or snap a photo.</p>
+            <p className="text-sm text-gray-600 mb-3 text-center font-medium">
+              Just speak, type, or snap a photo—tell the Assistant what you need:
+            </p>
             <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={() => { setMode('voice'); startListening() }}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 hover:border-[#022d5c] hover:bg-[#022d5c]/5 transition-all"
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 hover:border-[#022d5c] hover:bg-[#022d5c]/5 transition-all cursor-pointer"
               >
                 <div className="w-12 h-12 rounded-full bg-[#022d5c]/10 flex items-center justify-center">
                   <Mic className="w-6 h-6 text-[#022d5c]" />
                 </div>
-                <span className="text-xs font-medium text-gray-700">Speak</span>
+                <span className="text-xs font-semibold text-gray-800">Speak</span>
               </button>
               <button
                 onClick={() => setMode('type')}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 hover:border-[#D0A348] hover:bg-[#D0A348]/5 transition-all"
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 hover:border-[#D0A348] hover:bg-[#D0A348]/5 transition-all cursor-pointer"
               >
                 <div className="w-12 h-12 rounded-full bg-[#D0A348]/10 flex items-center justify-center">
                   <Keyboard className="w-6 h-6 text-[#D0A348]" />
                 </div>
-                <span className="text-xs font-medium text-gray-700">Type</span>
+                <span className="text-xs font-semibold text-gray-800">Type</span>
               </button>
               <button
                 onClick={() => setMode('photo')}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all"
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all cursor-pointer"
               >
                 <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
                   <Camera className="w-6 h-6 text-green-600" />
                 </div>
-                <span className="text-xs font-medium text-gray-700">Snap Photo</span>
+                <span className="text-xs font-semibold text-gray-800">Snap Photo</span>
               </button>
             </div>
-            <div className="text-[11px] text-gray-400 text-center mt-4 space-y-0.5">
-              <p>📷 Tap <strong>Snap Photo</strong> to photograph handwritten notes or book pages &amp; convert to text</p>
-              <p>🎙️ Try: &ldquo;Remind me to call Sister Mary on Thursday&rdquo;</p>
-              <p>&ldquo;Add a new sermon titled Walking by Faith for next Sunday&rdquo;</p>
-              <p>&ldquo;Add Brother John to the prayer list for his surgery&rdquo;</p>
+
+            {/* Organized What You Can Ask Guide */}
+            <div className="mt-4 pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
+              <button
+                type="button"
+                onClick={() => { setMode('type'); setTypedText('Remind me to ') }}
+                className="p-2.5 rounded-xl bg-gray-50 hover:bg-[#022d5c]/5 border border-gray-200/80 text-left transition-colors cursor-pointer"
+              >
+                <p className="text-xs font-bold text-[#022d5c]">📅 Calendar &amp; Reminders</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">&ldquo;Remind me to call Sister Mary Thursday at 2pm&rdquo; or &ldquo;Block study time tomorrow at 9am&rdquo;</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('type'); setTypedText('Add a new sermon titled ') }}
+                className="p-2.5 rounded-xl bg-gray-50 hover:bg-[#022d5c]/5 border border-gray-200/80 text-left transition-colors cursor-pointer"
+              >
+                <p className="text-xs font-bold text-[#022d5c]">📖 Start a Sermon</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">&ldquo;Add a new sermon titled Walking by Faith from Luke 15 for next Sunday&rdquo;</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('type'); setTypedText('Add to the prayer list: ') }}
+                className="p-2.5 rounded-xl bg-gray-50 hover:bg-[#022d5c]/5 border border-gray-200/80 text-left transition-colors cursor-pointer"
+              >
+                <p className="text-xs font-bold text-[#022d5c]">🙏 Prayer &amp; Care</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">&ldquo;Add Brother John to the prayer list for his surgery&rdquo;</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('photo')}
+                className="p-2.5 rounded-xl bg-gray-50 hover:bg-[#022d5c]/5 border border-gray-200/80 text-left transition-colors cursor-pointer"
+              >
+                <p className="text-xs font-bold text-[#022d5c]">📷 Notes &amp; Ideas</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">Snap a photo of handwritten notes to convert to text, or say &ldquo;Save an idea about...&rdquo;</p>
+              </button>
             </div>
           </>
         )}
@@ -667,7 +720,7 @@ export function SmartReminder() {
                 value={typedText}
                 onChange={(e) => setTypedText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && parseReminder(typedText)}
-                placeholder="e.g., New sermon titled Grace Upon Grace..."
+                placeholder="e.g., Remind me to call Sister Mary on Thursday..."
                 className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#D0A348] focus:ring-1 focus:ring-[#D0A348]"
                 autoFocus
               />
@@ -848,7 +901,7 @@ export function SmartReminder() {
                   <label className={labelClass}>Type</label>
                   <div className="flex flex-wrap gap-2">
                     {[
-                      { value: 'call', label: '📞 Call', },
+                      { value: 'call', label: '📞 Call' },
                       { value: 'visit', label: '🏠 Visit' },
                       { value: 'hospital', label: '🏥 Hospital' },
                       { value: 'study', label: '📚 Study' },
@@ -894,4 +947,16 @@ export function SmartReminder() {
       </div>
     </div>
   )
+
+  if (variant === 'modal') {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="w-full max-w-lg">
+          {assistantCard}
+        </div>
+      </div>
+    )
+  }
+
+  return assistantCard
 }

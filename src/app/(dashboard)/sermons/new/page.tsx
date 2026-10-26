@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, ChevronDown, ChevronUp, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Save, ChevronDown, ChevronUp, Trash2, Plus, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SermonEditor } from "@/components/editor/SermonEditor";
 import { Badge } from "@/components/ui/badge";
+import { saveSermonSpeaker } from "@/lib/sermon-speaker";
 
 export default function NewSermonPage() {
   const router = useRouter();
@@ -21,6 +22,11 @@ export default function NewSermonPage() {
   const [status, setStatus] = useState<"draft" | "review" | "ready" | "preached">("draft");
   const [content, setContent] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Speaker attribution state
+  const [pastorName, setPastorName] = useState("");
+  const [isOwnSermon, setIsOwnSermon] = useState(true);
+  const [speakerName, setSpeakerName] = useState("");
   
   // Study Sessions State
   const [studySessions, setStudySessions] = useState<{ id: string; date: string; start: string; end: string }[]>([]);
@@ -28,6 +34,24 @@ export default function NewSermonPage() {
   const [newSessionDate, setNewSessionDate] = useState("");
   const [newSessionStart, setNewSessionStart] = useState("09:00");
   const [newSessionEnd, setNewSessionEnd] = useState("11:00");
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function loadPastor() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle() as any;
+      const name = (prof?.full_name || user.user_metadata?.full_name || "Pastor").trim();
+      setPastorName(name);
+      setSpeakerName(name);
+    }
+    loadPastor();
+  }, [supabase]);
 
   useEffect(() => {
     if (preachDate && !newSessionDate) {
@@ -53,8 +77,6 @@ export default function NewSermonPage() {
   const handleRemoveSession = (id: string) => {
     setStudySessions(studySessions.filter(s => s.id !== id));
   };
-  
-  const supabase = createClient();
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -78,9 +100,14 @@ export default function NewSermonPage() {
           updated_at: new Date().toISOString()
         } as any)
         .select()
-        .single();
+        .single() as any;
 
       if (error) throw error;
+
+      await saveSermonSpeaker(supabase, data.id, {
+        isOwnSermon,
+        speakerName: isOwnSermon ? (speakerName.trim() || pastorName || "Pastor") : (speakerName.trim() || "Guest Speaker"),
+      });
       
       if (preachDate) {
         await supabase.from("calendar_events").insert({
@@ -120,14 +147,15 @@ export default function NewSermonPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      <header className="flex items-center justify-between border-b px-6 py-4 bg-white sticky top-0 z-20">
-        <div className="flex items-center gap-4">
+      <header className="flex items-center justify-between border-b px-4 sm:px-6 py-4 bg-white sticky top-0 z-20 gap-2 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           <Link href="/sermons">
-            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-[#022d5c]">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="outline" size="sm" className="text-[#022d5c] border-slate-200 hover:bg-slate-50 gap-1.5 font-semibold">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Sermons</span>
             </Button>
           </Link>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             {(["draft", "review", "ready", "preached"] as const).map((s) => (
               <Badge
                 key={s}
@@ -154,21 +182,61 @@ export default function NewSermonPage() {
         </Button>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#F8F5EE]/30">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#F8F5EE]/30">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="space-y-4 bg-white p-6 rounded-lg border shadow-sm">
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Sermon Title"
-              className="text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-300 text-[#022d5c]"
+              className="text-3xl sm:text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-300 text-[#022d5c]"
             />
             <Input
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
-              placeholder="Subtitle or scripture reference"
-              className="text-xl border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-400 text-slate-600"
+              placeholder="Subtitle or main theme"
+              className="text-lg sm:text-xl border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-400 text-slate-600"
             />
+
+            {/* Speaker Row */}
+            <div className="pt-4 border-t flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <User className="w-4 h-4 text-[#D0A348]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Speaker:</span>
+                <div className="flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOwnSermon(true);
+                      setSpeakerName(pastorName);
+                    }}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      isOwnSermon ? "bg-[#022d5c] text-white" : "text-slate-600 hover:text-[#022d5c]"
+                    }`}
+                  >
+                    My Sermon
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOwnSermon(false);
+                      if (speakerName === pastorName) setSpeakerName("");
+                    }}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      !isOwnSermon ? "bg-[#022d5c] text-white" : "text-slate-600 hover:text-[#022d5c]"
+                    }`}
+                  >
+                    Other Speaker
+                  </button>
+                </div>
+              </div>
+              <Input
+                value={speakerName}
+                onChange={(e) => setSpeakerName(e.target.value)}
+                placeholder={isOwnSermon ? (pastorName || "Your Name") : "Enter guest / other speaker's name..."}
+                className="flex-1 h-9 text-sm"
+              />
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
               <div>

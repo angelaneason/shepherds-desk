@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/server-auth'
 import { notifyUsers } from '@/lib/push'
+import { sendTrialEndingEmail } from '@/lib/email'
 
 export const maxDuration = 60
 
 /**
  * Scheduled notification runner. Call every 15 minutes.
  * Protected by CRON_SECRET (Authorization: Bearer <secret> or ?secret=<secret>).
+ * Covers:
+ * 1. Referral sign-ups
+ * 2. Trial & account lifecycle notifications (7 days, 3 days, 1 day, expired)
+ * 3. Calendar reminders (starting in next 60 mins)
+ * 4. Sermon deadlines (preaching within 3 days)
+ * 5. Overdue pastoral care follow-ups
+ * 6. Today's church announcements
+ * 7. Weekly study goal check-ins
  */
 async function run(request: Request) {
   const secret = process.env.CRON_SECRET
@@ -24,9 +33,12 @@ async function run(request: Request) {
   const todayStr = now.toISOString().slice(0, 10)
   const results: Record<string, number> = {}
 
-  // Only users with a registered phone get scheduled pushes
-  const { data: tokenRows } = await admin.from('push_tokens').select('profile_id') as any
-  const userIds: string[] = Array.from(new Set((tokenRows || []).map((r: any) => r.profile_id)))
+  // 1. Fetch all registered profiles so in-app notifications and trial emails reach everyone
+  const { data: allProfiles } = await admin
+    .from('profiles')
+    .select('id, full_name, email, stripe_customer_id, trial_ends_at, created_at, subscription_status, subscription_tier, notifications_enabled, notification_preferences') as any
+
+  const userIds: string[] = Array.from(new Set((allProfiles || []).map((p: any) => p.id)))
 
   // ── 1. Referral sign-ups (also sent instantly from the sign-up flow) ──
   const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString()
@@ -85,7 +97,84 @@ async function run(request: Request) {
   const daytime = utcHour >= 13 && utcHour <= 23
 
   if (daytime) {
-    // ── 3. Sermon deadlines: preaching within 3 days and not ready ──
+    // ── 3. Trial & Subscription Lifecycle Reminders (In-App + Mobile Push + Email) ──
+    results.trial = 0
+    results.trialEmails = 0
+    for (const p of allProfiles || []) {
+      const hasSub = !!p.stripe_customer_id || p.subscription_status === 'active'
+      if (hasSub) continue
+
+      let daysRemaining = 30
+      if (p.trial_ends_at) {
+        const ends = new Date(p.trial_ends_at).getTime()
+        daysRemaining = Math.ceil((ends - now.getTime()) / (1000 * 60 * 60 * 24))
+      } else if (p.created_at) {
+        const trialEnd = new Date(new Date(p.created_at).getTime() + 30 * 24 * 60 * 60 * 1000).getTime()
+        daysRemaining = Math.ceil((trialEnd - now.getTime()) / (1000 * 60 * 60 * 24))
+      }
+
+      let trialMsg: { title: string; body: string; dedupeKey: string; days: number } | null = null
+
+      if (daysRemaining === 7) {
+        trialMsg = {
+          title: '⏳ 7 Days Left on Your Free Trial',
+          body: 'You have 7 days remaining on your Shepherd\'s Desk trial. Keep all your sermon manuscripts and pastoral care tools active at theshepherdsdesk.app.',
+          dedupeKey: `trial:7d:${p.id}`,
+          days: 7,
+        }
+      } else if (daysRemaining === 3) {
+        trialMsg = {
+          title: '⏳ 3 Days Remaining on Your Trial',
+          body: 'Your 30-day trial concludes in 3 days. Visit the web portal at theshepherdsdesk.app to ensure uninterrupted access.',
+          dedupeKey: `trial:3d:${p.id}`,
+          days: 3,
+        }
+      } else if (daysRemaining === 1) {
+        trialMsg = {
+          title: '⚠️ Trial Ends Tomorrow',
+          body: 'Your free trial ends tomorrow. Choose your plan on the web portal to keep your pulpit teleprompter and notes active.',
+          dedupeKey: `trial:1d:${p.id}`,
+          days: 1,
+        }
+      } else if (daysRemaining <= 0) {
+        trialMsg = {
+          title: 'Free Trial Concluded',
+          body: 'Your 30-day trial has completed. All your sermons and records are safe. Reactivate anytime at theshepherdsdesk.app.',
+          dedupeKey: `trial:expired:${p.id}`,
+          days: 0,
+        }
+      }
+
+      if (trialMsg) {
+        const res = await notifyUsers(
+          [p.id],
+          {
+            type: 'system',
+            title: trialMsg.title,
+            body: trialMsg.body,
+            link: 'Settings',
+          },
+          { dedupeKey: trialMsg.dedupeKey }
+        )
+        if (res.notified > 0) {
+          results.trial++
+          if (p.email) {
+            try {
+              await sendTrialEndingEmail({
+                to: p.email,
+                pastorName: p.full_name,
+                daysRemaining: trialMsg.days,
+              })
+              results.trialEmails++
+            } catch (err) {
+              console.error('Failed to send trial ending email:', err)
+            }
+          }
+        }
+      }
+    }
+
+    // ── 4. Sermon deadlines: preaching within 3 days and not ready ──
     const threeDays = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     const { data: sermons } = await admin
       .from('sermons')
@@ -114,23 +203,46 @@ async function run(request: Request) {
       results.sermon += res.notified
     }
 
-    // ── 4. Overdue care follow-ups (once per day) ──
-    const { data: overdue } = await admin
+    // ── 5. Due-today & overdue care follow-ups / reminders (once per day) ──
+    const { data: dueTasks } = await admin
       .from('care_tasks')
-      .select('profile_id')
+      .select('id, profile_id, title, due_date')
       .in('profile_id', userIds)
       .in('status', ['pending', 'in_progress'])
-      .lt('due_date', todayStr) as any
-    const overdueCounts = new Map<string, number>()
-    for (const t of overdue || []) overdueCounts.set(t.profile_id, (overdueCounts.get(t.profile_id) || 0) + 1)
+      .lte('due_date', todayStr) as any
+
+    const userCareBuckets = new Map<string, { todayTitles: string[]; overdueCount: number }>()
+    for (const t of dueTasks || []) {
+      const bucket = userCareBuckets.get(t.profile_id) || { todayTitles: [], overdueCount: 0 }
+      if (String(t.due_date || '').slice(0, 10) === todayStr) {
+        bucket.todayTitles.push(t.title || 'Follow-up reminder')
+      } else {
+        bucket.overdueCount += 1
+      }
+      userCareBuckets.set(t.profile_id, bucket)
+    }
+
     results.care = 0
-    for (const [profileId, count] of overdueCounts) {
+    for (const [profileId, bucket] of userCareBuckets) {
+      const todayCount = bucket.todayTitles.length
+      const overdueCount = bucket.overdueCount
+      let bodyText = ''
+      if (todayCount === 1 && overdueCount === 0) {
+        bodyText = `Due today: ${bucket.todayTitles[0]}`
+      } else if (todayCount > 1 && overdueCount === 0) {
+        bodyText = `You have ${todayCount} care reminders due today (${bucket.todayTitles[0]} and more).`
+      } else if (todayCount > 0 && overdueCount > 0) {
+        bodyText = `You have ${todayCount} reminder${todayCount === 1 ? '' : 's'} due today and ${overdueCount} past due.`
+      } else {
+        bodyText = `You have ${overdueCount} care follow-up${overdueCount === 1 ? '' : 's'} past due.`
+      }
+
       const res = await notifyUsers(
         [profileId],
         {
           type: 'care',
-          title: '🙏 Care follow-ups',
-          body: `You have ${count} care task${count === 1 ? '' : 's'} past due.`,
+          title: todayCount > 0 ? '🔔 Today\'s Care & Follow-Up Reminder' : '🙏 Care follow-ups',
+          body: bodyText,
           link: 'Care',
         },
         { dedupeKey: `care:${todayStr}` }
@@ -138,7 +250,7 @@ async function run(request: Request) {
       results.care += res.notified
     }
 
-    // ── 5. Today's announcements ──
+    // ── 6. Today's announcements ──
     const { data: announcements } = await admin
       .from('announcements')
       .select('id, profile_id, title')
@@ -160,7 +272,7 @@ async function run(request: Request) {
       results.announcement += res.notified
     }
 
-    // ── 6. Weekly study goal (Wednesday or later, once per week) ──
+    // ── 7. Weekly study goal (Wednesday or later, once per week) ──
     const dow = now.getUTCDay()
     if (dow >= 3) {
       const startOfWeek = new Date(now)

@@ -15,7 +15,7 @@ import StudyTools from '@/components/study/StudyTools'
 const ENCOURAGEMENTS = [
   { scripture: "He who calls you is faithful, and He will do it.", reference: "1 Thessalonians 5:24", reflection: "You weren't called to carry this alone. He who started this good work in you will finish it." },
   { scripture: "The Lord is my shepherd; I shall not want.", reference: "Psalm 23:1", reflection: "Even shepherds need a Shepherd. Let Him lead you today." },
-  { scripture: "Come to me, all who labor and are heavy laden, and I will give you rest.", reference: "Matthew 11:28", reflection: "Before you feed the flock, let the Father feed you." },
+  { scripture: "Come to me, all who labor and are heavy laden, and I will give you rest.", reference: "Matthew 11:28", reflection: "Before you feed your people, let the Father feed you." },
   { scripture: "I can do all things through Him who strengthens me.", reference: "Philippians 4:13", reflection: "Your strength for ministry doesn't come from you — it flows through you." },
   { scripture: "But he said to me, 'My grace is sufficient for you, for my power is made perfect in weakness.'", reference: "2 Corinthians 12:9", reflection: "Your weakness is not a liability. It's where His power shows up most." },
   { scripture: "The Lord your God is in your midst, a mighty one who will save; he will rejoice over you with gladness.", reference: "Zephaniah 3:17", reflection: "He doesn't just tolerate you — He delights in you. Sit with that today." },
@@ -51,7 +51,7 @@ const TIMER_COMPLETION_MESSAGES = [
   "Every minute in the Word matters. Keep going!",
   "Your people will be blessed by this preparation.",
   "The Lord sees your diligence. Rest in that.",
-  "Time well spent. Your flock is in good hands.",
+  "Time well spent. Your congregation is in good hands.",
   "That's what faithfulness looks like. 📖",
   "Another seed planted. Trust the harvest.",
   "You showed up. That's half the battle. 💪",

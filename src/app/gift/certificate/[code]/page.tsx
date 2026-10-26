@@ -159,7 +159,7 @@ export default function GiftCertificatePage() {
           </div>
 
           <p className="text-sm sm:text-base text-gray-700 max-w-xl mx-auto leading-relaxed pt-2">
-            In grateful honor of your faithful service, spiritual leadership, and heartfelt devotion to God's flock, you have been blessed with
+            In grateful honor of your faithful service, spiritual leadership, and heartfelt devotion to God's people, you have been blessed with
           </p>
 
           {/* Subscription Banner */}

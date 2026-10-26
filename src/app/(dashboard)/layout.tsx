@@ -3,8 +3,30 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, BookOpen, BookMarked, Lightbulb, CalendarDays, Heart, Settings, LogOut, Camera, Shield, Gift, MoreHorizontal, X, Plus, Menu, Clock, Megaphone, Library, MessageSquare, Mic, Globe, Users, HelpCircle } from 'lucide-react'
-import { PhotoCapture } from '@/components/capture/PhotoCapture'
+import {
+  LayoutDashboard,
+  BookOpen,
+  BookMarked,
+  Lightbulb,
+  CalendarDays,
+  Heart,
+  Settings,
+  Camera,
+  Shield,
+  Gift,
+  X,
+  Menu,
+  Clock,
+  Library,
+  MessageSquare,
+  Mic,
+  Globe,
+  Users,
+  HelpCircle,
+  ArrowLeft,
+  Sparkles,
+} from 'lucide-react'
+import { SmartReminder } from '@/components/reminders/SmartReminder'
 import { SupportChat } from '@/components/support/SupportChat'
 import { CompleteProfilePrompt } from '@/components/onboarding/CompleteProfilePrompt'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
@@ -19,7 +41,7 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const isPulpit = pathname?.endsWith('/pulpit')
 
-  const [isCaptureOpen, setIsCaptureOpen] = useState(false)
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [userInitial, setUserInitial] = useState('?')
   const [churchBrand, setChurchBrand] = useState<{
@@ -29,7 +51,6 @@ export default function DashboardLayout({
     secondaryColor?: string
     accentColor?: string
   } | null>(null)
-  const [moreOpen, setMoreOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   // Pulsing dot on the phone "Menu" button until the user opens it once
   const [menuSeen, setMenuSeen] = useState(true)
@@ -129,45 +150,71 @@ export default function DashboardLayout({
     checkAdmin()
   }, [])
 
-  const navItems = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Sermons', href: '/sermons', icon: BookOpen },
-    { name: 'Reference Library', href: '/library', icon: BookMarked },
-    { name: 'Ideas', href: '/ideas', icon: Lightbulb },
-    { name: 'Calendar', href: '/calendar', icon: CalendarDays },
-    { name: 'Ministry Care', href: '/care', icon: Heart },
-    { name: 'People', href: '/care?tab=people', icon: Users },
-    { name: 'Study', href: '/study', icon: Clock },
-    { name: 'Communication', href: '/announcements', icon: MessageSquare },
-    { name: 'Resources', href: '/resources', icon: Library },
-    { name: 'User Manual', href: '/manual', icon: HelpCircle },
-    { name: 'Refer a Pastor', href: '/referrals', icon: Gift },
-    { name: 'Settings', href: '/settings', icon: Settings },
+  const navSections = [
+    {
+      label: 'Daily Ministry',
+      items: [
+        { name: 'Home', href: '/', icon: LayoutDashboard },
+        { name: 'Sermons', href: '/sermons', icon: BookOpen },
+        { name: 'Calendar', href: '/calendar', icon: CalendarDays },
+        { name: 'Ministry Care', href: '/care', icon: Heart },
+        { name: 'People', href: '/care?tab=people', icon: Users },
+      ],
+    },
+    {
+      label: 'Study & Prep',
+      items: [
+        { name: 'Study', href: '/study', icon: Clock },
+        { name: 'Ideas', href: '/ideas', icon: Lightbulb },
+        { name: 'Reference Library', href: '/library', icon: BookMarked },
+        { name: 'Resources', href: '/resources', icon: Library },
+      ],
+    },
+    {
+      label: 'Church & Account',
+      items: [
+        { name: 'Communication', href: '/announcements', icon: MessageSquare },
+        { name: 'User Manual', href: '/manual', icon: HelpCircle },
+        { name: 'Refer a Pastor', href: '/referrals', icon: Gift },
+        { name: 'Settings', href: '/settings', icon: Settings },
+      ],
+    },
   ]
 
-  const handlePhotoCaptured = async (text: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { error } = await supabase
-        .from('ideas')
-        .insert({
-          profile_id: user.id,
-          content: `[Photo] ${text.trim()}`,
-          source_type: 'photo',
-          ocr_text: text.trim(),
-          archived: false
-        })
-
-      if (error) throw error
-      // Simple native toast could be used here, or shadcn if available
-      alert('Idea saved successfully!')
-    } catch (error) {
-      console.error('Error saving idea from quick capture:', error)
-      alert('Failed to save idea. Please try again.')
+  // Determine clear page title and back destination for the top header
+  const getHeaderContext = (path: string | null) => {
+    if (!path || path === '/') {
+      return { title: 'Home', backHref: null, backLabel: null }
+    }
+    if (path === '/sermons/new') {
+      return { title: 'New Sermon', backHref: '/sermons', backLabel: 'Sermons' }
+    }
+    if (path.startsWith('/sermons/')) {
+      return { title: 'Edit Sermon', backHref: '/sermons', backLabel: 'Sermons' }
+    }
+    const map: Record<string, string> = {
+      '/sermons': 'Sermons',
+      '/calendar': 'Calendar',
+      '/care': 'Ministry Care & People',
+      '/study': 'Study & Preparation',
+      '/ideas': 'Ideas Inbox',
+      '/library': 'Reference Library',
+      '/resources': 'Counseling Resources',
+      '/announcements': 'Communication',
+      '/communication': 'Communication',
+      '/manual': 'User Manual',
+      '/referrals': 'Refer a Pastor',
+      '/settings': 'Settings',
+      '/admin': 'Admin Center',
+    }
+    return {
+      title: map[path] || 'Dashboard',
+      backHref: '/',
+      backLabel: 'Home',
     }
   }
+
+  const { title: pageTitle, backHref, backLabel } = getHeaderContext(pathname)
 
   if (isPulpit) {
     return <>{children}</>
@@ -176,14 +223,15 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       <CompleteProfilePrompt />
-      <PhotoCapture
-        isOpen={isCaptureOpen}
-        onClose={() => setIsCaptureOpen(false)}
-        onTextCaptured={handlePhotoCaptured}
+      <SmartReminder
+        variant="modal"
+        open={isAssistantOpen}
+        onOpenChange={setIsAssistantOpen}
       />
+
       {/* Desktop Sidebar */}
       <aside 
-        className="hidden md:flex flex-col w-64 text-white transition-colors duration-300"
+        className="hidden md:flex flex-col w-64 text-white transition-colors duration-300 print:hidden"
         style={{ backgroundColor: churchBrand?.primaryColor || '#022d5c' }}
       >
         <div className="p-4 border-b border-white/10">
@@ -218,39 +266,55 @@ export default function DashboardLayout({
           </Link>
         </div>
         
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            return (
+        <nav className="flex-1 px-4 space-y-5 mt-4 overflow-y-auto pb-4">
+          {navSections.map((section) => (
+            <div key={section.label} className="space-y-1">
+              <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1.5">
+                {section.label}
+              </p>
+              {section.items.map((item) => {
+                const Icon = item.icon
+                const isActive = item.href === '/' ? pathname === '/' : pathname?.startsWith(item.href.split('?')[0])
+                return (
+                  <Link 
+                    key={item.name} 
+                    href={item.href}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+                      isActive
+                        ? 'bg-white/15 text-[#D0A348] font-semibold'
+                        : 'text-white/90 hover:bg-white/10 hover:text-[#D0A348]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.name}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+
+          {isAdmin && (
+            <div className="space-y-1 pt-2 border-t border-white/10">
+              <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-[#D0A348]/80 mb-1.5">
+                Administration
+              </p>
               <Link 
-                key={item.name} 
-                href={item.href}
-                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 hover:text-[#D0A348] transition-colors"
+                href="/admin"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 hover:text-[#D0A348] transition-colors text-[#D0A348] text-sm font-medium"
               >
-                <Icon className="w-5 h-5" />
-                {item.name}
+                <Shield className="w-4 h-4" />
+                Admin
               </Link>
-            )
-          })}
-          {isAdmin && (
-            <Link 
-              href="/admin"
-              className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 hover:text-[#D0A348] transition-colors text-[#D0A348]"
-            >
-              <Shield className="w-5 h-5" />
-              Admin
-            </Link>
-          )}
-          {isAdmin && (
-            <a
-              href="/welcome"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 hover:text-[#D0A348] transition-colors text-[#D0A348]"
-            >
-              <Globe className="w-5 h-5" />
-              View Website
-            </a>
+              <a
+                href="/welcome"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 hover:text-[#D0A348] transition-colors text-[#D0A348] text-sm font-medium"
+              >
+                <Globe className="w-4 h-4" />
+                View Website
+              </a>
+            </div>
           )}
         </nav>
 
@@ -286,8 +350,13 @@ export default function DashboardLayout({
                 ) : (
                   <img src="/the_shepherds_desk_logo_transparent.png" alt="The Shepherd's Desk" className="h-14 w-auto object-contain" />
                 )}
-                <button onClick={() => setDrawerOpen(false)} className="p-2 rounded-full hover:bg-white/10">
-                  <X className="w-5 h-5 text-white/70" />
+                <button
+                  onClick={() => setDrawerOpen(false)}
+                  aria-label="Close menu"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Close</span>
                 </button>
               </div>
               {churchBrand?.name && (
@@ -297,63 +366,68 @@ export default function DashboardLayout({
               )}
             </div>
             
-            <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-              {navItems.filter((item) => item.name !== 'Settings').map((item) => {
-                const Icon = item.icon
-                return (
+            <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
+              {navSections.map((section) => (
+                <div key={section.label} className="space-y-1">
+                  <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1">
+                    {section.label}
+                  </p>
+                  {section.items.map((item) => {
+                    const Icon = item.icon
+                    const isActive = item.href === '/' ? pathname === '/' : pathname?.startsWith(item.href.split('?')[0])
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setDrawerOpen(false)}
+                        className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition-all text-sm font-medium ${
+                          isActive
+                            ? 'bg-white/15 text-[#D0A348] font-semibold'
+                            : 'text-white/90 hover:bg-white/10 hover:text-[#D0A348]'
+                        }`}
+                      >
+                        <Icon className="w-5 h-5 shrink-0" />
+                        <span>{item.name}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ))}
+
+              {isAdmin && (
+                <div className="space-y-1 pt-2 border-t border-white/10">
+                  <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-[#D0A348]/80 mb-1">
+                    Administration
+                  </p>
                   <Link
-                    key={item.name}
-                    href={item.href}
+                    href="/admin"
                     onClick={() => setDrawerOpen(false)}
-                    className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/10 hover:text-[#D0A348] transition-all text-white/90"
+                    className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl hover:bg-white/10 transition-all text-[#D0A348] text-sm font-medium"
                   >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-sm font-medium">{item.name}</span>
+                    <Shield className="w-5 h-5" />
+                    <span>Admin</span>
                   </Link>
-                )
-              })}
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => setDrawerOpen(false)}
-                  className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/10 transition-all text-[#D0A348]"
-                >
-                  <Shield className="w-5 h-5" />
-                  <span className="text-sm font-medium">Admin</span>
-                </Link>
-              )}
-              {isAdmin && (
-                <a
-                  href="/welcome"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setDrawerOpen(false)}
-                  className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/10 transition-all text-[#D0A348]"
-                >
-                  <Globe className="w-5 h-5" />
-                  <span className="text-sm font-medium">View Website</span>
-                </a>
+                  <a
+                    href="/welcome"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setDrawerOpen(false)}
+                    className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl hover:bg-white/10 transition-all text-[#D0A348] text-sm font-medium"
+                  >
+                    <Globe className="w-5 h-5" />
+                    <span>View Website</span>
+                  </a>
+                </div>
               )}
             </nav>
 
-            <div className="p-3 border-t border-white/10 space-y-1">
-              <Link
-                href="/settings"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/10 transition-all text-white/70"
-              >
-                <Settings className="w-5 h-5" />
-                <span className="text-sm font-medium">Settings</span>
-              </Link>
+            <div className="p-3 border-t border-white/10">
               <button
-                onClick={() => { setIsCaptureOpen(true); setDrawerOpen(false) }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-all text-[#D0A348] w-full text-left"
+                onClick={() => { setIsAssistantOpen(true); setDrawerOpen(false) }}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#D0A348] text-white hover:bg-[#D0A348]/90 transition-all w-full font-semibold text-sm shadow-sm"
               >
-                <div className="flex items-center gap-1.5">
-                  <Mic className="w-5 h-5" />
-                  <Camera className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-semibold">Quick Capture (Voice & Photo)</span>
+                <Sparkles className="w-4 h-4" />
+                <span>Smart Assistant (Speak / Photo)</span>
               </button>
             </div>
 
@@ -372,134 +446,75 @@ export default function DashboardLayout({
       )}
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-3">
+      <main className="flex-1 flex flex-col min-w-0 print:w-full print:block">
+        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-3 sm:px-4 md:px-6 sticky top-0 z-30 print:hidden">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={openDrawer}
               aria-label="Open menu"
-              className="md:hidden flex items-center gap-1.5 pl-1.5 pr-2.5 py-1.5 -ml-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 active:bg-gray-100"
+              className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 shrink-0"
             >
               <span className="relative">
-                <Menu className="w-6 h-6" style={{ color: churchBrand?.primaryColor || '#022d5c' }} />
+                <Menu className="w-5 h-5" style={{ color: churchBrand?.primaryColor || '#022d5c' }} />
                 {!menuSeen && (
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D0A348] opacity-75" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-[#D0A348] border-2 border-white" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#D0A348] border border-white" />
                   </span>
                 )}
               </span>
-              <span className="text-sm font-semibold" style={{ color: churchBrand?.primaryColor || '#022d5c' }}>Menu</span>
+              <span className="text-xs font-bold" style={{ color: churchBrand?.primaryColor || '#022d5c' }}>Menu</span>
             </button>
-            <h2 className="text-xl font-semibold text-gray-800">Dashboard</h2>
+
+            {backHref && (
+              <Link
+                href={backHref}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#022d5c]/8 hover:bg-[#022d5c]/15 text-[#022d5c] text-xs font-semibold transition-colors shrink-0"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>{backLabel}</span>
+              </Link>
+            )}
+
+            <h2 className="text-base sm:text-lg md:text-xl font-bold text-[#022d5c] truncate ml-0.5">
+              {pageTitle}
+            </h2>
           </div>
           
-          <div className="flex items-center gap-3">
-            <NotificationCenter />
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Button
-              onClick={() => setIsCaptureOpen(true)}
-              className="hidden md:flex text-white gap-2 transition-all hover:opacity-95 shadow-sm font-semibold cursor-pointer"
+              onClick={() => setIsAssistantOpen(true)}
+              size="sm"
+              className="flex items-center gap-1.5 text-white transition-all hover:opacity-95 shadow-xs font-semibold cursor-pointer px-3 py-1.5 h-9 rounded-xl"
               style={{ backgroundColor: churchBrand?.secondaryColor || '#D0A348' }}
-              title="Quick Capture (Voice Dictation & Photo OCR)"
+              title="Open Smart Assistant (Speak, Type, or Snap a Photo)"
             >
-              <Mic className="w-4 h-4 text-white" />
-              <Camera className="w-4 h-4 text-white/80" />
-              <span>Quick Capture</span>
+              <Sparkles className="w-4 h-4 text-white shrink-0" />
+              <Mic className="w-3.5 h-3.5 text-white shrink-0 hidden sm:inline" />
+              <span className="text-xs sm:text-sm font-bold">Assistant</span>
             </Button>
-            <div 
-              className="w-9 h-9 rounded-full text-white flex items-center justify-center font-bold text-sm"
+
+            <NotificationCenter />
+
+            <Link
+              href="/settings"
+              title="Settings"
+              className="w-9 h-9 rounded-full text-white flex items-center justify-center font-bold text-sm hover:opacity-90 transition-opacity shrink-0"
               style={{ backgroundColor: churchBrand?.primaryColor || '#022d5c' }}
             >
               {userInitial}
-            </div>
+            </Link>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 md:p-6 pb-24 md:pb-6">
+        <div className="flex-1 overflow-auto p-4 md:p-6 pb-16 md:pb-8 print:p-0 print:overflow-visible print:block">
           {children}
         </div>
       </main>
 
-      {/* Mobile More Menu Overlay */}
-      {moreOpen && (
-        <div className="md:hidden fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMoreOpen(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 pb-10 animate-in slide-in-from-bottom">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-[#022d5c]">Menu</h3>
-              <button onClick={() => setMoreOpen(false)} className="p-2 rounded-full hover:bg-gray-100">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { name: 'Ministry Care', href: '/care', icon: Heart, color: '#e74c3c' },
-                { name: 'People', href: '/care?tab=people', icon: Users, color: '#022d5c' },
-                { name: 'User Manual', href: '/manual', icon: HelpCircle, color: '#022d5c' },
-                { name: 'Refer a Pastor', href: '/referrals', icon: Gift, color: '#D0A348' },
-                { name: 'Settings', href: '/settings', icon: Settings, color: '#6b7280' },
-                ...(isAdmin ? [{ name: 'Admin', href: '/admin', icon: Shield, color: '#D0A348' }] : []),
-              ].map((item) => {
-                const Icon = item.icon
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-2xl hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: item.color + '15' }}>
-                      <Icon className="w-6 h-6" style={{ color: item.color }} />
-                    </div>
-                    <span className="text-xs font-medium text-gray-700 text-center">{item.name}</span>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Floating Capture Button */}
-      <button
-        onClick={() => setIsCaptureOpen(true)}
-        className="md:hidden fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-[#D0A348] text-white shadow-lg shadow-[#D0A348]/30 flex items-center justify-center active:scale-95 transition-transform"
-      >
-        <Plus className="w-7 h-7" />
-      </button>
-
-      {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 pb-safe z-30">
-        <div className="flex justify-around items-center h-16">
-          {[
-            { name: 'Home', href: '/', icon: LayoutDashboard, color: '#022d5c' },
-            { name: 'Sermons', href: '/sermons', icon: BookOpen, color: '#022d5c' },
-            { name: 'Ideas', href: '/ideas', icon: Lightbulb, color: '#D0A348' },
-            { name: 'Calendar', href: '/calendar', icon: CalendarDays, color: '#022d5c' },
-          ].map((item) => {
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-[#022d5c] transition-colors group"
-              >
-                <Icon className="w-6 h-6 mb-0.5 group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] font-medium">{item.name}</span>
-              </Link>
-            )
-          })}
-          <button
-            onClick={() => setMoreOpen(true)}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-[#022d5c] transition-colors group"
-          >
-            <MoreHorizontal className="w-6 h-6 mb-0.5 group-hover:scale-110 transition-transform" />
-            <span className="text-[10px] font-medium">More</span>
-          </button>
-        </div>
-      </nav>
-
-      <SupportChat />
+      <div className="print:hidden">
+        <SupportChat />
+      </div>
     </div>
   )
 }

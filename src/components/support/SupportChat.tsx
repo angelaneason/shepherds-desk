@@ -1,172 +1,199 @@
 'use client'
 
-import { useState } from 'react'
-import { MessageCircle, X, HelpCircle, Bug, Sparkles, ChevronRight, Send, ArrowLeft, BookOpen, Info } from 'lucide-react'
+import React, { useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { MessageSquare, X, Send, HelpCircle, Bug, Lightbulb, CheckCircle2, Loader2, Info } from 'lucide-react'
 
-type ChatView = 'menu' | 'question' | 'bug' | 'enhancement' | 'faq'
-
-const FAQ_ITEMS = [
-  { q: 'How do I create a sermon?', a: 'Go to Sermons → click "New Sermon". Fill in your title, scripture, and start writing. You can also use voice dictation!' },
-  { q: 'How do I scan a handwritten sermon?', a: 'Go to Sermons → click "Scan Sermon". Take photos of each page and they’ll be transcribed automatically.' },
-  { q: 'How does the Sermon Assistant work?', a: 'In the sermon editor, click the Sermon Assistant button (sparkles icon). It helps brainstorm, outline, find illustrations, and polish — but never writes for you.' },
-  { q: 'How do I add recurring events?', a: 'Go to Calendar → Add Event → set the Repeat dropdown to Weekly, Bi-Weekly, or Monthly.' },
-  { q: 'What is the Study Time Guardian?', a: 'It tracks your study/preparation hours and gently reminds you to protect your personal development time.' },
-]
+type CategoryType = 'question' | 'bug' | 'enhancement'
 
 export function SupportChat() {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
-  const [view, setView] = useState<ChatView>('menu')
+  const [category, setCategory] = useState<CategoryType>('question')
   const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const handleSubmit = () => {
-    if (!message.trim()) return
-    setSubmitted(true)
-    setMessage('')
-    setTimeout(() => {
-      setSubmitted(false)
-      setView('menu')
-    }, 3000)
+  // Hide floating widget inside Pulpit Mode so it never distracts during preaching
+  if (pathname?.includes('/pulpit')) {
+    return null
   }
 
-  const resetAndClose = () => {
-    setIsOpen(false)
-    setTimeout(() => {
-      setView('menu')
-      setSubmitted(false)
-      setMessage('')
-    }, 300)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!message.trim() || submitting) return
+
+    setSubmitting(true)
+    setErrorMsg(null)
+
+    try {
+      const res = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category,
+          message: message.trim(),
+          pageUrl: typeof window !== 'undefined' ? window.location.pathname : pathname,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Could not send message. Please try again.')
+      }
+
+      setSubmitted(true)
+      setTimeout(() => {
+        setSubmitted(false)
+        setMessage('')
+        setCategory('question')
+        setIsOpen(false)
+      }, 2600)
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const placeholders: Record<CategoryType, string> = {
+    question: 'Type your question here...',
+    bug: 'Tell us what happened and what page you were on...',
+    enhancement: 'Share your idea or feature request...',
   }
 
   return (
-    <>
-      {isOpen && (
-        <div className="fixed bottom-20 right-4 md:bottom-24 md:right-6 z-50 w-[340px] max-h-[480px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
-          <div className="bg-[#022d5c] text-white px-5 py-4 flex items-center justify-between">
+    <div className="fixed bottom-4 right-4 z-40 print:hidden">
+      {isOpen ? (
+        <div className="w-[340px] sm:w-[370px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200">
+          {/* Header */}
+          <div className="bg-[#022d5c] text-white px-4 py-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {view !== 'menu' && (
-                <button onClick={() => setView('menu')} className="p-1 hover:bg-white/10 rounded-full mr-1">
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-              )}
-              <Info className="w-5 h-5 text-[#D0A348]" />
-              <span className="font-semibold">
-                {view === 'menu' && 'Support'}
-                {view === 'question' && 'Ask a Question'}
-                {view === 'bug' && 'Report a Bug'}
-                {view === 'enhancement' && 'Request Feature'}
-                {view === 'faq' && 'Help & FAQ'}
-              </span>
+              <Info className="w-5 h-5 text-white/90" />
+              <h3 className="font-semibold text-base tracking-tight">Help &amp; Support</h3>
             </div>
-            <button onClick={resetAndClose} className="p-1 hover:bg-white/10 rounded-full">
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Close Help and Support"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {view === 'menu' && (
-              <div className="p-4">
-                <div className="text-center mb-5">
-                  <img src="/logo-dark.png" alt="The Shepherd's Desk" className="h-28 mx-auto mb-3 object-contain rounded-lg" />
-                  <p className="text-sm text-gray-500">How can we help you today?</p>
+          {submitted ? (
+            <div className="p-8 flex flex-col items-center justify-center text-center space-y-3 min-h-[340px]">
+              <div className="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h4 className="font-bold text-lg text-[#022d5c]">Message Sent!</h4>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Thank you, Pastor. Your message has been sent to our support team at{' '}
+                <span className="font-semibold text-[#022d5c]">support@theshepherdsdesk.app</span> and we will follow up with you shortly.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="flex flex-col">
+              {/* Top Prompt & Category Selection */}
+              <div className="p-5 space-y-4">
+                <div className="text-center space-y-2">
+                  <div className="w-11 h-11 bg-blue-50 text-[#022d5c] rounded-full flex items-center justify-center mx-auto">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-[#022d5c] text-base">How can we help you today?</h4>
                 </div>
+
                 <div className="space-y-2">
-                  {[
-                    { view: 'faq' as ChatView, icon: BookOpen, label: 'Help & FAQ', color: 'text-[#022d5c]' },
-                    { view: 'question' as ChatView, icon: HelpCircle, label: 'Ask a Question', color: 'text-[#022d5c]' },
-                    { view: 'bug' as ChatView, icon: Bug, label: 'Report a Bug', color: 'text-red-500' },
-                    { view: 'enhancement' as ChatView, icon: Sparkles, label: 'Request Feature', color: 'text-[#D0A348]' },
-                  ].map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <button
-                        key={item.label}
-                        onClick={() => setView(item.view)}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:border-[#D0A348] hover:bg-[#D0A348]/5 transition-all text-left group"
-                      >
-                        <Icon className={`w-5 h-5 ${item.color}`} />
-                        <span className="flex-1 text-sm font-medium text-gray-700">{item.label}</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#D0A348]" />
-                      </button>
-                    )
-                  })}
+                  <button
+                    type="button"
+                    onClick={() => setCategory('question')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      category === 'question'
+                        ? 'border-[#022d5c] bg-blue-50/50 ring-1 ring-[#022d5c]'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <HelpCircle className="w-5 h-5 text-blue-600 shrink-0" />
+                    <span className="text-sm font-semibold text-gray-800">Ask a Question</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCategory('bug')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      category === 'bug'
+                        ? 'border-[#022d5c] bg-blue-50/50 ring-1 ring-[#022d5c]'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Bug className="w-5 h-5 text-red-500 shrink-0" />
+                    <span className="text-sm font-semibold text-gray-800">Report a Bug</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCategory('enhancement')}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      category === 'enhancement'
+                        ? 'border-[#022d5c] bg-blue-50/50 ring-1 ring-[#022d5c]'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Lightbulb className="w-5 h-5 text-[#D0A348] shrink-0" />
+                    <span className="text-sm font-semibold text-gray-800">Request Enhancement</span>
+                  </button>
                 </div>
-              </div>
-            )}
 
-            {view === 'faq' && (
-              <div className="p-4 space-y-2">
-                {FAQ_ITEMS.map((item, i) => (
-                  <div key={i} className="border border-gray-200 rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
-                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
-                    >
-                      <span className="text-sm font-medium text-gray-700">{item.q}</span>
-                      <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ml-2 ${expandedFaq === i ? 'rotate-90' : ''}`} />
-                    </button>
-                    {expandedFaq === i && (
-                      <div className="px-4 pb-3 text-sm text-gray-500 border-t border-gray-100 pt-2">
-                        {item.a}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {(view === 'question' || view === 'bug' || view === 'enhancement') && (
-              <div className="p-4">
-                {submitted ? (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                      <span className="text-3xl">✅</span>
-                    </div>
-                    <p className="font-semibold text-gray-800">Thank you!</p>
-                    <p className="text-sm text-gray-500 mt-1">We&apos;ll get back to you soon.</p>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-gray-500 mb-4">
-                      {view === 'question' && 'What would you like to know?'}
-                      {view === 'bug' && 'Please describe the issue you encountered.'}
-                      {view === 'enhancement' && 'What feature would make your ministry easier?'}
-                    </p>
-                    <textarea
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder={
-                        view === 'question' ? 'Type your question...'
-                        : view === 'bug' ? 'Describe what happened...'
-                        : 'Describe your idea...'
-                      }
-                      className="w-full h-32 p-3 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:border-[#D0A348] focus:ring-1 focus:ring-[#D0A348]"
-                    />
-                    <button
-                      onClick={handleSubmit}
-                      disabled={!message.trim()}
-                      className="mt-3 w-full flex items-center justify-center gap-2 bg-[#022d5c] text-white py-3 rounded-xl font-medium text-sm hover:bg-[#022d5c]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Send className="w-4 h-4" />
-                      Send Message
-                    </button>
-                  </>
+                {errorMsg && (
+                  <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {errorMsg}
+                  </p>
                 )}
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-20 left-4 md:left-auto md:bottom-6 md:right-6 z-40 w-10 h-10 md:w-11 md:h-11 rounded-full bg-[#022d5c] text-white shadow-md hover:shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 border border-[#D0A348]/40 hover:border-[#D0A348]"
-        title="Help & Support"
-        aria-label="Help & Support"
-      >
-        {isOpen ? <X className="w-5 h-5 text-white" /> : <Info className="w-5 h-5 text-white" />}
-      </button>
-    </>
+              {/* Message Input & Send Button */}
+              <div className="p-3.5 bg-gray-50/70 border-t border-gray-200 flex items-end gap-2.5">
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={placeholders[category]}
+                  rows={3}
+                  className="flex-1 resize-none rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#022d5c] focus:border-transparent"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      handleSubmit(e)
+                    }
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={!message.trim() || submitting}
+                  className="w-11 h-11 rounded-xl bg-[#022d5c] hover:bg-[#061e38] disabled:bg-[#8ca0b8] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer disabled:cursor-not-allowed shadow-sm"
+                  title="Send message"
+                >
+                  {submitting ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="flex items-center gap-2 px-3.5 py-2.5 bg-[#022d5c] text-white rounded-full shadow-lg hover:bg-[#061e38] transition-all hover:scale-105 cursor-pointer border border-[#D0A348]/40"
+          title="Help & Support"
+        >
+          <HelpCircle className="w-4 h-4 text-[#D0A348]" />
+          <span className="text-xs font-semibold">Help</span>
+        </button>
+      )}
+    </div>
   )
 }

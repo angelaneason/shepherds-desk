@@ -100,7 +100,7 @@ export async function sendReferralInvitationEmail({
                   "${personalNote.trim()}"
                 </p>
                 <p style="margin: 6px 0 0 0; font-size: 12px; font-weight: 600; color: #022d5c;">
-                  — ${referrerName}
+                  - ${referrerName}
                 </p>
               </div>
               ` : ''}
@@ -116,7 +116,7 @@ export async function sendReferralInvitationEmail({
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
                         <td style="padding: 6px 0; font-size: 14px; color: #1F2937;">
-                          <strong style="color: #022d5c;">⚡ Smart Pastoral Reminders (Voice & Text):</strong> Just speak or type naturally—like <em>"Visit Sister Johnson at Mercy Hospital Thursday at 2 PM"</em>—and Shepherd's Desk automatically schedules it, links the church member, and logs your follow-up.
+                          <strong style="color: #022d5c;">⚡ Smart Pastoral Reminders (Voice & Text):</strong> Just speak or type naturally, like <em>"Visit Sister Johnson at Mercy Hospital Thursday at 2 PM"</em>, and Shepherd's Desk automatically schedules it, links the church member, and logs your follow-up.
                         </td>
                       </tr>
                       <tr>
@@ -314,7 +314,7 @@ export async function sendPastorsWifeFollowUpEmail({
                   Built specifically for your calling:
                 </h3>
                 <p style="margin: 0 0 8px 0; font-size: 14px; color: #4B5563; line-height: 1.5;">
-                  ⚡ <strong>Smart Reminders:</strong> Speak naturally when someone asks for prayer or a visit after church—our system schedules and logs it automatically.
+                  ⚡ <strong>Smart Reminders:</strong> Speak naturally when someone asks for prayer or a visit after church, and our system schedules and logs it automatically.
                 </p>
                 <p style="margin: 0 0 8px 0; font-size: 14px; color: #4B5563; line-height: 1.5;">
                   📖 <strong>200+ Sermon Illustrations Library:</strong> Historical, biblical, and contemporary illustrations ready when you need that perfect hook.
@@ -445,7 +445,7 @@ export async function sendGiftPastorNotificationEmail({
                 Pastor ${recipientName},
               </p>
               <p style="font-size: 15px; line-height: 1.6; color: #374151; margin-bottom: 20px;">
-                We are delighted to share that <strong>${giverName}</strong> has gifted you <strong>${durationText} of The Shepherd's Desk Pro</strong> in gratitude for your faithful service to God's flock.
+                We are delighted to share that <strong>${giverName}</strong> has gifted you <strong>${durationText} of The Shepherd's Desk Pro</strong> in gratitude for your faithful service to God's people.
               </p>
 
               ${personalMessage?.trim() ? `
@@ -454,7 +454,7 @@ export async function sendGiftPastorNotificationEmail({
                   "${personalMessage.trim()}"
                 </p>
                 <p style="margin: 10px 0 0 0; font-size: 13px; font-weight: 700; color: #D0A348;">
-                  — With appreciation, ${giverName}
+                  - With appreciation, ${giverName}
                 </p>
               </div>
               ` : ''}
@@ -465,7 +465,7 @@ export async function sendGiftPastorNotificationEmail({
                   "How beautiful are the feet of those who bring good news!"
                 </p>
                 <p style="margin: 6px 0 0 0; font-size: 12px; font-weight: 700; color: #022d5c;">
-                  — Romans 10:15
+                  - Romans 10:15
                 </p>
               </div>
 
@@ -662,4 +662,267 @@ export async function sendGiftGiverReceiptEmail({
     console.error('Error dispatching gift receipt email:', err)
     return { success: false, error: err.message || 'Network error' }
   }
-}
+}
+
+interface SendTrialEndingParams {
+  to: string
+  pastorName?: string
+  daysRemaining: number
+}
+
+export async function sendTrialEndingEmail({
+  to,
+  pastorName,
+  daysRemaining,
+}: SendTrialEndingParams) {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn('RESEND_API_KEY is not set. Skipping email dispatch.')
+    return { success: false, error: 'RESEND_API_KEY missing' }
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theshepherdsdesk.app'
+  const settingsUrl = `${appUrl}/settings`
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "The Shepherd's Desk <support@theshepherdsdesk.app>"
+
+  const greeting = pastorName?.trim() ? `Pastor ${pastorName.trim()}` : 'Pastor'
+
+  let subject = ''
+  let headline = ''
+  let messageBody = ''
+
+  if (daysRemaining === 7) {
+    subject = `${greeting}, 7 days remaining on your Shepherd's Desk trial`
+    headline = '7 Days Remaining on Your Trial'
+    messageBody = 'We hope The Shepherd\'s Desk has been a blessing to your sermon preparation and ministry workflow this month. You have 7 days remaining on your complimentary 30-day trial. You can keep all your tools active seamlessly from your web dashboard.'
+  } else if (daysRemaining === 3) {
+    subject = `3 days left on your Shepherd's Desk trial`
+    headline = '3 Days Remaining on Your Trial'
+    messageBody = 'Your 30-day trial of The Shepherd\'s Desk will conclude in 3 days. To ensure uninterrupted access to your sermon manuscripts, pulpit teleprompter, and ministry contact records, choose your plan on the web portal at any time.'
+  } else if (daysRemaining === 1) {
+    subject = `Tomorrow: Your Shepherd's Desk trial concludes`
+    headline = 'Your Free Trial Ends Tomorrow'
+    messageBody = 'Your 30-day trial of The Shepherd\'s Desk concludes tomorrow. All your sermons, study notes, and ministry contacts are safe. Choose your preferred plan to maintain full access across all your devices.'
+  } else {
+    subject = `Your 30-day trial of The Shepherd's Desk has completed`
+    headline = 'Your 30-Day Free Trial Has Ended'
+    messageBody = 'Your complimentary 30-day trial has now concluded. Don\'t worry, your sermons, sermon outlines, and pastoral care history are safely saved in your account. You can reactivate full access at any time on the web portal.'
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${headline}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8F5EE; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F8F5EE; padding: 40px 10px;">
+    <tr>
+      <td align="center">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #E5E7EB;">
+          <tr>
+            <td style="background-color: #022d5c; padding: 32px 24px; text-align: center;">
+              <h1 style="color: #FAF7F0; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">The Shepherd's Desk</h1>
+              <p style="color: #D0A348; margin: 6px 0 0 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Account Status Update</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 36px 32px;">
+              <p style="font-size: 20px; font-weight: 700; color: #022d5c; margin-top: 0; margin-bottom: 12px;">
+                ${greeting},
+              </p>
+              <p style="font-size: 15px; line-height: 1.6; color: #374151; margin-bottom: 20px;">
+                ${messageBody}
+              </p>
+
+              <div style="background-color: #FAF7F0; border: 1px solid #E2E8F0; border-radius: 8px; padding: 20px; margin: 24px 0;">
+                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #022d5c;">
+                  Your Full Access Includes:
+                </p>
+                <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #4B5563; line-height: 1.8;">
+                  <li>Unlimited sermon manuscripts, outlines, and pulpit teleprompter</li>
+                  <li>Sacred study timer, word studies, and pastor reference library</li>
+                  <li>Pastoral care tracker, hospital visits, and member records</li>
+                  <li>Ministry contact management and Sunday announcements</li>
+                  <li>Automatic cloud sync across your computer, phone, and tablet</li>
+                </ul>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0 24px 0;">
+                <a href="${settingsUrl}" target="_blank" style="display: inline-block; background-color: #022d5c; color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                  Continue Full Access on Web &rarr;
+                </a>
+              </div>
+
+              <p style="font-size: 13px; line-height: 1.6; color: #6B7280; text-align: center; margin-bottom: 0;">
+                You can manage your subscription and account preferences at any time by logging into theshepherdsdesk.app from any web browser.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #F8F5EE; padding: 20px; text-align: center; border-top: 1px solid #E5E7EB;">
+              <p style="margin: 0; font-size: 11px; color: #9CA3AF;">
+                The Shepherd's Desk &bull; Questions? Reply directly to this email or contact support@theshepherdsdesk.app.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [to],
+        subject,
+        html,
+      }),
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('Resend API error:', data)
+      return { success: false, error: data.message || 'Failed to send trial email' }
+    }
+    return { success: true, id: data.id }
+  } catch (err: any) {
+    console.error('Error dispatching trial ending email:', err)
+    return { success: false, error: err.message || 'Network error' }
+  }
+}
+
+
+export interface SendSupportTicketEmailParams {
+  category: 'question' | 'bug' | 'enhancement'
+  message: string
+  userName?: string
+  userEmail?: string
+  pageUrl?: string
+}
+
+export async function sendSupportTicketEmail({
+  category,
+  message,
+  userName,
+  userEmail,
+  pageUrl,
+}: SendSupportTicketEmailParams) {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn('RESEND_API_KEY is not set. Skipping support email dispatch.')
+    return { success: false, error: 'RESEND_API_KEY missing' }
+  }
+
+  const categoryLabels: Record<string, string> = {
+    question: 'Question',
+    bug: 'Bug Report',
+    enhancement: 'Enhancement Request',
+  }
+  const categoryLabel = categoryLabels[category] || 'Support Message'
+  const senderDisplay = userName?.trim() || userEmail || 'Pastor'
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "The Shepherd's Desk <support@theshepherdsdesk.app>"
+  const supportInbox = process.env.SUPPORT_EMAIL || 'support@theshepherdsdesk.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theshepherdsdesk.app'
+
+  const subject = `[Shepherd's Desk ${categoryLabel}] from ${senderDisplay}`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8F5EE; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1F2937;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F8F5EE; padding: 30px 15px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; border: 1px solid #E5E7EB;" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="background-color: #022d5c; padding: 24px; border-bottom: 3px solid #D0A348;">
+              <h2 style="margin: 0; color: #FFFFFF; font-size: 20px;">Help &amp; Support: ${categoryLabel}</h2>
+              <p style="margin: 4px 0 0 0; color: #D0A348; font-size: 13px;">Submitted from The Shepherd's Desk</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 28px;">
+              <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px; background-color: #F9FAFB; border-radius: 8px; padding: 14px; border: 1px solid #E5E7EB;">
+                <tr>
+                  <td style="font-size: 13px; color: #4B5563; padding-bottom: 6px;">
+                    <strong>From:</strong> ${senderDisplay} ${userEmail ? `(<a href="mailto:${userEmail}" style="color: #022d5c;">${userEmail}</a>)` : ''}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size: 13px; color: #4B5563; padding-bottom: 6px;">
+                    <strong>Category:</strong> ${categoryLabel}
+                  </td>
+                </tr>
+                ${pageUrl ? `
+                <tr>
+                  <td style="font-size: 13px; color: #4B5563;">
+                    <strong>Page:</strong> ${pageUrl}
+                  </td>
+                </tr>
+                ` : ''}
+              </table>
+
+              <div style="font-size: 15px; line-height: 1.6; color: #1F2937; white-space: pre-wrap; background-color: #F8F5EE; border-left: 4px solid #022d5c; padding: 16px; border-radius: 6px;">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+
+              <div style="margin-top: 24px; text-align: center;">
+                <a href="${appUrl}/admin" style="display: inline-block; background-color: #022d5c; color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 8px;">
+                  View in Admin Dashboard &rarr;
+                </a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`
+
+  try {
+    const payload: Record<string, any> = {
+      from: fromEmail,
+      to: [supportInbox],
+      subject,
+      html,
+    }
+    if (userEmail && userEmail.includes('@')) {
+      payload.reply_to = userEmail
+    }
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('Resend support email error:', data)
+      return { success: false, error: data.message || 'Failed to send support email' }
+    }
+    return { success: true, id: data.id }
+  } catch (err: any) {
+    console.error('Error dispatching support email:', err)
+    return { success: false, error: err.message || 'Network error' }
+  }
+}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Presentation, Trash2, BookOpen, Loader2, Copy, X, Download, Printer, Mic } from "lucide-react";
+import { ArrowLeft, Save, Presentation, Trash2, BookOpen, Loader2, Copy, X, Download, Printer, Mic, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { normalizeSermonContent } from "@/lib/sermon-content";
 import { SermonPrintModal } from "@/components/sermons/SermonPrintModal";
 import SermonAudioTranscriberModal from "@/components/sermons/SermonAudioTranscriberModal";
 import { Badge } from "@/components/ui/badge";
+import { getSermonSpeaker, saveSermonSpeaker } from "@/lib/sermon-speaker";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,10 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
   const [status, setStatus] = useState<"draft" | "review" | "ready" | "preached">("draft");
   const [content, setContent] = useState<any>(null);
 
+  // Speaker attribution state
+  const [isOwnSermon, setIsOwnSermon] = useState(true);
+  const [speakerName, setSpeakerName] = useState("");
+
   // Devotional Generator
   const [devDrawerOpen, setDevDrawerOpen] = useState(false);
   const [devDays, setDevDays] = useState(5);
@@ -55,17 +60,34 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
 
   const fetchSermon = useCallback(async () => {
     try {
-      const [sermonRes, userRes] = await Promise.all([
+      const [sermonRes, tagsRes, userRes] = await Promise.all([
         supabase
           .from("sermons")
           .select("*")
           .eq("id", id)
           .single<any>(),
+        supabase
+          .from("sermon_tags")
+          .select("tag_type, tag_value")
+          .eq("sermon_id", id) as any,
         supabase.auth.getUser()
       ]);
 
       if (sermonRes.error) throw sermonRes.error;
       const data = sermonRes.data;
+
+      let defaultName = "Pastor";
+      if (userRes.data?.user) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("full_name, church_name")
+          .eq("id", userRes.data.user.id)
+          .maybeSingle() as any;
+        if (prof) {
+          setPastorProfile(prof);
+          defaultName = prof.full_name || userRes.data.user.user_metadata?.full_name || "Pastor";
+        }
+      }
       
       if (data) {
         setTitle(data.title || "");
@@ -76,15 +98,10 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
         setLocation(data.location || "");
         setStatus(data.status || "draft");
         setContent(normalizeSermonContent(data.content));
-      }
 
-      if (userRes.data?.user) {
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("full_name, church_name")
-          .eq("id", userRes.data.user.id)
-          .maybeSingle();
-        if (prof) setPastorProfile(prof);
+        const spk = getSermonSpeaker(data, tagsRes?.data || [], defaultName);
+        setIsOwnSermon(spk.isOwnSermon);
+        setSpeakerName(spk.speakerName || defaultName);
       }
     } catch (error) {
       console.error("Error fetching sermon:", error);
@@ -106,7 +123,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
     }, 10000);
 
     return () => clearTimeout(timer);
-  }, [title, subtitle, scripture, series, preachDate, location, status, content, loading]);
+  }, [title, subtitle, scripture, series, preachDate, location, status, content, isOwnSermon, speakerName, loading]);
 
   const handleSave = async (isAutoSave = false) => {
     if (!isAutoSave) setIsSaving(true);
@@ -130,6 +147,13 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
         .eq("id", id);
 
       if (error) throw error;
+
+      await saveSermonSpeaker(supabase, id, {
+        isOwnSermon,
+        speakerName: isOwnSermon
+          ? (speakerName.trim() || pastorProfile.full_name || "Pastor")
+          : (speakerName.trim() || "Guest Speaker"),
+      });
       
       if (preachDate && user) {
         // check if calendar event exists
@@ -189,14 +213,15 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      <header className="flex items-center justify-between border-b px-6 py-4 bg-white sticky top-0 z-20">
-        <div className="flex items-center gap-4">
+      <header className="flex items-center justify-between border-b px-4 sm:px-6 py-4 bg-white sticky top-0 z-20 gap-2 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           <Link href="/sermons">
-            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-[#022d5c]">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="outline" size="sm" className="text-[#022d5c] border-slate-200 hover:bg-slate-50 gap-1.5 font-semibold">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Sermons</span>
             </Button>
           </Link>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             {(["draft", "review", "ready", "preached"] as const).map((s) => (
               <Badge
                 key={s}
@@ -214,7 +239,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Dialog>
             <DialogTrigger>
               <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50">
@@ -282,21 +307,61 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#F8F5EE]/30">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#F8F5EE]/30">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="space-y-4 bg-white p-6 rounded-lg border shadow-sm">
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Sermon Title"
-              className="text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-300 text-[#022d5c]"
+              className="text-3xl sm:text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-300 text-[#022d5c]"
             />
             <Input
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
               placeholder="Subtitle or scripture reference"
-              className="text-xl border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-400 text-slate-600"
+              className="text-lg sm:text-xl border-none shadow-none focus-visible:ring-0 px-0 h-auto placeholder:text-slate-400 text-slate-600"
             />
+
+            {/* Speaker Row */}
+            <div className="pt-4 border-t flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <User className="w-4 h-4 text-[#D0A348]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Speaker:</span>
+                <div className="flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOwnSermon(true);
+                      setSpeakerName(pastorProfile.full_name || "Pastor");
+                    }}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      isOwnSermon ? "bg-[#022d5c] text-white" : "text-slate-600 hover:text-[#022d5c]"
+                    }`}
+                  >
+                    My Sermon
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOwnSermon(false);
+                      if (speakerName === (pastorProfile.full_name || "Pastor")) setSpeakerName("");
+                    }}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      !isOwnSermon ? "bg-[#022d5c] text-white" : "text-slate-600 hover:text-[#022d5c]"
+                    }`}
+                  >
+                    Other Speaker
+                  </button>
+                </div>
+              </div>
+              <Input
+                value={speakerName}
+                onChange={(e) => setSpeakerName(e.target.value)}
+                placeholder={isOwnSermon ? (pastorProfile.full_name || "Your Name") : "Enter guest / other speaker's name..."}
+                className="flex-1 h-9 text-sm"
+              />
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
               <div>
@@ -527,7 +592,7 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           location,
           content
         }}
-        pastorName={pastorProfile.full_name}
+        pastorName={speakerName || pastorProfile.full_name}
         churchName={pastorProfile.church_name}
       />
 

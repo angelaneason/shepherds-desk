@@ -11,11 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Users, Lightbulb, BookOpen, UserPlus, Trash2, Key, Ban, CheckCircle, 
-  Mail, Send, Sparkles, Heart, Clock, Gift, Crown, CalendarPlus
+  Mail, Send, Sparkles, Heart, Clock, Gift, Crown, CalendarPlus, HelpCircle
 } from 'lucide-react'
 import { format } from 'date-fns'
 import BroadcastCard from '@/components/admin/BroadcastCard'
 import ReferralTemplatesManager from '@/components/admin/ReferralTemplatesManager'
+import SupportTicketsPanel from '@/components/admin/SupportTicketsPanel'
 
 type UserData = {
   id: string
@@ -89,6 +90,7 @@ export default function AdminPage() {
   // Pipeline filter: 'me' = invites I sent, 'all' = everyone, or a referrer's email/name key
   const [referrerFilter, setReferrerFilter] = useState<string>('me')
   const [needsFollowUpOnly, setNeedsFollowUpOnly] = useState(false)
+  const [openSupportCount, setOpenSupportCount] = useState(0)
   const isPastorTiny = currentAdminEmail.toLowerCase().includes('tinyneason')
 
   const fetchUsers = async () => {
@@ -129,6 +131,14 @@ export default function AdminPage() {
     })
     fetchUsers()
     fetchReferrals()
+    fetch('/api/support')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.tickets) {
+          setOpenSupportCount(data.tickets.filter((t: any) => t.status === 'open').length)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const handleDeleteUser = async (id: string) => {
@@ -516,7 +526,7 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="pipeline" className="w-full">
-        <TabsList className="bg-gray-100 p-1 mb-6">
+        <TabsList className="bg-gray-100 p-1 mb-6 flex-wrap h-auto">
           <TabsTrigger value="pipeline" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c] font-semibold">
             <Heart className="w-4 h-4 mr-2 text-[#D0A348]" />
             Pastor Pipeline & Referrals ({referralStats.total})
@@ -528,6 +538,10 @@ export default function AdminPage() {
           <TabsTrigger value="messages" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c] font-semibold">
             <Send className="w-4 h-4 mr-2 text-[#022d5c]" />
             Messages &amp; Broadcast
+          </TabsTrigger>
+          <TabsTrigger value="support" className="data-[state=active]:bg-white data-[state=active]:text-[#022d5c] font-semibold">
+            <HelpCircle className="w-4 h-4 mr-2 text-[#D0A348]" />
+            Support &amp; Feedback {openSupportCount > 0 ? `(${openSupportCount})` : ''}
           </TabsTrigger>
         </TabsList>
 
@@ -1291,6 +1305,11 @@ export default function AdminPage() {
         <TabsContent value="messages" className="space-y-6">
           <BroadcastCard />
           <ReferralTemplatesManager />
+        </TabsContent>
+
+        {/* ----------------- TAB 4: SUPPORT & FEEDBACK ----------------- */}
+        <TabsContent value="support" className="space-y-6">
+          <SupportTicketsPanel onCountChange={setOpenSupportCount} />
         </TabsContent>
       </Tabs>
     </div>
