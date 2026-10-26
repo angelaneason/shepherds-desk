@@ -7,6 +7,32 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const refCode = searchParams.get('ref')
   const giftCode = searchParams.get('gift')
+  const isMobile = searchParams.get('mobile') === '1'
+
+  // If initiated from the mobile app, hand the PKCE code back to the mobile app via deep link
+  // so the mobile app (which holds the PKCE code_verifier) can exchange it for a native session.
+  if (isMobile && code) {
+    const deepLink = `shepherdsdesk://auth-callback?code=${encodeURIComponent(code)}`
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Returning to The Shepherd's Desk...</title>
+  <meta http-equiv="refresh" content="0;url=${deepLink}" />
+</head>
+<body style="background:#022d5c;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90vh;text-align:center;padding:24px;">
+  <h2 style="margin-bottom:8px;">Signed in with Google!</h2>
+  <p style="color:#cbd5e1;margin-bottom:24px;">Returning you to The Shepherd's Desk app...</p>
+  <a href="${deepLink}" style="background:#D0A348;color:#022d5c;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:16px;">Open The Shepherd's Desk App</a>
+  <script>window.location.replace(${JSON.stringify(deepLink)});</script>
+</body>
+</html>`
+    return new NextResponse(html, {
+      status: 200,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    })
+  }
 
   if (code) {
     const cookieStore = await cookies()
