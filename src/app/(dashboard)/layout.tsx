@@ -25,6 +25,7 @@ import {
   HelpCircle,
   ArrowLeft,
   Sparkles,
+  LogOut,
 } from 'lucide-react'
 import { SmartReminder } from '@/components/reminders/SmartReminder'
 import { SupportChat } from '@/components/support/SupportChat'
@@ -76,6 +77,13 @@ export default function DashboardLayout({
   }
 
   const supabase = createClient()
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+    } catch {}
+    window.location.href = '/login'
+  }
   
   useEffect(() => {
     const handleBrandingUpdated = (e: any) => {
@@ -316,6 +324,17 @@ export default function DashboardLayout({
               </a>
             </div>
           )}
+
+          <div className="pt-2 border-t border-white/10">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/85 hover:bg-red-500/20 hover:text-red-200 transition-colors text-sm font-medium cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </nav>
 
         {/* Powered by Tiny Tech */}
@@ -421,13 +440,21 @@ export default function DashboardLayout({
               )}
             </nav>
 
-            <div className="p-3 border-t border-white/10">
+            <div className="p-3 border-t border-white/10 space-y-2">
               <button
                 onClick={() => { setIsAssistantOpen(true); setDrawerOpen(false) }}
                 className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#D0A348] text-white hover:bg-[#D0A348]/90 transition-all w-full font-semibold text-sm shadow-sm"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Smart Assistant (Speak / Photo)</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-red-500/25 text-white transition-all w-full font-semibold text-sm"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
               </button>
             </div>
 
@@ -504,6 +531,16 @@ export default function DashboardLayout({
             >
               {userInitial}
             </Link>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              title="Sign Out"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 h-9 rounded-xl border border-gray-200 bg-gray-50 hover:bg-red-50 hover:text-red-700 hover:border-red-200 text-gray-700 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
           </div>
         </header>
 
