@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { 
   Mic, MicOff, Upload, FileAudio, Sparkles, X, Check, Copy, 
   Download, ArrowRight, RotateCcw, BookOpen, 
-  Quote, ListOrdered, CheckCircle2, AlertCircle, Loader2, User
+  Quote, ListOrdered, CheckCircle2, AlertCircle, Loader2, User, Share2, Send
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,11 +40,17 @@ export default function SermonAudioTranscriberModal({
   const router = useRouter()
   const supabase = createClient()
 
-  const [mode, setMode] = useState<'upload' | 'record'>(existingSermonId ? 'record' : 'upload')
+  const [mode, setMode] = useState<'upload' | 'record' | 'import'>(existingSermonId ? 'record' : 'upload')
   const [file, setFile] = useState<File | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [importShareCode, setImportShareCode] = useState('')
+  const [isImportingCode, setIsImportingCode] = useState(false)
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [isSendingToPastor, setIsSendingToPastor] = useState(false)
+  const [generatedShareCode, setGeneratedShareCode] = useState<string | null>(null)
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null)
 
   // Speaker attribution state
   const [pastorName, setPastorName] = useState('')
@@ -289,7 +295,8 @@ export default function SermonAudioTranscriberModal({
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (user && json.data) {
-          const todayStr = new Date().toISOString().split('T')[0]
+          const nowLocal = new Date()
+          const todayStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`
 
           if (existingSermonId) {
             const { data: existingSermon } = await supabase
@@ -543,7 +550,8 @@ export default function SermonAudioTranscriberModal({
         ],
       }
 
-      const todayStr = new Date().toISOString().split('T')[0]
+      const nowLocal = new Date()
+      const todayStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`
       const { data: sermon, error: insertError } = (await supabase
         .from('sermons')
         .insert({
@@ -750,7 +758,82 @@ ${result.transcript}
                   <Mic size={14} />
                   <span>Record Live Audio</span>
                 </button>
+                {!existingSermonId && (
+                  <button
+                    type="button"
+                    onClick={() => setMode('import')}
+                    className={cn(
+                      'flex-1 py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer',
+                      mode === 'import'
+                        ? 'bg-white text-[#022d5c] shadow-xs'
+                        : 'text-slate-600 hover:text-[#022d5c]'
+                    )}
+                  >
+                    <Share2 size={14} />
+                    <span>Upload Shared Code</span>
+                  </button>
+                )}
               </div>
+
+              {/* TAB 3: IMPORT SHARED SERMON FROM ANOTHER PASTOR */}
+              {mode === 'import' && (
+                <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50/50 space-y-4">
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-[#022d5c]">
+                      Upload a Sermon Shared by Another Pastor
+                    </h4>
+                    <p className="text-xs text-slate-600">
+                      Enter the 6-character Share Code (e.g., SD-7K9M2P) sent by another pastor to upload their recorded sermon, outline, scriptures, and transcript into your Shepherd&apos;s Desk.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      value={importShareCode}
+                      onChange={(e) => setImportShareCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. SD-7K9M2P"
+                      className="bg-white font-mono font-bold tracking-wider uppercase"
+                    />
+                    <Button
+                      type="button"
+                      disabled={!importShareCode.trim() || isImportingCode}
+                      onClick={async () => {
+                        setError(null)
+                        setIsImportingCode(true)
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser()
+                          if (!user) throw new Error('You must be signed in to upload a shared sermon.')
+                          const res = await fetch('/api/sermons/share', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              action: 'import_sermon',
+                              recipientUserId: user.id,
+                              shareCode: importShareCode.trim(),
+                            }),
+                          })
+                          const data = await res.json()
+                          if (!res.ok || !data.success) {
+                            throw new Error(data.error || 'Could not import sermon with that code.')
+                          }
+                          onClose()
+                          if (data.sermon?.id) {
+                            onSermonSaved?.(data.sermon.id)
+                            router.push(`/sermons/${data.sermon.id}`)
+                          }
+                        } catch (err: any) {
+                          setError(err?.message || 'Could not import shared sermon.')
+                        } finally {
+                          setIsImportingCode(false)
+                        }
+                      }}
+                      className="bg-[#022d5c] hover:bg-[#033b7a] text-white font-semibold px-5 cursor-pointer"
+                    >
+                      {isImportingCode ? <Loader2 size={15} className="animate-spin mr-1.5" /> : <Upload size={15} className="mr-1.5" />}
+                      Upload Sermon
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* TAB 1: UPLOAD AUDIO FILE */}
               {mode === 'upload' && (
@@ -1076,6 +1159,108 @@ ${result.transcript}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 max-h-72 overflow-y-auto text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap font-serif">
                     {result.transcript}
                   </div>
+                </div>
+              )}
+
+              {/* Send / Share Recorded Sermon to Another Pastor */}
+              {(savedSermonId || existingSermonId) && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Share2 size={16} className="text-[#022d5c]" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#022d5c]">
+                        Send Recorded Sermon to Another Pastor
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isSendingToPastor}
+                      onClick={async () => {
+                        const targetId = savedSermonId || existingSermonId
+                        if (!targetId) return
+                        setIsSendingToPastor(true)
+                        setShareFeedback(null)
+                        try {
+                          const res = await fetch('/api/sermons/share', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              action: 'create_share_code',
+                              sermonId: targetId,
+                              senderName: effectiveSpeakerName,
+                            }),
+                          })
+                          const data = await res.json()
+                          if (!res.ok) throw new Error(data.error || 'Could not create share code.')
+                          setGeneratedShareCode(data.shareCode)
+                          await navigator.clipboard.writeText(data.shareCode)
+                          setShareFeedback(`Share Code ${data.shareCode} copied to clipboard! Send it to another pastor to upload in their Shepherd's Desk.`)
+                        } catch (err: any) {
+                          setShareFeedback(err?.message || 'Could not generate share code.')
+                        } finally {
+                          setIsSendingToPastor(false)
+                        }
+                      }}
+                      className="text-xs h-8 cursor-pointer"
+                    >
+                      <Copy size={13} className="mr-1.5" />
+                      {generatedShareCode ? `Code: ${generatedShareCode} (Copy)` : 'Get & Copy Upload Code'}
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      type="email"
+                      value={recipientEmail}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
+                      placeholder="Enter another pastor's Shepherd's Desk email..."
+                      className="bg-white text-xs h-9"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!recipientEmail.trim() || isSendingToPastor}
+                      onClick={async () => {
+                        const targetId = savedSermonId || existingSermonId
+                        if (!targetId) return
+                        setIsSendingToPastor(true)
+                        setShareFeedback(null)
+                        try {
+                          const res = await fetch('/api/sermons/share', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              action: 'send_to_pastor',
+                              sermonId: targetId,
+                              recipientEmail: recipientEmail.trim(),
+                              senderName: effectiveSpeakerName,
+                            }),
+                          })
+                          const data = await res.json()
+                          if (!res.ok) throw new Error(data.error || 'Could not send sermon.')
+                          if (data.shareCode) setGeneratedShareCode(data.shareCode)
+                          setRecipientEmail('')
+                          setShareFeedback(data.message || 'Sent to pastor!')
+                        } catch (err: any) {
+                          setShareFeedback(err?.message || 'Could not send sermon.')
+                        } finally {
+                          setIsSendingToPastor(false)
+                        }
+                      }}
+                      className="bg-[#022d5c] hover:bg-[#033b7a] text-white text-xs h-9 px-4 cursor-pointer shrink-0"
+                    >
+                      <Send size={13} className="mr-1.5" />
+                      Send Directly to Pastor
+                    </Button>
+                  </div>
+
+                  {shareFeedback && (
+                    <p className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                      {shareFeedback}
+                    </p>
+                  )}
                 </div>
               )}
 

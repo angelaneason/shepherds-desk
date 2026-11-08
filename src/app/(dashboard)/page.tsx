@@ -64,16 +64,19 @@ export default function DashboardPage() {
         endOfWeek.setDate(startOfWeek.getDate() + 6) // Saturday
         endOfWeek.setHours(23, 59, 59, 999)
 
+        const todayLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
         const [
           eventsRes,
           profileRes,
           weekEventsRes,
           sermonsRes,
+          preachedSermonsRes,
           tasksRes,
         ] = await Promise.all([
           supabase
             .from('calendar_events')
-            .select('id, title, start_time, end_time, event_type, location, all_day, recurrence_rule')
+            .select('id, title, start_time, end_time, event_type, location, all_day, recurrence_rule, sermon_id')
             .or(`and(start_time.gte."${startOfMonth}",start_time.lte."${endOfMonth}"),and(recurrence_rule.not.is.null,start_time.lte."${endOfMonth}")`),
           supabase
             .from('profiles')
@@ -88,10 +91,15 @@ export default function DashboardPage() {
             .in('event_type', ['sermon_study', 'personal']),
           supabase
             .from('sermons')
-            .select('id, title, status, preach_date, scripture_primary')
-            .gte('preach_date', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
+            .select('*, sermon_tags(tag_type, tag_value)')
+            .neq('status', 'preached')
+            .gte('preach_date', todayLocalDate)
             .order('preach_date', { ascending: true })
-            .limit(1),
+            .limit(5),
+          supabase
+            .from('sermons')
+            .select('id')
+            .eq('status', 'preached'),
           supabase
             .from('care_tasks')
             .select('*, members(id, full_name, first_name, last_name, phone, email)')
@@ -100,7 +108,15 @@ export default function DashboardPage() {
             .limit(10),
         ])
 
-        const rawEvents = (eventsRes.data as any[]) || []
+        const preachedIds = new Set(((preachedSermonsRes.data as any[]) || []).map((s: any) => s.id))
+        const allFetchedEvents = (eventsRes.data as any[]) || []
+        const strayIds = allFetchedEvents
+          .filter((e: any) => e.sermon_id && preachedIds.has(e.sermon_id))
+          .map((e: any) => e.id)
+        if (strayIds.length > 0) {
+          supabase.from('calendar_events').delete().in('id', strayIds).then(() => {})
+        }
+        const rawEvents = allFetchedEvents.filter((e: any) => !(e.sermon_id && preachedIds.has(e.sermon_id)))
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
         const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
         const events = rawEvents.flatMap((e: any) => expandEvent(e, monthStart, monthEnd))
@@ -133,8 +149,8 @@ export default function DashboardPage() {
           setStudyHours(Math.round(totalHours * 10) / 10)
         }
 
-        const sermons = sermonsRes.data as any
-        if (sermons && sermons.length > 0) {
+        const sermons = ((sermonsRes.data as any[]) || []).filter((s: any) => s.status !== 'preached' && s.is_own_sermon !== false)
+        if (sermons.length > 0) {
           setNextSermon(sermons[0])
         } else {
           setNextSermon(null)

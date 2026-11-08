@@ -137,6 +137,13 @@ export function SmartReminder({ open, onOpenChange, variant = 'banner' }: SmartR
       })
       if (!res.ok) throw new Error('Failed to parse')
       const data = await res.json()
+      if (data.action === 'prayer') {
+        if (!data.prayerPerson && data.person) data.prayerPerson = data.person
+        const rawReq = typeof data.prayerRequest === 'string' ? data.prayerRequest.trim() : ''
+        if (!rawReq || /^add\s+.+\s+to\s+(the\s+)?prayer\s+list$/i.test(rawReq)) {
+          data.prayerRequest = 'General prayer request'
+        }
+      }
       setParsed({ action: 'reminder', ...data })
     } catch {
       setError('Could not understand. Please try again.')
@@ -307,14 +314,43 @@ export function SmartReminder({ open, onOpenChange, variant = 'banner' }: SmartR
   const savePrayer = async (userId: string) => {
     if (!parsed) return
     const person = (parsed.prayerPerson || parsed.person || '').trim()
-    const req = (parsed.prayerRequest || parsed.task || '').trim()
-    if (!person || !req) { setError('Please enter a name and prayer request.'); return }
+    const rawReq = (parsed.prayerRequest || parsed.task || '').trim()
+    const req = (!rawReq || /^add\s+.+\s+to\s+(the\s+)?prayer\s+list$/i.test(rawReq))
+      ? 'General prayer request'
+      : rawReq
+    if (!person) { setError('Please enter a name for the prayer request.'); return }
+
+    let matchedMemberId: string | null = null
+    try {
+      const cleanTarget = person.replace(/^(sis\.?|sister|bro\.?|brother|pastor|deacon|elder|min\.?|minister)\s+/i, '').trim().toLowerCase()
+      const { data: memberRows } = await (supabase
+        .from('members')
+        .select('id, full_name')
+        .eq('profile_id', userId) as any)
+      if (memberRows && memberRows.length > 0) {
+        const found = memberRows.find((m: any) => {
+          const full = String(m.full_name || '').trim().toLowerCase()
+          const stripped = full.replace(/^(sis\.?|sister|bro\.?|brother|pastor|deacon|elder|min\.?|minister)\s+/i, '').trim()
+          return full === person.toLowerCase() || (cleanTarget.length >= 2 && (stripped === cleanTarget || full.includes(cleanTarget)))
+        })
+        if (found) matchedMemberId = found.id
+      }
+    } catch {
+      // non-fatal member lookup
+    }
+
+    const rawCat = String(parsed.prayerCategory || 'other').toLowerCase()
+    const validCat = ['health', 'family', 'financial', 'spiritual', 'other'].includes(rawCat)
+      ? rawCat
+      : 'other'
+
     const { error: prayerError } = await (supabase.from('prayer_requests').insert({
       profile_id: userId,
+      member_id: matchedMemberId,
       person_name: person,
       request: req,
-      category: (PRAYER_CATEGORIES.includes(parsed.prayerCategory || '') ? parsed.prayerCategory! : 'Other').toLowerCase(),
-      priority: parsed.priority === 'urgent' ? 'urgent' : 'normal',
+      category: validCat,
+      priority: parsed.priority === 'urgent' || Boolean((parsed as any).isUrgent) ? 'urgent' : 'normal',
       status: 'active',
     }) as any)
     if (prayerError) throw prayerError

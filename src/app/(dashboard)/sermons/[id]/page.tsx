@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, use } from "react";
+import { useState, useEffect, useCallback, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Presentation, Trash2, BookOpen, Loader2, Copy, X, Download, Printer, Mic, User } from "lucide-react";
+import { ArrowLeft, Save, Presentation, Trash2, BookOpen, Loader2, Copy, X, Download, Printer, Mic, User, Share2, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,11 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
   const [devLoading, setDevLoading] = useState(false);
   const [devResult, setDevResult] = useState<any[]>([]);
   const [devSaving, setDevSaving] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [sharePastorEmail, setSharePastorEmail] = useState("");
+  const [sharingPastor, setSharingPastor] = useState(false);
+  const [sermonShareCode, setSermonShareCode] = useState<string | null>(null);
+  const [sharePastorFeedback, setSharePastorFeedback] = useState<string | null>(null);
 
   // Print Modal State
   const [printModalOpen, setPrintModalOpen] = useState(false);
@@ -110,13 +115,19 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
     }
   }, [id, supabase]);
 
+  const initialLoadSkipRef = useRef(true);
+
   useEffect(() => {
     fetchSermon();
   }, [fetchSermon]);
 
-  // Auto-save
+  // Auto-save only after the user makes an edit (skip initial load)
   useEffect(() => {
     if (loading) return;
+    if (initialLoadSkipRef.current) {
+      initialLoadSkipRef.current = false;
+      return;
+    }
 
     const timer = setTimeout(() => {
       handleSave(true);
@@ -155,33 +166,37 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           : (speakerName.trim() || "Guest Speaker"),
       });
       
-      if (preachDate && user) {
-        // check if calendar event exists
+      if (user) {
         const { data: calData } = await supabase
           .from("calendar_events")
           .select("id")
           .eq("sermon_id", id)
           .maybeSingle() as any;
-          
-        if (calData) {
-          await supabase.from("calendar_events").update({
-            title: title || "Untitled Sermon",
-            start_time: new Date(`${preachDate}T09:00:00`).toISOString(),
-            end_time: new Date(`${preachDate}T10:00:00`).toISOString(),
-            location: location || null
-          } as any).eq("id", calData.id);
-        } else {
-          await supabase.from("calendar_events").insert({
-            profile_id: user.id,
-            title: title || "Untitled Sermon",
-            event_type: "service",
-            start_time: new Date(`${preachDate}T09:00:00`).toISOString(),
-            end_time: new Date(`${preachDate}T10:00:00`).toISOString(),
-            location: location || null,
-            sermon_id: id,
-            all_day: true,
-            color: "#a855f7"
-          } as any);
+
+        // Only upcoming own sermons should have a schedule entry; preached or guest sermons should not
+        if (preachDate && status !== "preached" && isOwnSermon) {
+          if (calData) {
+            await supabase.from("calendar_events").update({
+              title: title || "Untitled Sermon",
+              start_time: new Date(`${preachDate}T09:00:00`).toISOString(),
+              end_time: new Date(`${preachDate}T10:00:00`).toISOString(),
+              location: location || null
+            } as any).eq("id", calData.id);
+          } else {
+            await supabase.from("calendar_events").insert({
+              profile_id: user.id,
+              title: title || "Untitled Sermon",
+              event_type: "service",
+              start_time: new Date(`${preachDate}T09:00:00`).toISOString(),
+              end_time: new Date(`${preachDate}T10:00:00`).toISOString(),
+              location: location || null,
+              sermon_id: id,
+              all_day: true,
+              color: "#a855f7"
+            } as any);
+          }
+        } else if (calData) {
+          await supabase.from("calendar_events").delete().eq("id", calData.id);
         }
       }
     } catch (error) {
@@ -278,6 +293,18 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           >
             <Mic className="h-4 w-4 text-[#D0A348]" />
             <span>Record Preaching</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSharePastorFeedback(null);
+              setShareModalOpen(true);
+            }}
+            className="border-[#022d5c]/25 text-[#022d5c] hover:bg-[#022d5c]/5 gap-2 font-medium cursor-pointer"
+          >
+            <Share2 className="h-4 w-4 text-[#D0A348]" />
+            <span>Send to Pastor</span>
           </Button>
 
           <Link href={`/sermons/${id}/pulpit`}>
@@ -606,6 +633,124 @@ export default function EditSermonPage({ params }: { params: Promise<{ id: strin
           fetchSermon();
         }}
       />
+
+      {/* Send Sermon to Another Pastor Modal */}
+      {shareModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 overflow-hidden">
+            <div className="bg-[#022d5c] text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Share2 size={18} className="text-[#D0A348]" />
+                <h3 className="font-bold text-base">Send Sermon to Another Pastor</h3>
+              </div>
+              <button
+                onClick={() => setShareModalOpen(false)}
+                className="text-white/80 hover:text-white cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Send &ldquo;{title || "Untitled Sermon"}&rdquo; directly into another pastor&apos;s Shepherd&apos;s Desk by email, or generate a 6-character Upload Code they can import on mobile or web.
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#022d5c]">
+                  Send Directly by Pastor Email
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="email"
+                    value={sharePastorEmail}
+                    onChange={(e) => setSharePastorEmail(e.target.value)}
+                    placeholder="pastor@church.org"
+                    className="text-sm"
+                  />
+                  <Button
+                    disabled={!sharePastorEmail.trim() || sharingPastor}
+                    onClick={async () => {
+                      setSharingPastor(true);
+                      setSharePastorFeedback(null);
+                      try {
+                        await handleSave(true);
+                        const res = await fetch("/api/sermons/share", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            action: "send_to_pastor",
+                            sermonId: id,
+                            recipientEmail: sharePastorEmail.trim(),
+                            senderName: speakerName || pastorProfile.full_name || "Pastor",
+                          }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Could not send sermon.");
+                        if (data.shareCode) setSermonShareCode(data.shareCode);
+                        setSharePastorEmail("");
+                        setSharePastorFeedback(data.message || "Sent to pastor!");
+                      } catch (err: any) {
+                        setSharePastorFeedback(err?.message || "Could not send sermon.");
+                      } finally {
+                        setSharingPastor(false);
+                      }
+                    }}
+                    className="bg-[#022d5c] hover:bg-[#033b7a] text-white cursor-pointer shrink-0"
+                  >
+                    {sharingPastor ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-1.5" />}
+                    Send
+                  </Button>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Or Share a 6-Character Upload Code
+                </label>
+                <Button
+                  variant="outline"
+                  disabled={sharingPastor}
+                  onClick={async () => {
+                    setSharingPastor(true);
+                    setSharePastorFeedback(null);
+                    try {
+                      await handleSave(true);
+                      const res = await fetch("/api/sermons/share", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "create_share_code",
+                          sermonId: id,
+                          senderName: speakerName || pastorProfile.full_name || "Pastor",
+                        }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || "Could not generate code.");
+                      setSermonShareCode(data.shareCode);
+                      await navigator.clipboard.writeText(data.shareCode);
+                      setSharePastorFeedback(`Share Code ${data.shareCode} copied! Any pastor can enter this code in Sermons -> Capture Sermon -> Upload Shared Code.`);
+                    } catch (err: any) {
+                      setSharePastorFeedback(err?.message || "Could not generate share code.");
+                    } finally {
+                      setSharingPastor(false);
+                    }
+                  }}
+                  className="w-full justify-center border-[#D0A348] text-[#977323] hover:bg-[#D0A348]/10 font-semibold cursor-pointer"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  {sermonShareCode ? `Share Code: ${sermonShareCode} (Copy Again)` : "Get & Copy Upload Code"}
+                </Button>
+              </div>
+
+              {sharePastorFeedback && (
+                <div className="text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                  {sharePastorFeedback}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

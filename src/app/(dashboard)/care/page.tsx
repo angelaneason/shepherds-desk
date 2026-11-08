@@ -159,6 +159,11 @@ function CarePageInner() {
     if (typeof window !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window) {
       setHasNativeContactPicker(true)
     }
+    const onAssistantSaved = () => { fetchData() }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('smart_assistant_saved', onAssistantSaved)
+      return () => window.removeEventListener('smart_assistant_saved', onAssistantSaved)
+    }
   }, [])
 
   const fetchData = async () => {

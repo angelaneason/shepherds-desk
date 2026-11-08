@@ -29,20 +29,24 @@ Input: "${text}"
 First decide the "action":
 - "sermon": they want to CREATE / ADD / START a new sermon (e.g. "add a new sermon titled Walking by Faith", "new sermon called The Prodigal Returns from Luke 15", "start a sermon on grace for next Sunday")
 - "idea": they want to SAVE / JOT DOWN a sermon idea, illustration, thought, or note (e.g. "sermon idea: the eagle renews its strength", "note that I want to preach on patience", "save an idea about...")
-- "prayer": they want to ADD someone to the PRAYER LIST (e.g. "add Sister Mary to the prayer list for her surgery", "pray for Brother John's job")
-- "reminder": anything else - reminders, calls, visits, appointments, meetings, study time, things to do on a date
+- "prayer": they want to ADD someone to the PRAYER LIST (e.g. "add Sister Mary to the prayer list for her surgery", "add Sis Angie to the prayer list", "pray for Brother John's job")
+- "care": they want to create a pastoral care follow-up task for a person (e.g. "call Brother James tomorrow", "visit Sister Ruth at the hospital")
+- "event": they want to schedule a calendar event, meeting, study block, wedding, funeral, or service
+- "message": they want to text or message someone (e.g. "text Sarah checking in on her")
+- "reminder": anything else - reminders, tasks, appointments, or things to do on a date
 
 Return ONLY valid JSON with these fields:
 {
-  "action": "reminder | sermon | idea | prayer",
+  "action": "reminder | care | sermon | event | idea | prayer | message",
   "sermonTitle": "for action=sermon: the sermon title in Title Case, without words like 'titled' or 'called'. Otherwise null",
   "scripture": "for action=sermon or idea: a scripture reference if mentioned (e.g. 'Luke 15:11-32'), else null",
   "preachDate": "for action=sermon: YYYY-MM-DD if they mention when they will preach it (e.g. 'next Sunday'), else null",
   "seriesName": "for action=sermon: series name if mentioned, else null",
   "ideaText": "for action=idea: the idea itself, cleaned up into a clear sentence (drop 'sermon idea' / 'save an idea' wording). Otherwise null",
-  "prayerPerson": "for action=prayer: the person's name. Otherwise null",
-  "prayerRequest": "for action=prayer: what to pray for (e.g. 'Healing after surgery'). Otherwise null",
-  "prayerCategory": "for action=prayer: one of Health, Family, Financial, Spiritual, Other. Otherwise null",
+  "prayerPerson": "for action=prayer: the person's name (e.g. 'Sis Angie'). Otherwise null",
+  "prayerRequest": "for action=prayer: what to pray for (e.g. 'Healing after surgery'). If no specific reason was stated (e.g. just 'Add Sis Angie to the prayer list'), set this to 'General prayer request'. Never return null when action=prayer",
+  "prayerCategory": "for action=prayer: one of health, family, financial, spiritual, bereavement, other. Otherwise null",
+  "isUrgent": "boolean: true if urgent/emergency/ICU/critical, otherwise false",
   "task": "the action to do (e.g., 'Call Sister Mary regarding her prayer request'). For non-reminder actions, a short summary of the request",
   "person": "the person's name if mentioned, or null",
   "date": "YYYY-MM-DD format. If they say 'tomorrow', calculate it. If they say a day like 'Thursday', use the NEXT occurrence of that day. If they say 'next week', use 7 days from today. If no date mentioned, use tomorrow.",
@@ -91,8 +95,25 @@ Return ONLY the JSON, no markdown, no backticks.`
     }
     
     const parsed = JSON.parse(cleanJson)
-    if (!['reminder', 'sermon', 'idea', 'prayer'].includes(parsed.action)) {
+    if (!['reminder', 'care', 'sermon', 'event', 'idea', 'prayer', 'message'].includes(parsed.action)) {
       parsed.action = 'reminder'
+    }
+
+    if (parsed.action === 'prayer') {
+      if (!parsed.prayerPerson && parsed.person) {
+        parsed.prayerPerson = parsed.person
+      }
+      const rawReq = typeof parsed.prayerRequest === 'string' ? parsed.prayerRequest.trim() : ''
+      if (!rawReq || /^add\s+.+\s+to\s+(the\s+)?prayer\s+list$/i.test(rawReq)) {
+        parsed.prayerRequest = 'General prayer request'
+      }
+      parsed.prayerCategory = typeof parsed.prayerCategory === 'string'
+        ? parsed.prayerCategory.toLowerCase()
+        : 'other'
+      if (!['health', 'family', 'financial', 'spiritual', 'bereavement', 'other'].includes(parsed.prayerCategory)) {
+        parsed.prayerCategory = 'other'
+      }
+      parsed.isUrgent = Boolean(parsed.isUrgent || parsed.priority === 'urgent')
     }
 
     return NextResponse.json(parsed)
