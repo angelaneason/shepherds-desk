@@ -98,6 +98,39 @@ export default function SermonAudioTranscriberModal({
     }
   }, [audioUrl])
 
+  // Keep screen awake while recording modal is open or actively recording
+  useEffect(() => {
+    if (!isOpen && !isRecording) return
+    let wakeLock: any = null
+    let cancelled = false
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator && document.visibilityState === 'visible') {
+          wakeLock = await (navigator as any).wakeLock.request('screen')
+        }
+      } catch {
+        // Ignore if unsupported or blocked
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (!cancelled && document.visibilityState === 'visible') {
+        requestWakeLock()
+      }
+    }
+
+    requestWakeLock()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (wakeLock) {
+        wakeLock.release().catch(() => {})
+      }
+    }
+  }, [isOpen, isRecording])
+
   if (!isOpen) return null
 
   const effectiveSpeakerName = isOwnSermon

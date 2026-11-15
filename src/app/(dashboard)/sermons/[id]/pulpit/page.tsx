@@ -60,20 +60,31 @@ export default function PulpitModePage({ params }: { params: Promise<{ id: strin
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollAnimRef = useRef<number | null>(null);
 
-  // Keep screen awake while in Pulpit Mode
+  // Keep screen awake while in Pulpit Mode (and re-acquire on visibility change)
   useEffect(() => {
     let wakeLock: any = null;
+    let cancelled = false;
     const requestWakeLock = async () => {
       try {
-        if ('wakeLock' in navigator) {
+        if ('wakeLock' in navigator && document.visibilityState === 'visible') {
           wakeLock = await (navigator as any).wakeLock.request('screen');
         }
       } catch (err) {
         console.error("Wake Lock error:", err);
       }
     };
+    const handleVisibilityChange = () => {
+      if (!cancelled && document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
     requestWakeLock();
-    return () => { if (wakeLock) wakeLock.release().catch(console.error); };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLock) wakeLock.release().catch(console.error);
+    };
   }, []);
 
   // Fetch sermon and profile data
