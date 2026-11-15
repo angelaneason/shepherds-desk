@@ -31,6 +31,7 @@ export function AIPanel({
 }: AIPanelProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
+  const [addedKeys, setAddedKeys] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
@@ -55,6 +56,7 @@ export function AIPanel({
     setLoading(true);
     setError('');
     setResult('');
+    setAddedKeys({});
     setLastAction(action);
 
     const primaryTopic = customText || topicInput || selectedText || scripture || sermonTitle || '';
@@ -153,7 +155,7 @@ export function AIPanel({
                 <Button variant="outline" className="justify-start text-[#022d5c] border-[#022d5c]/20 hover:bg-[#022d5c]/5" onClick={async () => {
                   const scripture = topicInput || customPrompt;
                   if (!scripture) { setError('Enter a scripture passage above first.'); return; }
-                  setLoading(true); setError(''); setResult(''); setLastAction('cross_reference');
+                  setLoading(true); setError(''); setResult(''); setAddedKeys({}); setLastAction('cross_reference');
                   try {
                     const res = await fetch('/api/ai/cross-reference', {
                       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -194,28 +196,93 @@ export function AIPanel({
           </div>
         )}
 
-        {result && !loading && (
-          <div className="flex flex-col gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="self-start text-[#022d5c] hover:bg-[#022d5c]/10 -ml-2 text-xs font-semibold flex items-center gap-1.5"
-              onClick={() => { setResult(''); setError(''); }}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" /> Back to Assistant Menu
-            </Button>
+        {result && !loading && (() => {
+          const items = result
+            .split(/\n\n+/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const insertOne = (textToInsert: string, key: string) => {
+            onInsertText(textToInsert);
+            setAddedKeys((prev) => ({ ...prev, [key]: true }));
+          };
+          return (
+            <div className="flex flex-col gap-3">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="self-start text-[#022d5c] hover:bg-[#022d5c]/10 -ml-2 text-xs font-semibold flex items-center gap-1.5"
+                onClick={() => { setResult(''); setAddedKeys({}); setError(''); }}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back to Assistant Menu
+              </Button>
 
-            <div className="bg-white rounded-md border border-[#D0A348]/30 p-4 shadow-sm flex flex-col">
-              <div className="prose prose-sm max-w-none text-gray-800">
-                {formatResult(result)}
-              </div>
-              
-              <div className="mt-6 flex items-center justify-between border-t pt-4">
+              {items.length > 1 ? (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-gray-500">
+                    Click any individual scripture or item below to add just that one to your sermon:
+                  </p>
+                  {items.map((block, idx) => {
+                    const firstLine = block.split('\n')[0] || '';
+                    const refMatch = firstLine.match(/^📖\s*(.+?)(?:\s*\([^)]+\))?$/);
+                    const scriptureOnly = refMatch ? refMatch[1].trim() : null;
+                    const fullKey = `full-${idx}`;
+                    const refKey = `ref-${idx}`;
+                    return (
+                      <div key={idx} className="bg-white rounded-md border border-[#D0A348]/30 p-3.5 shadow-xs space-y-2.5">
+                        <div className="prose prose-sm max-w-none text-gray-800">
+                          {formatResult(block)}
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                          {scriptureOnly && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className={cn(
+                                "h-7 text-xs font-semibold",
+                                addedKeys[refKey]
+                                  ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-600"
+                                  : "text-[#022d5c] border-blue-200 bg-blue-50/60 hover:bg-blue-100/70"
+                              )}
+                              onClick={() => insertOne(`📖 ${scriptureOnly}`, refKey)}
+                            >
+                              {addedKeys[refKey] ? `✓ Added ${scriptureOnly}` : `+ Add ${scriptureOnly} Only`}
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            className={cn(
+                              "h-7 text-xs font-semibold text-white",
+                              addedKeys[fullKey]
+                                ? "bg-emerald-600 hover:bg-emerald-600"
+                                : "bg-[#022d5c] hover:bg-[#022d5c]/90"
+                            )}
+                            onClick={() => insertOne(block, fullKey)}
+                          >
+                            {addedKeys[fullKey]
+                              ? '✓ Added to Sermon'
+                              : scriptureOnly
+                                ? '+ Add Scripture & Note'
+                                : '+ Add This Item'}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="bg-white rounded-md border border-[#D0A348]/30 p-4 shadow-sm flex flex-col">
+                  <div className="prose prose-sm max-w-none text-gray-800">
+                    {formatResult(result)}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white rounded-md border border-[#D0A348]/30 p-3 shadow-xs flex items-center justify-between">
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   className="text-gray-500 hover:text-[#022d5c]"
-                  onClick={() => { setResult(''); setError(''); }}
+                  onClick={() => { setResult(''); setAddedKeys({}); setError(''); }}
                 >
                   <ArrowLeft className="h-4 w-4 mr-1.5" /> Back
                 </Button>
@@ -225,13 +292,13 @@ export function AIPanel({
                     <RefreshCw className="h-4 w-4 mr-1.5" /> Retry
                   </Button>
                   <Button size="sm" className="bg-[#022d5c] hover:bg-[#022d5c]/90 text-white" onClick={() => onInsertText(result)}>
-                    <Copy className="h-4 w-4 mr-1.5" /> Copy to Editor
+                    <Copy className="h-4 w-4 mr-1.5" /> {items.length > 1 ? 'Add All to Editor' : 'Copy to Editor'}
                   </Button>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       <div className="p-4 border-t border-[#D0A348]/20 bg-white">
