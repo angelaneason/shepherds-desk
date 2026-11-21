@@ -48,9 +48,119 @@ const NATIONAL_LIFELINES = [
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// In-memory cache for fast sub-second repeat queries (7-day TTL)
-const communityCache = new Map<string, { timestamp: number; data: any }>();
-const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+// In-memory cache for fast sub-second repeat queries
+const communityCache = new Map<string, { timestamp: number; ttlMs: number; data: any }>();
+const CACHE_TTL_VERIFIED_MS = 1000 * 60 * 60 * 24 * 7; // 7 days for 2-1-1 & Google-grounded
+const CACHE_TTL_AI_MS = 1000 * 60 * 60 * 24; // 24 hours for AI directory fallback
+
+// Skip repeated failing Google Search grounding roundtrips during quota cooldown
+let groundingCooldownUntil = 0;
+const GROUNDING_COOLDOWN_MS = 1000 * 60 * 15;
+
+function sanitizeText(text: unknown, isScheduleOrLabel = false): string {
+  if (typeof text !== 'string' || !text) return '';
+  if (isScheduleOrLabel) {
+    return text.replace(/[–—]/g, '-').trim();
+  }
+  return text
+    .replace(/(\d|AM|PM|am|pm|Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*[–—]\s*(\d|Mon|Tue|Wed|Thu|Fri|Sat|Sun)/g, '$1-$2')
+    .replace(/\s*[–—]+\s*/g, ', ')
+    .replace(/,\s*([,.!?])/g, '$1')
+    .replace(/^,\s*/, '')
+    .trim();
+}
+
+function parseResourcesJson(rawText: string): any[] {
+  let cleaned = rawText.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+
+  const filterValid = (items: unknown): any[] => {
+    if (!Array.isArray(items)) return [];
+    return items.filter(
+      (item): item is Record<string, any> =>
+        Boolean(item) &&
+        typeof item === 'object' &&
+        typeof (item as Record<string, any>).title === 'string' &&
+        (item as Record<string, any>).title.trim().length > 0
+    );
+  };
+
+  try {
+    const direct = filterValid(JSON.parse(cleaned));
+    if (direct.length > 0) return direct;
+  } catch {
+    // Fall through to bracket extraction
+  }
+
+  const startIdx = cleaned.indexOf('[');
+  const endIdx = cleaned.lastIndexOf(']');
+  if (startIdx !== -1 && endIdx > startIdx) {
+    try {
+      const sliced = filterValid(JSON.parse(cleaned.substring(startIdx, endIdx + 1)));
+      if (sliced.length > 0) return sliced;
+    } catch {
+      console.warn('Direct JSON parse failed, falling back to object extraction');
+    }
+  }
+
+  const objectMatches = cleaned.match(/\{[\s\S]*?"title"[\s\S]*?\}/g) || [];
+  const extracted = objectMatches
+    .map((objStr) => {
+      try {
+        return JSON.parse(objStr);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+
+  return filterValid(extracted);
+}
+
+function buildCommunityPrompt(zip: string, radius: string, category: string): string {
+  const categoryText =
+    category === 'all'
+      ? 'food pantries, emergency shelters, housing and utility assistance, free or sliding-scale medical clinics, mental health support, legal aid, and local 2-1-1 or community assistance centers'
+      : category.replace(/_/g, ' ');
+
+  return `You are a specialized community resource locator assisting pastors and church care teams.
+Task: Find 6 to 8 real, well-established, currently operating non-profit organizations physically located in or directly serving ZIP code ${zip} within a ${radius}-mile radius.
+Service focus: ${categoryText}.
+
+Accuracy & Style Rules:
+- Do NOT fabricate street addresses, phone numbers, or website URLs. If you are not certain of an address, phone number, or URL, leave that field as an empty string "".
+- Never use em dashes (—) or en dashes (–). Use commas, periods, colons, or plain hyphens (-) only in phone numbers, words, or ranges like "Mon-Fri 9:00 AM - 5:00 PM".
+
+Format your response as ONLY a valid raw JSON array of objects. Do not wrap in markdown code blocks, backticks, or write any conversational introduction or conclusion.
+Each JSON object must have these exact keys:
+- "title": organization or program name (e.g. "Arlington Charities Food Pantry")
+- "category": choose the most accurate single value from: ["food_pantry", "shelter", "housing", "medical", "crisis_hotline", "mental_health", "legal_aid", "community"]
+- "address": physical street address with city, state, and zip code (or "" if uncertain)
+- "phone": main contact phone number formatted with area code (or "" if uncertain)
+- "website": full official website URL or empty string ""
+- "hours": operating, intake, or distribution hours if known (or "" if uncertain)
+- "content": 1-2 practical sentences explaining who they help (e.g. eligibility or distribution rules) and what services they offer to neighbors in need.`;
+}
+
+function formatGeminiResources(discoveredResources: any[], zip: string, source: 'google_grounded' | 'ai_directory') {
+  const stamp = Date.now();
+  return discoveredResources.map((item, idx) => {
+    const title = sanitizeText(item.title, true) || 'Community Resource';
+    const content = sanitizeText(item.content, false);
+    const normCat = normalizeCategory(item.category, `${title} ${content}`);
+    return {
+      id: `local-${zip}-${idx}-${stamp}`,
+      title,
+      category: normCat,
+      address: sanitizeText(item.address, true),
+      phone: sanitizeText(item.phone, true),
+      website: typeof item.website === 'string' ? item.website.trim() : '',
+      hours: sanitizeText(item.hours, true),
+      content,
+      source,
+      isLocal: true,
+    };
+  });
+}
 
 function normalizeCategory(cat: string, titleAndContent: string): string {
   const lower = (cat || '').toLowerCase().replace(/[- ]/g, '_');
@@ -69,16 +179,17 @@ function normalizeCategory(cat: string, titleAndContent: string): string {
 }
 
 export async function GET(req: Request) {
+  let category = 'all';
   try {
     const { searchParams } = new URL(req.url);
     const zip = (searchParams.get('zip') || '76018').trim();
-    const category = (searchParams.get('category') || 'all').trim();
+    category = (searchParams.get('category') || 'all').trim();
     const radius = (searchParams.get('radius') || '10').trim();
 
-    // Check cache: ONLY return if non-empty
+    // Check cache: ONLY return if non-empty and within TTL
     const cacheKey = `${zip}_${category}_${radius}`;
     const cached = communityCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS && cached.data?.resources?.length > 0) {
+    if (cached && Date.now() - cached.timestamp < cached.ttlMs && cached.data?.resources?.length > 0) {
       return NextResponse.json({
         ...cached.data,
         cached: true,
@@ -113,19 +224,24 @@ export async function GET(req: Request) {
                 ? [item.address.streetAddress, item.address.city, item.address.stateProvince, item.address.postalCode].filter(Boolean).join(', ')
                 : '';
 
-              const title = item.nameService || item.nameOrganization || 'Community Resource';
-              const content = item.descriptionService || item.descriptionOrganization || '';
+              const rawTitle = item.nameService || item.nameOrganization || 'Community Resource';
+              const rawContent = item.descriptionService || item.descriptionOrganization || '';
+              const title = sanitizeText(
+                item.nameOrganization ? `${item.nameOrganization} - ${item.nameService || 'Assistance'}` : rawTitle,
+                true
+              ) || 'Community Resource';
+              const content = sanitizeText(rawContent, false);
               const normCat = normalizeCategory(category, `${title} ${content}`);
 
               return {
                 id: `211-${item.idServiceAtLocation || item.idOrganization || idx}`,
-                title: item.nameOrganization ? `${item.nameOrganization} - ${item.nameService || 'Assistance'}` : title,
+                title,
                 category: normCat,
-                address: fullAddress,
-                phone: item.phone || '',
-                website: item.website || '',
-                hours: item.hours || '',
-                content: content,
+                address: sanitizeText(fullAddress, true),
+                phone: sanitizeText(item.phone || '', true),
+                website: typeof item.website === 'string' ? item.website.trim() : '',
+                hours: sanitizeText(item.hours || '', true),
+                content,
                 source: '211_platform',
                 isLocal: true
               };
@@ -141,6 +257,7 @@ export async function GET(req: Request) {
 
             communityCache.set(cacheKey, {
               timestamp: Date.now(),
+              ttlMs: CACHE_TTL_VERIFIED_MS,
               data: payload211,
             });
 
@@ -152,115 +269,106 @@ export async function GET(req: Request) {
       }
     }
 
-    // 2. Google Search Grounding with Gemini 3.6 Flash
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         zip,
         source: 'static_lifelines',
         lifelines: filterLifelines(category),
-        resources: [] 
+        resources: [],
       });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash-lite',
-      tools: [{ googleSearch: {} } as any]
-    });
+    const prompt = buildCommunityPrompt(zip, radius, category);
 
-    const categoryText = category === 'all' 
-      ? 'food pantries, emergency shelters, utility assistance, housing assistance, free medical clinics, and crisis charities' 
-      : category.replace(/_/g, ' ');
-
-    const prompt = `You are a specialized community resource locator assisting pastors and church care teams.
-Task: Find 5 to 6 real, verified, currently operating non-profit community assistance organizations, food pantries, emergency shelters, utility assistance charities, or free medical clinics physically located within a ${radius}-mile radius of ZIP code ${zip}.
-Service focus: ${categoryText}.
-
-Format your response as ONLY a valid raw JSON array of objects. Do not wrap in markdown code blocks, backticks, or write any conversational introduction or conclusion.
-Each JSON object must have these exact keys:
-- "title": organization or program name (e.g. "Arlington Charities Food Pantry")
-- "category": choose the most accurate single value from: ["food_pantry", "shelter", "housing", "medical", "crisis_hotline", "mental_health", "community"]
-- "address": physical street address with city, state, and zip code
-- "phone": main contact phone number formatted with area code
-- "website": full official website URL or empty string
-- "hours": operating, intake, or distribution hours if known
-- "content": 1-2 practical sentences explaining who they help (e.g. eligibility or distribution rules) and what services they offer to neighbors in need.`;
-
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text().trim();
-
-    // Bulletproof JSON Array extraction
-    let cleaned = rawText.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
-    const startIdx = cleaned.indexOf('[');
-    if (startIdx !== -1) {
-      cleaned = cleaned.substring(startIdx);
-    }
-    const endIdx = cleaned.lastIndexOf(']');
-    
-    let discoveredResources: any[] = [];
-    if (endIdx !== -1) {
+    // 2. Google Search Grounding (skipped during quota cooldown so warm instances don't waste roundtrips)
+    if (Date.now() >= groundingCooldownUntil) {
       try {
-        discoveredResources = JSON.parse(cleaned.substring(0, endIdx + 1));
-      } catch (parseErr) {
-        console.warn('Direct JSON parse failed, falling back to object extraction');
+        const groundedModel = genAI.getGenerativeModel({
+          model: 'gemini-3.5-flash-lite',
+          tools: [{ googleSearch: {} } as any],
+        });
+        const groundedResult = await groundedModel.generateContent(prompt);
+        const groundedParsed = parseResourcesJson(groundedResult.response.text().trim());
+
+        if (groundedParsed.length > 0) {
+          const formatted = formatGeminiResources(groundedParsed, zip, 'google_grounded');
+          const responsePayload = {
+            zip,
+            radius: `${radius} miles`,
+            source: 'google_grounded',
+            lifelines: filterLifelines(category),
+            resources: formatted,
+          };
+
+          communityCache.set(cacheKey, {
+            timestamp: Date.now(),
+            ttlMs: CACHE_TTL_VERIFIED_MS,
+            data: responsePayload,
+          });
+
+          return NextResponse.json(responsePayload);
+        }
+      } catch (groundingErr: any) {
+        const errMsg = String(groundingErr?.message || groundingErr || '');
+        console.warn('Google Search grounding unavailable, falling back to AI directory:', errMsg);
+        if (groundingErr?.status === 429 || /429|quota|RESOURCE_EXHAUSTED/i.test(errMsg)) {
+          groundingCooldownUntil = Date.now() + GROUNDING_COOLDOWN_MS;
+        }
       }
     }
 
-    // Fallback: extract individual JSON objects if array parse failed
-    if (!Array.isArray(discoveredResources) || discoveredResources.length === 0) {
-      const objectMatches = cleaned.match(/\{[\s\S]*?"title"[\s\S]*?\}/g) || [];
-      discoveredResources = objectMatches
-        .map(objStr => {
-          try {
-            return JSON.parse(objStr);
-          } catch {
-            return null;
-          }
-        })
-        .filter(Boolean);
+    // 3. Fallback: standard Gemini directory without Google Search grounding tool
+    for (const modelName of ['gemini-3.5-flash-lite', 'gemini-3.6-flash']) {
+      try {
+        const fallbackModel = genAI.getGenerativeModel({ model: modelName });
+        const fallbackResult = await fallbackModel.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+          },
+        });
+        const parsed = parseResourcesJson(fallbackResult.response.text().trim());
+        if (parsed.length > 0) {
+          const formatted = formatGeminiResources(parsed, zip, 'ai_directory');
+          const responsePayload = {
+            zip,
+            radius: `${radius} miles`,
+            source: 'ai_directory',
+            lifelines: filterLifelines(category),
+            resources: formatted,
+          };
+
+          communityCache.set(cacheKey, {
+            timestamp: Date.now(),
+            ttlMs: CACHE_TTL_AI_MS,
+            data: responsePayload,
+          });
+
+          return NextResponse.json(responsePayload);
+        }
+      } catch (fallbackErr: any) {
+        console.warn(`Community AI directory fallback failed on ${modelName}:`, fallbackErr?.message || fallbackErr);
+      }
     }
 
-    const formatted = discoveredResources.map((item, idx) => {
-      const normCat = normalizeCategory(item.category, `${item.title || ''} ${item.content || ''}`);
-      return {
-        id: `local-${zip}-${idx}-${Date.now()}`,
-        title: item.title || 'Community Resource',
-        category: normCat,
-        address: item.address || '',
-        phone: item.phone || '',
-        website: item.website || '',
-        hours: item.hours || '',
-        content: item.content || '',
-        source: 'google_grounded',
-        isLocal: true,
-      };
-    });
-
-    const responsePayload = {
-      zip,
-      radius: `${radius} miles`,
-      source: 'google_grounded',
-      lifelines: filterLifelines(category),
-      resources: formatted,
-    };
-
-    // Cache ONLY if non-empty
-    if (formatted.length > 0) {
-      communityCache.set(cacheKey, {
-        timestamp: Date.now(),
-        data: responsePayload,
-      });
-    }
-
-    return NextResponse.json(responsePayload);
+    return NextResponse.json(
+      {
+        error: 'Unable to load local community resources right now. Please try again shortly.',
+        lifelines: filterLifelines(category),
+        resources: [],
+      },
+      { status: 500 }
+    );
   } catch (error: any) {
     console.error('Community resources API error:', error?.message || error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch community resources',
-        lifelines: NATIONAL_LIFELINES,
-        resources: [] 
+      {
+        error: 'Unable to load local community resources right now. Please try again shortly.',
+        lifelines: filterLifelines(category),
+        resources: [],
       },
       { status: 500 }
     );

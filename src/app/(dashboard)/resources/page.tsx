@@ -55,6 +55,16 @@ const CATEGORIES = [
 const COMMUNITY_CATEGORIES = ['housing', 'food_pantry', 'shelter', 'crisis_hotline', 'mental_health', 'legal_aid', 'medical', 'community'];
 const COUNSELING_DB_CATEGORIES = ['grief', 'marriage', 'anxiety', 'addiction', 'depression', 'family', 'faith_crisis', 'anger', 'forgiveness', 'parenting', 'finances', 'loneliness', 'other'];
 
+function removeDashes(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/(\d|AM|PM|am|pm|Mon|Tue|Wed|Thu|Fri|Sat|Sun)[ \t]*[–—][ \t]*(\d|Mon|Tue|Wed|Thu|Fri|Sat|Sun)/g, '$1-$2')
+    .replace(/[ \t]*[–—]+[ \t]*/g, ', ')
+    .replace(/,[ \t]*([,.!?])/g, '$1')
+    .replace(/^[ \t]*,[ \t]*/gm, '')
+    .trim();
+}
+
 const STARTER_RESOURCES = [
   { title: 'Navigating the Loss of a Loved One', category: 'grief', content: 'Grief is a natural response to loss, and everyone processes it differently. As a pastor, it is crucial to offer a ministry of presence—simply being there without trying to fix their pain. Validate their feelings of sorrow and remind them that Jesus wept with Mary and Martha. Encourage them to lean into their faith, but do not rush their mourning process.', scripture_references: ['Psalm 34:18', 'Matthew 5:4', 'John 11:35'], tags: ['loss', 'comfort', 'mourning'] },
   { title: 'Finding Hope After Miscarriage', category: 'grief', content: 'The loss of an unborn child brings a unique and often silent grief. Acknowledge the life that was lost and the deep pain of unfulfilled hopes. Provide a safe space for parents to express anger, confusion, and sadness. Remind them of God\'s tender care for them and their little one.', scripture_references: ['Psalm 139:13-16', 'Isaiah 41:10', 'Revelation 21:4'], tags: ['miscarriage', 'family', 'hope'] },
@@ -115,6 +125,7 @@ export default function ResourcesPage() {
   const [isSearchingCommunity, setIsSearchingCommunity] = useState(false);
   const [communitySearchedZip, setCommunitySearchedZip] = useState('');
   const [communitySource, setCommunitySource] = useState<string>('');
+  const [communityError, setCommunityError] = useState<string | null>(null);
   const [savedLocalMap, setSavedLocalMap] = useState<Record<string, boolean>>({});
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
   const [cachedZipData, setCachedZipData] = useState<Record<string, any[]>>({});
@@ -133,6 +144,7 @@ export default function ResourcesPage() {
     const cleanZip = targetZip.trim();
     if (!cleanZip) return;
 
+    setCommunityError(null);
     const cacheKey = `${cleanZip}_${targetRadius}`;
     if (!forceRefresh && cachedZipData[cacheKey] && cachedZipData[cacheKey].length > 0) {
       setDiscoveredCommunity(cachedZipData[cacheKey]);
@@ -144,23 +156,29 @@ export default function ResourcesPage() {
     try {
       const res = await fetch(`/api/resources/community?zip=${encodeURIComponent(cleanZip)}&category=all&radius=${encodeURIComponent(targetRadius)}`);
       const data = await res.json();
+      if (data.lifelines) {
+        setLifelines(data.lifelines);
+      }
+      if (!res.ok || data.error) {
+        setCommunityError(data.error || 'Unable to load local resources right now. Please try again.');
+        setDiscoveredCommunity([]);
+        return;
+      }
       if (data.resources && data.resources.length > 0) {
         setDiscoveredCommunity(data.resources);
         setCachedZipData(prev => ({ ...prev, [cacheKey]: data.resources }));
       } else {
         setDiscoveredCommunity(data.resources || []);
       }
-      if (data.lifelines) {
-        setLifelines(data.lifelines);
-      }
       setCommunitySearchedZip(data.zip || cleanZip);
-      setCommunitySource(data.source || 'google_grounded');
+      setCommunitySource(data.source || '');
       if (typeof window !== 'undefined') {
         localStorage.setItem('shepherds_community_zip', cleanZip);
         localStorage.setItem('shepherds_community_radius', targetRadius);
       }
     } catch (err) {
       console.error('Failed to fetch community resources:', err);
+      setCommunityError('Unable to reach the community resources directory. Please check your connection and try again.');
     } finally {
       setIsSearchingCommunity(false);
     }
@@ -265,11 +283,11 @@ export default function ResourcesPage() {
     if (item.hours) lines.push(`⏰ Hours: ${item.hours}`);
     if (item.website) lines.push(`🌐 Website: ${item.website}`);
     lines.push('');
-    lines.push(item.content);
+    lines.push(item.content || '');
     lines.push('');
     lines.push(`Shared from The Shepherd's Desk`);
 
-    navigator.clipboard.writeText(lines.join('\n'));
+    navigator.clipboard.writeText(removeDashes(lines.join('\n')));
     setCopiedId(item.id || item.title);
     setActionSuccessMsg(`Copied info for "${item.title}" ready to text!`);
     setTimeout(() => {
@@ -598,7 +616,13 @@ export default function ResourcesPage() {
                   Community Assistance Locator
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#D0A348]/20 text-[#8c6b24]">
-                  {communitySource === '211_platform' ? '2-1-1 Verified' : 'Live Area Grounding'}
+                  {communitySource === '211_platform'
+                    ? '2-1-1 Verified'
+                    : communitySource === 'google_grounded'
+                      ? 'Live Area Grounding'
+                      : communitySource === 'ai_directory'
+                        ? 'AI Local Directory'
+                        : 'Local Area Directory'}
                 </span>
               </div>
               <p className="text-sm text-gray-600">
@@ -779,7 +803,9 @@ export default function ResourcesPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-2 border-b border-gray-200">
               <div>
                 <h3 className="font-playfair text-xl font-bold text-[#022d5c]">
-                  Verified Local Assistance in {communitySearchedZip || zipCode}
+                  {communitySource === '211_platform' || communitySource === 'google_grounded'
+                    ? `Verified Local Assistance in ${communitySearchedZip || zipCode}`
+                    : `Local Assistance near ${communitySearchedZip || zipCode}`}
                 </h3>
                 <p className="text-xs text-gray-500">
                   {discoveredCommunity.length} active programs located for this area
@@ -787,7 +813,13 @@ export default function ResourcesPage() {
               </div>
               <div className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#D0A348]" />
-                {communitySource === '211_platform' ? 'Direct from National 2-1-1 Platform' : 'Live Google-Grounded Directory'}
+                {communitySource === '211_platform'
+                  ? 'Direct from National 2-1-1 Platform'
+                  : communitySource === 'google_grounded'
+                    ? 'Live Google-Grounded Directory'
+                    : communitySource === 'ai_directory'
+                      ? 'AI Directory (call ahead to verify hours)'
+                      : 'Local Community Directory'}
               </div>
             </div>
 
@@ -796,6 +828,13 @@ export default function ResourcesPage() {
                 <Loader2 className="w-8 h-8 animate-spin text-[#022d5c] mx-auto" />
                 <p className="font-semibold text-[#022d5c]">Searching nearby verified resources for {zipCode}...</p>
                 <p className="text-xs text-gray-500 max-w-sm mx-auto">Locating food pantries, emergency shelters, free clinics, and assistance programs.</p>
+              </div>
+            ) : communityError && discoveredCommunity.length === 0 ? (
+              <div className="p-8 text-center bg-rose-50/70 rounded-xl border border-rose-200 space-y-3">
+                <p className="text-sm font-semibold text-rose-900">{communityError}</p>
+                <Button onClick={() => fetchCommunityResources(zipCode, radius, true)} className="bg-[#022d5c] hover:bg-[#011c3a] text-xs">
+                  <Navigation className="w-3.5 h-3.5 mr-1.5" /> Try Again
+                </Button>
               </div>
             ) : discoveredCommunity.length === 0 ? (
               <div className="p-8 text-center bg-white rounded-xl border border-dashed border-gray-300">
